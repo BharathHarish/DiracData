@@ -1,0 +1,547 @@
+{
+  "artifact_type": "sql_library",
+  "coverage": {
+    "column_mentions": {
+      "orders.checkout_surface": 156,
+      "orders.order_amount": 0,
+      "orders.order_ref": 254,
+      "orders.order_state": 0,
+      "orders.order_time": 98,
+      "orders.product_area": 98,
+      "orders.user_ref": 0,
+      "payment_attributes.authentication_mode": 120,
+      "payment_attributes.issuer_name": 0,
+      "payment_attributes.rail_ref": 413,
+      "payment_attributes.rail_type": 293,
+      "payment_attributes.risk_band": 0,
+      "payment_attributes.route_partner": 0,
+      "payment_attributes.settlement_speed": 0,
+      "payments.amount": 334,
+      "payments.order_ref": 254,
+      "payments.payment_ref": 98,
+      "payments.payment_status": 748,
+      "payments.payment_time": 458,
+      "payments.rail_ref": 413,
+      "payments.user_ref": 446,
+      "user_attributes.age": 0,
+      "user_attributes.city": 0,
+      "user_attributes.gender": 32,
+      "user_attributes.kyc_status": 155,
+      "user_attributes.risk_band": 247,
+      "user_attributes.state": 255,
+      "user_attributes.user_ref": 414,
+      "users.account_state": 120,
+      "users.acquisition_channel": 0,
+      "users.country": 0,
+      "users.merchant_type": 0,
+      "users.platform_plan": 32,
+      "users.signup_time": 0,
+      "users.user_ref": 319
+    },
+    "columns_covered": [
+      "orders.checkout_surface",
+      "orders.order_ref",
+      "orders.order_time",
+      "orders.product_area",
+      "payment_attributes.authentication_mode",
+      "payment_attributes.rail_ref",
+      "payment_attributes.rail_type",
+      "payments.amount",
+      "payments.order_ref",
+      "payments.payment_ref",
+      "payments.payment_status",
+      "payments.payment_time",
+      "payments.rail_ref",
+      "payments.user_ref",
+      "user_attributes.gender",
+      "user_attributes.kyc_status",
+      "user_attributes.risk_band",
+      "user_attributes.state",
+      "user_attributes.user_ref",
+      "users.account_state",
+      "users.platform_plan",
+      "users.user_ref"
+    ],
+    "columns_missing": [
+      "orders.order_amount",
+      "orders.order_state",
+      "orders.user_ref",
+      "payment_attributes.issuer_name",
+      "payment_attributes.risk_band",
+      "payment_attributes.route_partner",
+      "payment_attributes.settlement_speed",
+      "user_attributes.age",
+      "user_attributes.city",
+      "users.acquisition_channel",
+      "users.country",
+      "users.merchant_type",
+      "users.signup_time"
+    ],
+    "columns_total": 35,
+    "successful_queries": 748,
+    "table_mentions": {
+      "orders": 254,
+      "payment_attributes": 413,
+      "payments": 748,
+      "user_attributes": 414,
+      "users": 319
+    },
+    "tables_covered": [
+      "orders",
+      "payment_attributes",
+      "payments",
+      "user_attributes",
+      "users"
+    ],
+    "tables_missing": [],
+    "tables_total": 5
+  },
+  "created_at": "2026-06-09T14:07:13.230214+00:00",
+  "entries": {
+    "history:orders_payment_attributes_payments:checkout_surface_order_ref:c1919716d2": {
+      "columns": [
+        "orders.checkout_surface",
+        "orders.order_ref",
+        "payment_attributes.authentication_mode",
+        "payment_attributes.rail_ref",
+        "payments.amount",
+        "payments.order_ref",
+        "payments.payment_status",
+        "payments.payment_time",
+        "payments.rail_ref",
+        "payments.user_ref",
+        "user_attributes.kyc_status",
+        "user_attributes.risk_band",
+        "user_attributes.state",
+        "user_attributes.user_ref",
+        "users.account_state",
+        "users.user_ref"
+      ],
+      "review_status": "observed",
+      "source": "query_history",
+      "sql": "SELECT o.checkout_surface, pa.authentication_mode, sum(CASE WHEN p.payment_status = {{string}} THEN p.amount ELSE {{number}} END) AS tpv, sum(CASE WHEN p.payment_status = {{string}} THEN {{number}} ELSE {{number}} END) AS successful_payments, count(*) AS total_payments, sum(CASE WHEN p.payment_status = {{string}} THEN {{number}} ELSE {{number}} END)::DOUBLE / nullif(count(*), {{number}}) AS psr FROM payments p JOIN orders o ON p.order_ref = o.order_ref JOIN user_attributes ua ON p.user_ref = ua.user_ref JOIN users u ON p.user_ref = u.user_ref JOIN payment_attributes pa ON p.rail_ref = pa.rail_ref WHERE p.payment_time >= {{timestamp}} AND p.payment_time < {{timestamp}} AND ua.risk_band = {{string}} AND ua.state = {{string}} AND ua.kyc_status = {{string}} AND u.account_state = {{string}} GROUP BY o.checkout_surface, pa.authentication_mode HAVING count(*) >= {{number}} ORDER BY tpv DESC",
+      "tables": [
+        "orders",
+        "payment_attributes",
+        "payments",
+        "user_attributes",
+        "users"
+      ],
+      "template": "orders + payment_attributes + payments + user_attributes + users pattern using orders.checkout_surface, orders.order_ref, payment_attributes.authentication_mode, payment_attributes.rail_ref"
+    },
+    "history:orders_payment_attributes_payments:checkout_surface_order_ref:d106d00b37": {
+      "columns": [
+        "orders.checkout_surface",
+        "orders.order_ref",
+        "payment_attributes.rail_ref",
+        "payment_attributes.rail_type",
+        "payments.amount",
+        "payments.order_ref",
+        "payments.payment_status",
+        "payments.rail_ref"
+      ],
+      "review_status": "observed",
+      "source": "query_history",
+      "sql": "SELECT o.checkout_surface, pa.rail_type, sum(CASE WHEN p.payment_status = {{string}} THEN p.amount ELSE {{number}} END) AS tpv FROM orders o JOIN payments p ON o.order_ref = p.order_ref JOIN payment_attributes pa ON p.rail_ref = pa.rail_ref WHERE o.checkout_surface = {{string}} GROUP BY o.checkout_surface, pa.rail_type",
+      "tables": [
+        "orders",
+        "payment_attributes",
+        "payments"
+      ],
+      "template": "orders + payment_attributes + payments pattern using orders.checkout_surface, orders.order_ref, payment_attributes.rail_ref, payment_attributes.rail_type"
+    },
+    "history:orders_payments:order_ref_order_time:011f1d950f": {
+      "columns": [
+        "orders.order_ref",
+        "orders.order_time",
+        "orders.product_area",
+        "payments.order_ref",
+        "payments.payment_ref",
+        "payments.payment_status"
+      ],
+      "review_status": "observed",
+      "source": "query_history",
+      "sql": "SELECT o.product_area, count(DISTINCT o.order_ref) AS orders_created, count(DISTINCT p.payment_ref) AS payment_attempts, count(DISTINCT CASE WHEN p.payment_status = {{string}} THEN p.payment_ref END) AS successful_payments FROM orders o LEFT JOIN payments p ON o.order_ref = p.order_ref WHERE o.product_area = {{string}} AND o.order_time >= {{timestamp}} AND o.order_time < {{timestamp}} GROUP BY o.product_area",
+      "tables": [
+        "orders",
+        "payments"
+      ],
+      "template": "orders + payments pattern using orders.order_ref, orders.order_time, orders.product_area, payments.order_ref"
+    },
+    "history:payment_attributes_payments:rail_ref_rail_type:3d4fd81ccb": {
+      "columns": [
+        "payment_attributes.rail_ref",
+        "payment_attributes.rail_type",
+        "payments.payment_status",
+        "payments.payment_time",
+        "payments.rail_ref"
+      ],
+      "review_status": "observed",
+      "source": "query_history",
+      "sql": "SELECT pa.rail_type, sum(CASE WHEN p.payment_status = {{string}} THEN {{number}} ELSE {{number}} END)::DOUBLE / count(*) AS psr, count(*) AS attempts FROM payments p JOIN payment_attributes pa ON p.rail_ref = pa.rail_ref WHERE pa.rail_type = {{string}} AND p.payment_time >= {{timestamp}} AND p.payment_time < {{timestamp}} GROUP BY pa.rail_type",
+      "tables": [
+        "payment_attributes",
+        "payments"
+      ],
+      "template": "payment_attributes + payments pattern using payment_attributes.rail_ref, payment_attributes.rail_type, payments.payment_status, payments.payment_time"
+    },
+    "history:payment_attributes_payments:rail_ref_rail_type:66648d65b5": {
+      "columns": [
+        "payment_attributes.rail_ref",
+        "payment_attributes.rail_type",
+        "payments.amount",
+        "payments.payment_status",
+        "payments.payment_time",
+        "payments.rail_ref"
+      ],
+      "review_status": "observed",
+      "source": "query_history",
+      "sql": "SELECT date_trunc({{string}}, p.payment_time) AS month, pa.rail_type, sum(p.amount) AS tpv FROM payments p JOIN payment_attributes pa ON p.rail_ref = pa.rail_ref WHERE p.payment_status = {{string}} AND p.payment_time >= {{timestamp}} AND p.payment_time < {{timestamp}} GROUP BY month, pa.rail_type ORDER BY month, pa.rail_type",
+      "tables": [
+        "payment_attributes",
+        "payments"
+      ],
+      "template": "payment_attributes + payments pattern using payment_attributes.rail_ref, payment_attributes.rail_type, payments.amount, payments.payment_status"
+    },
+    "history:payment_attributes_payments_user_attributes:rail_ref_rail_type:2826a33f83": {
+      "columns": [
+        "payment_attributes.rail_ref",
+        "payment_attributes.rail_type",
+        "payments.amount",
+        "payments.payment_status",
+        "payments.rail_ref",
+        "payments.user_ref",
+        "user_attributes.risk_band",
+        "user_attributes.user_ref"
+      ],
+      "review_status": "observed",
+      "source": "query_history",
+      "sql": "SELECT pa.rail_type, ua.risk_band, sum(CASE WHEN p.payment_status = {{string}} THEN p.amount ELSE {{number}} END) AS successful_volume, count(*) AS attempts FROM payments p JOIN payment_attributes pa ON p.rail_ref = pa.rail_ref JOIN user_attributes ua ON p.user_ref = ua.user_ref WHERE pa.rail_type = {{string}} AND ua.risk_band = {{string}} GROUP BY pa.rail_type, ua.risk_band",
+      "tables": [
+        "payment_attributes",
+        "payments",
+        "user_attributes"
+      ],
+      "template": "payment_attributes + payments + user_attributes pattern using payment_attributes.rail_ref, payment_attributes.rail_type, payments.amount, payments.payment_status"
+    },
+    "history:payments_user_attributes:payment_status_payment_time:2fd098276d": {
+      "columns": [
+        "payments.payment_status",
+        "payments.payment_time",
+        "payments.user_ref",
+        "user_attributes.risk_band",
+        "user_attributes.user_ref"
+      ],
+      "review_status": "observed",
+      "source": "query_history",
+      "sql": "WITH prior_users AS ( SELECT DISTINCT p.user_ref FROM payments p WHERE p.payment_status = {{string}} AND p.payment_time < {{timestamp}} - INTERVAL {{number}} DAY ), recent_users AS ( SELECT DISTINCT p.user_ref FROM payments p WHERE p.payment_status = {{string}} AND p.payment_time >= {{timestamp}} - INTERVAL {{number}} DAY ) SELECT ua.risk_band, count(*) AS churned_users FROM prior_users pu JOIN user_attributes ua ON pu.user_ref = ua.user_ref LEFT JOIN recent_users ru ON pu.user_ref = ru.user_ref WHERE ru.user_ref IS NULL AND ua.risk_band = {{string}} GROUP BY ua.risk_band",
+      "tables": [
+        "payments",
+        "user_attributes"
+      ],
+      "template": "payments + user_attributes pattern using payments.payment_status, payments.payment_time, payments.user_ref, user_attributes.risk_band"
+    },
+    "history:payments_user_attributes_users:amount_payment_status:67182c2c5f": {
+      "columns": [
+        "payments.amount",
+        "payments.payment_status",
+        "payments.user_ref",
+        "user_attributes.gender",
+        "user_attributes.user_ref",
+        "users.platform_plan",
+        "users.user_ref"
+      ],
+      "review_status": "observed",
+      "source": "query_history",
+      "sql": "SELECT u.platform_plan, ua.gender, count(DISTINCT p.user_ref) AS active_users, sum(CASE WHEN p.payment_status = {{string}} THEN p.amount ELSE {{number}} END) AS tpv FROM users u JOIN user_attributes ua ON u.user_ref = ua.user_ref JOIN payments p ON u.user_ref = p.user_ref WHERE ua.gender = {{string}} GROUP BY u.platform_plan, ua.gender ORDER BY tpv DESC",
+      "tables": [
+        "payments",
+        "user_attributes",
+        "users"
+      ],
+      "template": "payments + user_attributes + users pattern using payments.amount, payments.payment_status, payments.user_ref, user_attributes.gender"
+    },
+    "history:payments_user_attributes_users:payment_status_payment_time:52c4fe9da0": {
+      "columns": [
+        "payments.payment_status",
+        "payments.payment_time",
+        "payments.user_ref",
+        "user_attributes.state",
+        "user_attributes.user_ref",
+        "users.user_ref"
+      ],
+      "review_status": "observed",
+      "source": "query_history",
+      "sql": "SELECT ua.state, count(DISTINCT p.user_ref) AS active_users FROM payments p JOIN users u ON p.user_ref = u.user_ref JOIN user_attributes ua ON u.user_ref = ua.user_ref WHERE p.payment_status = {{string}} AND ua.state = {{string}} AND p.payment_time >= {{timestamp}} AND p.payment_time < {{timestamp}} GROUP BY ua.state",
+      "tables": [
+        "payments",
+        "user_attributes",
+        "users"
+      ],
+      "template": "payments + user_attributes + users pattern using payments.payment_status, payments.payment_time, payments.user_ref, user_attributes.state"
+    },
+    "history:payments_user_attributes_users:payment_status_user_ref:d642f3c490": {
+      "columns": [
+        "payments.payment_status",
+        "payments.user_ref",
+        "user_attributes.kyc_status",
+        "user_attributes.state",
+        "user_attributes.user_ref",
+        "users.user_ref"
+      ],
+      "review_status": "observed",
+      "source": "query_history",
+      "sql": "SELECT ua.kyc_status, sum(CASE WHEN p.payment_status = {{string}} THEN {{number}} ELSE {{number}} END)::DOUBLE / count(*) AS psr FROM payments p JOIN users u ON p.user_ref = u.user_ref JOIN user_attributes ua ON u.user_ref = ua.user_ref WHERE ua.state = {{string}} GROUP BY ua.kyc_status ORDER BY ua.kyc_status",
+      "tables": [
+        "payments",
+        "user_attributes",
+        "users"
+      ],
+      "template": "payments + user_attributes + users pattern using payments.payment_status, payments.user_ref, user_attributes.kyc_status, user_attributes.state"
+    },
+    "history:payments_users:payment_status_payment_time:2ab114a148": {
+      "columns": [
+        "payments.payment_status",
+        "payments.payment_time",
+        "payments.user_ref",
+        "users.user_ref"
+      ],
+      "review_status": "observed",
+      "source": "query_history",
+      "sql": "WITH txns AS ( SELECT p.user_ref, date_trunc({{string}}, p.payment_time) AS month, count(*) AS successful_txns FROM payments p JOIN users u ON p.user_ref = u.user_ref WHERE p.payment_status = {{string}} AND p.payment_time >= {{timestamp}} AND p.payment_time < {{timestamp}} GROUP BY p.user_ref, month ) SELECT count(*) AS retained_users FROM ( SELECT user_ref FROM txns GROUP BY user_ref HAVING sum(successful_txns) >= {{number}} AND count(DISTINCT month) = {{number}} ) retained",
+      "tables": [
+        "payments",
+        "users"
+      ],
+      "template": "payments + users pattern using payments.payment_status, payments.payment_time, payments.user_ref, users.user_ref"
+    },
+    "self_play:orders.order_amount": {
+      "columns": [
+        "orders.order_amount"
+      ],
+      "review_status": "needs_review",
+      "role": "measure",
+      "source": "self_play",
+      "sql": "SELECT COUNT(*) AS row_count, COUNT(order_amount) AS non_null_count, MIN(order_amount) AS min_value, AVG(order_amount) AS avg_value, MAX(order_amount) AS max_value, SUM(order_amount) AS total_value FROM read_parquet('/Users/bharath/Documents/DiracData/v2/data/fintech_schema/parquet/orders.parquet')",
+      "tables": [
+        "orders"
+      ],
+      "template": "Explore orders.order_amount",
+      "validation": {
+        "preview_rows": 1,
+        "status": "passed"
+      }
+    },
+    "self_play:orders.order_state": {
+      "columns": [
+        "orders.order_state"
+      ],
+      "review_status": "needs_review",
+      "role": "status",
+      "source": "self_play",
+      "sql": "SELECT order_state, COUNT(*) AS row_count FROM read_parquet('/Users/bharath/Documents/DiracData/v2/data/fintech_schema/parquet/orders.parquet') GROUP BY 1 ORDER BY row_count DESC LIMIT 20",
+      "tables": [
+        "orders"
+      ],
+      "template": "Explore orders.order_state",
+      "validation": {
+        "preview_rows": 3,
+        "status": "passed"
+      }
+    },
+    "self_play:orders.user_ref": {
+      "columns": [
+        "orders.user_ref"
+      ],
+      "review_status": "needs_review",
+      "role": "join_key",
+      "source": "self_play",
+      "sql": "SELECT COUNT(*) AS row_count, COUNT(user_ref) AS non_null_count, COUNT(DISTINCT user_ref) AS distinct_count FROM read_parquet('/Users/bharath/Documents/DiracData/v2/data/fintech_schema/parquet/orders.parquet')",
+      "tables": [
+        "orders"
+      ],
+      "template": "Explore orders.user_ref",
+      "validation": {
+        "preview_rows": 1,
+        "status": "passed"
+      }
+    },
+    "self_play:payment_attributes.issuer_name": {
+      "columns": [
+        "payment_attributes.issuer_name"
+      ],
+      "review_status": "needs_review",
+      "role": "dimension",
+      "source": "self_play",
+      "sql": "SELECT issuer_name, COUNT(*) AS row_count FROM read_parquet('/Users/bharath/Documents/DiracData/v2/data/fintech_schema/parquet/payment_attributes.parquet') GROUP BY 1 ORDER BY row_count DESC LIMIT 20",
+      "tables": [
+        "payment_attributes"
+      ],
+      "template": "Explore payment_attributes.issuer_name",
+      "validation": {
+        "preview_rows": 3,
+        "status": "passed"
+      }
+    },
+    "self_play:payment_attributes.risk_band": {
+      "columns": [
+        "payment_attributes.risk_band"
+      ],
+      "review_status": "needs_review",
+      "role": "dimension",
+      "source": "self_play",
+      "sql": "SELECT risk_band, COUNT(*) AS row_count FROM read_parquet('/Users/bharath/Documents/DiracData/v2/data/fintech_schema/parquet/payment_attributes.parquet') GROUP BY 1 ORDER BY row_count DESC LIMIT 20",
+      "tables": [
+        "payment_attributes"
+      ],
+      "template": "Explore payment_attributes.risk_band",
+      "validation": {
+        "preview_rows": 3,
+        "status": "passed"
+      }
+    },
+    "self_play:payment_attributes.route_partner": {
+      "columns": [
+        "payment_attributes.route_partner"
+      ],
+      "review_status": "needs_review",
+      "role": "dimension",
+      "source": "self_play",
+      "sql": "SELECT route_partner, COUNT(*) AS row_count FROM read_parquet('/Users/bharath/Documents/DiracData/v2/data/fintech_schema/parquet/payment_attributes.parquet') GROUP BY 1 ORDER BY row_count DESC LIMIT 20",
+      "tables": [
+        "payment_attributes"
+      ],
+      "template": "Explore payment_attributes.route_partner",
+      "validation": {
+        "preview_rows": 3,
+        "status": "passed"
+      }
+    },
+    "self_play:payment_attributes.settlement_speed": {
+      "columns": [
+        "payment_attributes.settlement_speed"
+      ],
+      "review_status": "needs_review",
+      "role": "dimension",
+      "source": "self_play",
+      "sql": "SELECT settlement_speed, COUNT(*) AS row_count FROM read_parquet('/Users/bharath/Documents/DiracData/v2/data/fintech_schema/parquet/payment_attributes.parquet') GROUP BY 1 ORDER BY row_count DESC LIMIT 20",
+      "tables": [
+        "payment_attributes"
+      ],
+      "template": "Explore payment_attributes.settlement_speed",
+      "validation": {
+        "preview_rows": 3,
+        "status": "passed"
+      }
+    },
+    "self_play:user_attributes.age": {
+      "columns": [
+        "user_attributes.age"
+      ],
+      "review_status": "needs_review",
+      "role": "dimension",
+      "source": "self_play",
+      "sql": "SELECT age, COUNT(*) AS row_count FROM read_parquet('/Users/bharath/Documents/DiracData/v2/data/fintech_schema/parquet/user_attributes.parquet') GROUP BY 1 ORDER BY row_count DESC LIMIT 20",
+      "tables": [
+        "user_attributes"
+      ],
+      "template": "Explore user_attributes.age",
+      "validation": {
+        "preview_rows": 3,
+        "status": "passed"
+      }
+    },
+    "self_play:user_attributes.city": {
+      "columns": [
+        "user_attributes.city"
+      ],
+      "review_status": "needs_review",
+      "role": "dimension",
+      "source": "self_play",
+      "sql": "SELECT city, COUNT(*) AS row_count FROM read_parquet('/Users/bharath/Documents/DiracData/v2/data/fintech_schema/parquet/user_attributes.parquet') GROUP BY 1 ORDER BY row_count DESC LIMIT 20",
+      "tables": [
+        "user_attributes"
+      ],
+      "template": "Explore user_attributes.city",
+      "validation": {
+        "preview_rows": 3,
+        "status": "passed"
+      }
+    },
+    "self_play:users.acquisition_channel": {
+      "columns": [
+        "users.acquisition_channel"
+      ],
+      "review_status": "needs_review",
+      "role": "dimension",
+      "source": "self_play",
+      "sql": "SELECT acquisition_channel, COUNT(*) AS row_count FROM read_parquet('/Users/bharath/Documents/DiracData/v2/data/fintech_schema/parquet/users.parquet') GROUP BY 1 ORDER BY row_count DESC LIMIT 20",
+      "tables": [
+        "users"
+      ],
+      "template": "Explore users.acquisition_channel",
+      "validation": {
+        "preview_rows": 3,
+        "status": "passed"
+      }
+    },
+    "self_play:users.country": {
+      "columns": [
+        "users.country"
+      ],
+      "review_status": "needs_review",
+      "role": "dimension",
+      "source": "self_play",
+      "sql": "SELECT country, COUNT(*) AS row_count FROM read_parquet('/Users/bharath/Documents/DiracData/v2/data/fintech_schema/parquet/users.parquet') GROUP BY 1 ORDER BY row_count DESC LIMIT 20",
+      "tables": [
+        "users"
+      ],
+      "template": "Explore users.country",
+      "validation": {
+        "preview_rows": 1,
+        "status": "passed"
+      }
+    },
+    "self_play:users.merchant_type": {
+      "columns": [
+        "users.merchant_type"
+      ],
+      "review_status": "needs_review",
+      "role": "dimension",
+      "source": "self_play",
+      "sql": "SELECT merchant_type, COUNT(*) AS row_count FROM read_parquet('/Users/bharath/Documents/DiracData/v2/data/fintech_schema/parquet/users.parquet') GROUP BY 1 ORDER BY row_count DESC LIMIT 20",
+      "tables": [
+        "users"
+      ],
+      "template": "Explore users.merchant_type",
+      "validation": {
+        "preview_rows": 3,
+        "status": "passed"
+      }
+    },
+    "self_play:users.signup_time": {
+      "columns": [
+        "users.signup_time"
+      ],
+      "review_status": "needs_review",
+      "role": "time",
+      "source": "self_play",
+      "sql": "SELECT date_trunc('month', signup_time) AS month, COUNT(*) AS row_count FROM read_parquet('/Users/bharath/Documents/DiracData/v2/data/fintech_schema/parquet/users.parquet') GROUP BY 1 ORDER BY 1",
+      "tables": [
+        "users"
+      ],
+      "template": "Explore users.signup_time",
+      "validation": {
+        "preview_rows": 3,
+        "status": "passed"
+      }
+    }
+  },
+  "run_id": "fintech_sql_library_v2_local",
+  "scope": {
+    "catalog": "fintech_pod",
+    "database": "analytics",
+    "schema": "fintech_schema"
+  },
+  "version": 1
+}

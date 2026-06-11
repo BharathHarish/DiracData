@@ -1,0 +1,358 @@
+version: 1
+scope:
+  catalog: retail_pod
+  database: analytics
+  schema: retail_analytics
+
+glossary:
+  - id: dau
+    term: DAU
+    synonyms:
+      - daily active users
+      - daily active buyers
+      - daily active shoppers
+    definition: Distinct shoppers with purchase activity on one calendar day. This retail schema is purchase-based; if the user means app sessions or visits, ask because session events are not present.
+    tables:
+      - online_purchases
+      - store_purchases
+      - mail_order_purchases
+      - calendar_days
+    columns:
+      - online_purchases.billing_client_ref
+      - store_purchases.client_ref
+      - mail_order_purchases.billing_client_ref
+      - calendar_days.calendar_day
+
+  - id: mau
+    term: MAU
+    synonyms:
+      - monthly active users
+      - monthly active buyers
+      - monthly active shoppers
+    definition: Distinct shoppers with purchase activity during one calendar month. Use channel-specific purchase tables unless the user asks for all channels.
+    tables:
+      - online_purchases
+      - store_purchases
+      - mail_order_purchases
+      - calendar_days
+    columns:
+      - online_purchases.billing_client_ref
+      - store_purchases.client_ref
+      - mail_order_purchases.billing_client_ref
+      - calendar_days.year
+      - calendar_days.month_of_year
+
+  - id: retained_user
+    term: Retained user
+    synonyms:
+      - retained shopper
+      - returning buyer
+      - repeat buyer
+    definition: A shopper active in both of two explicit comparable periods, usually two months or two years. Ask for the periods if the user does not provide them.
+    tables:
+      - online_purchases
+      - calendar_days
+    columns:
+      - online_purchases.billing_client_ref
+      - online_purchases.sale_calendar_day_ref
+      - calendar_days.year
+      - calendar_days.month_of_year
+
+  - id: churned_user
+    term: Churned user
+    synonyms:
+      - lapsed shopper
+      - lost buyer
+      - inactive after prior purchase
+    definition: A shopper active in a prior period and absent in the next explicit comparable period. Ask for the churn window when it is missing.
+    tables:
+      - online_purchases
+      - calendar_days
+    columns:
+      - online_purchases.billing_client_ref
+      - online_purchases.sale_calendar_day_ref
+      - calendar_days.year
+      - calendar_days.month_of_year
+
+definitions:
+  - id: purchase_activity
+    name: Purchase activity
+    synonyms:
+      - active buyer
+      - shopper activity
+      - buying activity
+    definition: Activity means a purchase row. For all-channel activity, union online, store, and mail-order purchases into one shopper-period set before counting distinct shoppers.
+    tables:
+      - online_purchases
+      - store_purchases
+      - mail_order_purchases
+
+  - id: net_revenue
+    name: Net revenue
+    synonyms:
+      - revenue
+      - sales revenue
+      - net sales
+    definition: Use net_paid as revenue for channel sales unless the user explicitly asks for tax, shipping, list price, or profit.
+    tables:
+      - online_purchases
+      - store_purchases
+      - mail_order_purchases
+    columns:
+      - online_purchases.net_paid
+      - store_purchases.net_paid
+      - mail_order_purchases.net_paid
+
+defaults:
+  - id: active_user_requires_period
+    applies_to:
+      - active users
+      - DAU
+      - MAU
+      - active buyers
+    policy: Ask for a period or grain if the user asks for active users without a day, month, year, or comparison window.
+    field: calendar_days.calendar_day
+
+  - id: retention_requires_two_periods
+    applies_to:
+      - retained users
+      - churned users
+      - retention
+      - churn
+    policy: Require two comparable periods. Do not infer a retention window from the schema alone.
+    field: calendar_days.year
+    alternatives:
+      - calendar_days.month_of_year
+
+  - id: online_identity_is_billing_client
+    applies_to:
+      - online shoppers
+      - ecommerce buyers
+      - website customers
+    policy: Use online_purchases.billing_client_ref as the shopper identity. Use shipping_client_ref only when the user asks about shipment recipients.
+    field: online_purchases.billing_client_ref
+    alternatives:
+      - online_purchases.shipping_client_ref
+
+  - id: customer_location_is_current_address
+    applies_to:
+      - from Arizona
+      - from California
+      - customer state
+      - shopper location
+    policy: Use the shopper's current address through clients.current_address_ref to addresses.address_record. Do not switch to billing or shipping address unless requested.
+    field: addresses.state
+
+  - id: revenue_uses_net_paid
+    applies_to:
+      - revenue
+      - sales
+      - net sales
+    policy: Sum net_paid for purchase revenue. Use net_profit only for margin or profit questions.
+    field: online_purchases.net_paid
+    alternatives:
+      - store_purchases.net_paid
+      - mail_order_purchases.net_paid
+
+metrics:
+  - id: revenue
+    name: Revenue
+    synonyms:
+      - net sales
+      - sales revenue
+      - amount sold
+    description: Sum net_paid at the requested channel, product, geography, and date grain.
+    calculation: SUM(channel_purchase.net_paid)
+    tables:
+      - online_purchases
+      - store_purchases
+      - mail_order_purchases
+    columns:
+      - online_purchases.net_paid
+      - store_purchases.net_paid
+      - mail_order_purchases.net_paid
+
+  - id: sales_count
+    name: Sales count
+    synonyms:
+      - orders
+      - purchases
+      - transactions
+    description: Count purchase events at the channel grain. Online and mail-order use order_number; store uses ticket_number when order grain is requested.
+    calculation: COUNT(DISTINCT order_or_ticket_number)
+    tables:
+      - online_purchases
+      - store_purchases
+      - mail_order_purchases
+    columns:
+      - online_purchases.order_number
+      - store_purchases.ticket_number
+      - mail_order_purchases.order_number
+
+  - id: monthly_active_buyers
+    name: Monthly active buyers
+    synonyms:
+      - MAU
+      - monthly active users
+      - monthly shoppers
+    description: Count distinct shopper identities with purchase activity by calendar year and month.
+    calculation: COUNT(DISTINCT shopper_ref) grouped by calendar_days.year and calendar_days.month_of_year.
+    tables:
+      - online_purchases
+      - store_purchases
+      - mail_order_purchases
+      - calendar_days
+    columns:
+      - online_purchases.billing_client_ref
+      - store_purchases.client_ref
+      - mail_order_purchases.billing_client_ref
+      - calendar_days.year
+      - calendar_days.month_of_year
+
+  - id: retained_buyers
+    name: Retained buyers
+    synonyms:
+      - retained users
+      - returning buyers
+      - repeat buyers
+    description: Count distinct shoppers present in both requested periods.
+    calculation: Intersect distinct shopper sets from period A and period B, then count.
+    tables:
+      - online_purchases
+      - calendar_days
+    columns:
+      - online_purchases.billing_client_ref
+      - calendar_days.year
+      - calendar_days.month_of_year
+
+  - id: churned_buyers
+    name: Churned buyers
+    synonyms:
+      - churned users
+      - lapsed buyers
+      - lost shoppers
+    description: Count shoppers present in the prior period but missing from the next requested period.
+    calculation: Prior-period distinct shoppers EXCEPT next-period distinct shoppers.
+    tables:
+      - online_purchases
+      - calendar_days
+    columns:
+      - online_purchases.billing_client_ref
+      - calendar_days.year
+      - calendar_days.month_of_year
+
+sql_templates:
+  - id: monthly_active_buyers_by_channel
+    name: Monthly active buyers by channel
+    description: Use for MAU or monthly active buyer questions across online, store, and mail-order purchase activity.
+    required_tables:
+      - online_purchases
+      - store_purchases
+      - mail_order_purchases
+      - calendar_days
+    join_path:
+      - - online_purchases.sale_calendar_day_ref
+        - calendar_days.calendar_day_record
+      - - store_purchases.sale_calendar_day_ref
+        - calendar_days.calendar_day_record
+      - - mail_order_purchases.sale_calendar_day_ref
+        - calendar_days.calendar_day_record
+    sql: |
+      WITH channel_activity AS (
+        SELECT 'online' AS channel, op.billing_client_ref AS shopper_ref, op.sale_calendar_day_ref AS day_ref
+        FROM online_purchases op
+        UNION ALL
+        SELECT 'store' AS channel, sp.client_ref AS shopper_ref, sp.sale_calendar_day_ref AS day_ref
+        FROM store_purchases sp
+        UNION ALL
+        SELECT 'mail_order' AS channel, mp.billing_client_ref AS shopper_ref, mp.sale_calendar_day_ref AS day_ref
+        FROM mail_order_purchases mp
+      )
+      SELECT
+        ca.channel,
+        cd.year,
+        cd.month_of_year,
+        COUNT(DISTINCT ca.shopper_ref) AS monthly_active_buyers
+      FROM channel_activity ca
+      JOIN calendar_days cd ON ca.day_ref = cd.calendar_day_record
+      WHERE ca.shopper_ref IS NOT NULL
+      GROUP BY ca.channel, cd.year, cd.month_of_year
+
+  - id: online_retained_buyers_between_years
+    name: Online retained buyers between two years
+    description: Use for retained online buyer questions when the two comparison years are explicit.
+    required_tables:
+      - online_purchases
+      - calendar_days
+    join_path:
+      - - online_purchases.sale_calendar_day_ref
+        - calendar_days.calendar_day_record
+    sql: |
+      WITH yearly_buyers AS (
+        SELECT op.billing_client_ref AS shopper_ref, cd.year
+        FROM online_purchases op
+        JOIN calendar_days cd ON op.sale_calendar_day_ref = cd.calendar_day_record
+        WHERE cd.year IN ({{ prior_year }}, {{ next_year }})
+          AND op.billing_client_ref IS NOT NULL
+        GROUP BY op.billing_client_ref, cd.year
+      )
+      SELECT COUNT(*) AS retained_buyers
+      FROM (
+        SELECT shopper_ref
+        FROM yearly_buyers
+        GROUP BY shopper_ref
+        HAVING COUNT(DISTINCT year) = 2
+      ) retained
+
+  - id: online_churned_buyers_between_years
+    name: Online churned buyers between two years
+    description: Use for churned online buyer questions when prior and next years are explicit.
+    required_tables:
+      - online_purchases
+      - calendar_days
+    join_path:
+      - - online_purchases.sale_calendar_day_ref
+        - calendar_days.calendar_day_record
+    sql: |
+      WITH prior_buyers AS (
+        SELECT DISTINCT op.billing_client_ref AS shopper_ref
+        FROM online_purchases op
+        JOIN calendar_days cd ON op.sale_calendar_day_ref = cd.calendar_day_record
+        WHERE cd.year = {{ prior_year }}
+          AND op.billing_client_ref IS NOT NULL
+      ),
+      next_buyers AS (
+        SELECT DISTINCT op.billing_client_ref AS shopper_ref
+        FROM online_purchases op
+        JOIN calendar_days cd ON op.sale_calendar_day_ref = cd.calendar_day_record
+        WHERE cd.year = {{ next_year }}
+          AND op.billing_client_ref IS NOT NULL
+      )
+      SELECT COUNT(*) AS churned_buyers
+      FROM prior_buyers pb
+      LEFT JOIN next_buyers nb ON pb.shopper_ref = nb.shopper_ref
+      WHERE nb.shopper_ref IS NULL
+
+  - id: online_revenue_by_year_category
+    name: Online revenue by year and category
+    description: Use for online revenue or net sales by product category and calendar year.
+    required_tables:
+      - online_purchases
+      - merchandise
+      - calendar_days
+    join_path:
+      - - online_purchases.merchandise_ref
+        - merchandise.merchandise_record
+      - - online_purchases.sale_calendar_day_ref
+        - calendar_days.calendar_day_record
+    sql: |
+      SELECT
+        cd.year,
+        m.category,
+        SUM(op.net_paid) AS revenue
+      FROM online_purchases op
+      JOIN merchandise m ON op.merchandise_ref = m.merchandise_record
+      JOIN calendar_days cd ON op.sale_calendar_day_ref = cd.calendar_day_record
+      GROUP BY cd.year, m.category
+
+ground_truth_sql: []

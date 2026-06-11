@@ -1,0 +1,85 @@
+{
+  "text": "Commerce analytics pod for a retail business. The pod studies customer purchases, product returns, inventory, promotions, stores, warehouses, web activity, catalog activity, shipping, dates, time of day, customer demographics, household demographics, and income ranges. This file is harness context for local development and should be replaced by customer-provided business context in real deployments.",
+  "table_descriptions": {
+    "call_center": "Call center channel and service location information used for commerce operations.",
+    "catalog_page": "Printed or digital catalog page information used to analyze catalog shopping journeys.",
+    "catalog_returns": "Returned purchases from the catalog sales channel.",
+    "catalog_sales": "Purchases made through the catalog sales channel.",
+    "customer": "Customer or shopper records used to connect purchases, returns, addresses, and demographic attributes.",
+    "customer_address": "Customer address and geography information used for location-based analysis.",
+    "customer_demographics": "Customer-level demographic attributes used for segmentation.",
+    "date_dim": "Calendar dates used to analyze business activity by day, week, month, quarter, year, and fiscal period.",
+    "household_demographics": "Household-level demographic attributes used for customer and market segmentation.",
+    "income_band": "Income ranges used to group customers or households into economic segments.",
+    "inventory": "Product inventory levels by item, warehouse, and date.",
+    "item": "Product catalog information for items sold by the business.",
+    "promotion": "Marketing promotion and campaign information used to analyze promoted sales.",
+    "reason": "Business reasons associated with returns or other classified events.",
+    "ship_mode": "Shipping method, carrier, and service-level information for delivered orders.",
+    "store": "Physical store locations and attributes used for store-channel analysis.",
+    "store_returns": "Returned purchases from the physical store sales channel.",
+    "store_sales": "Purchases made in physical stores.",
+    "time_dim": "Time-of-day reference data used to analyze activity by hour, minute, second, and daily time bucket.",
+    "warehouse": "Warehouse and fulfillment location information used for inventory and shipment analysis.",
+    "web_page": "Website page information used to analyze online shopping journeys.",
+    "web_returns": "Returned purchases from the web sales channel.",
+    "web_sales": "Purchases made through the web sales channel.",
+    "web_site": "Website or online commerce property information used for web-channel analysis."
+  },
+  "column_descriptions": {
+    "date_dim": {
+      "d_date": "Calendar date.",
+      "d_year": "Calendar year.",
+      "d_moy": "Month of year.",
+      "d_qoy": "Quarter of year.",
+      "d_day_name": "Name of the day of week."
+    },
+    "income_band": {
+      "ib_lower_bound": "Lower end of an income range.",
+      "ib_upper_bound": "Upper end of an income range."
+    },
+    "item": {
+      "i_item_id": "Business-facing product or item identifier.",
+      "i_item_desc": "Product description.",
+      "i_category": "Product category.",
+      "i_class": "Product class or grouping.",
+      "i_brand": "Product brand."
+    },
+    "customer": {
+      "c_customer_id": "Business-facing customer identifier.",
+      "c_first_name": "Customer first name.",
+      "c_last_name": "Customer last name.",
+      "c_birth_year": "Customer birth year."
+    },
+    "store_sales": {
+      "ss_quantity": "Number of units purchased.",
+      "ss_sales_price": "Unit sale price charged to the customer.",
+      "ss_net_paid": "Net amount paid by the customer.",
+      "ss_net_profit": "Net profit from the store purchase."
+    },
+    "web_sales": {
+      "ws_quantity": "Number of units purchased online.",
+      "ws_sales_price": "Unit sale price charged to the online customer.",
+      "ws_net_paid": "Net amount paid by the online customer.",
+      "ws_net_profit": "Net profit from the web purchase."
+    },
+    "catalog_sales": {
+      "cs_quantity": "Number of units purchased through catalog.",
+      "cs_sales_price": "Unit sale price charged to the catalog customer.",
+      "cs_net_paid": "Net amount paid by the catalog customer.",
+      "cs_net_profit": "Net profit from the catalog purchase."
+    }
+  },
+  "glossary": {
+    "business pod": "A scoped set of tables used by a business team or workflow.",
+    "channel": "The path where commerce activity happens, such as store, web, or catalog.",
+    "customer": "A person or account buying from the business.",
+    "item": "A product sold by the business.",
+    "promotion": "A campaign, offer, discount, or marketing activity connected to a sale.",
+    "return": "A customer giving back a purchased item, often linked to a reason and a channel.",
+    "net paid": "The amount paid after adjustments such as discounts, tax, shipping, or returns when supported by the table evidence.",
+    "net profit": "Profit after applicable costs and adjustments when supported by the table evidence.",
+    "inventory": "Available product stock at a warehouse or location.",
+    "income band": "A range used to segment customers or households by income."
+  }
+}

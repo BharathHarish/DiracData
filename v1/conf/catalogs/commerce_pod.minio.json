@@ -1,0 +1,31 @@
+{
+  "catalog": "commerce_pod",
+  "database": "analytics",
+  "schema": "main",
+  "tables": [
+    {"name": "call_center", "path": "s3://lake/tpcds/sf1/call_center.parquet", "format": "parquet"},
+    {"name": "catalog_page", "path": "s3://lake/tpcds/sf1/catalog_page.parquet", "format": "parquet"},
+    {"name": "catalog_returns", "path": "s3://lake/tpcds/sf1/catalog_returns.parquet", "format": "parquet"},
+    {"name": "catalog_sales", "path": "s3://lake/tpcds/sf1/catalog_sales.parquet", "format": "parquet"},
+    {"name": "customer", "path": "s3://lake/tpcds/sf1/customer.parquet", "format": "parquet"},
+    {"name": "customer_address", "path": "s3://lake/tpcds/sf1/customer_address.parquet", "format": "parquet"},
+    {"name": "customer_demographics", "path": "s3://lake/tpcds/sf1/customer_demographics.parquet", "format": "parquet"},
+    {"name": "date_dim", "path": "s3://lake/tpcds/sf1/date_dim.parquet", "format": "parquet"},
+    {"name": "household_demographics", "path": "s3://lake/tpcds/sf1/household_demographics.parquet", "format": "parquet"},
+    {"name": "income_band", "path": "s3://lake/tpcds/sf1/income_band.parquet", "format": "parquet"},
+    {"name": "inventory", "path": "s3://lake/tpcds/sf1/inventory.parquet", "format": "parquet"},
+    {"name": "item", "path": "s3://lake/tpcds/sf1/item.parquet", "format": "parquet"},
+    {"name": "promotion", "path": "s3://lake/tpcds/sf1/promotion.parquet", "format": "parquet"},
+    {"name": "reason", "path": "s3://lake/tpcds/sf1/reason.parquet", "format": "parquet"},
+    {"name": "ship_mode", "path": "s3://lake/tpcds/sf1/ship_mode.parquet", "format": "parquet"},
+    {"name": "store", "path": "s3://lake/tpcds/sf1/store.parquet", "format": "parquet"},
+    {"name": "store_returns", "path": "s3://lake/tpcds/sf1/store_returns.parquet", "format": "parquet"},
+    {"name": "store_sales", "path": "s3://lake/tpcds/sf1/store_sales.parquet", "format": "parquet"},
+    {"name": "time_dim", "path": "s3://lake/tpcds/sf1/time_dim.parquet", "format": "parquet"},
+    {"name": "warehouse", "path": "s3://lake/tpcds/sf1/warehouse.parquet", "format": "parquet"},
+    {"name": "web_page", "path": "s3://lake/tpcds/sf1/web_page.parquet", "format": "parquet"},
+    {"name": "web_returns", "path": "s3://lake/tpcds/sf1/web_returns.parquet", "format": "parquet"},
+    {"name": "web_sales", "path": "s3://lake/tpcds/sf1/web_sales.parquet", "format": "parquet"},
+    {"name": "web_site", "path": "s3://lake/tpcds/sf1/web_site.parquet", "format": "parquet"}
+  ]
+}

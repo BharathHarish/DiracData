@@ -1,0 +1,2162 @@
+{
+  "artifact_type": "schema_graph",
+  "created_at": "2026-06-09T13:29:39.504215+00:00",
+  "edges": [
+    {
+      "confidence": "high",
+      "description": "",
+      "from_node": "schema:fintech_pod.analytics.fintech_schema",
+      "grain_effect": null,
+      "id": "contains:schema:fintech_pod.analytics.fintech_schema:domain:orders",
+      "kind": "contains",
+      "metadata": {},
+      "relationship": null,
+      "source": "user_provided",
+      "sql_condition": null,
+      "to_node": "domain:orders"
+    },
+    {
+      "confidence": "high",
+      "description": "",
+      "from_node": "schema:fintech_pod.analytics.fintech_schema",
+      "grain_effect": null,
+      "id": "contains:schema:fintech_pod.analytics.fintech_schema:domain:payments",
+      "kind": "contains",
+      "metadata": {},
+      "relationship": null,
+      "source": "user_provided",
+      "sql_condition": null,
+      "to_node": "domain:payments"
+    },
+    {
+      "confidence": "high",
+      "description": "",
+      "from_node": "schema:fintech_pod.analytics.fintech_schema",
+      "grain_effect": null,
+      "id": "contains:schema:fintech_pod.analytics.fintech_schema:domain:payment_routing",
+      "kind": "contains",
+      "metadata": {},
+      "relationship": null,
+      "source": "user_provided",
+      "sql_condition": null,
+      "to_node": "domain:payment_routing"
+    },
+    {
+      "confidence": "high",
+      "description": "",
+      "from_node": "schema:fintech_pod.analytics.fintech_schema",
+      "grain_effect": null,
+      "id": "contains:schema:fintech_pod.analytics.fintech_schema:domain:users",
+      "kind": "contains",
+      "metadata": {},
+      "relationship": null,
+      "source": "user_provided",
+      "sql_condition": null,
+      "to_node": "domain:users"
+    },
+    {
+      "confidence": "high",
+      "description": "",
+      "from_node": "schema:fintech_pod.analytics.fintech_schema",
+      "grain_effect": null,
+      "id": "contains:schema:fintech_pod.analytics.fintech_schema:domain:user_attributes",
+      "kind": "contains",
+      "metadata": {},
+      "relationship": null,
+      "source": "user_provided",
+      "sql_condition": null,
+      "to_node": "domain:user_attributes"
+    },
+    {
+      "confidence": "high",
+      "description": "",
+      "from_node": "domain:orders",
+      "grain_effect": null,
+      "id": "contains:domain:orders:entity:checkout_order",
+      "kind": "contains",
+      "metadata": {},
+      "relationship": null,
+      "source": "user_provided",
+      "sql_condition": null,
+      "to_node": "entity:checkout_order"
+    },
+    {
+      "confidence": "high",
+      "description": "",
+      "from_node": "domain:payments",
+      "grain_effect": null,
+      "id": "contains:domain:payments:entity:payment_attempt",
+      "kind": "contains",
+      "metadata": {},
+      "relationship": null,
+      "source": "user_provided",
+      "sql_condition": null,
+      "to_node": "entity:payment_attempt"
+    },
+    {
+      "confidence": "high",
+      "description": "",
+      "from_node": "domain:payment_routing",
+      "grain_effect": null,
+      "id": "contains:domain:payment_routing:entity:payment_rail",
+      "kind": "contains",
+      "metadata": {},
+      "relationship": null,
+      "source": "user_provided",
+      "sql_condition": null,
+      "to_node": "entity:payment_rail"
+    },
+    {
+      "confidence": "high",
+      "description": "",
+      "from_node": "domain:users",
+      "grain_effect": null,
+      "id": "contains:domain:users:entity:merchant_account",
+      "kind": "contains",
+      "metadata": {},
+      "relationship": null,
+      "source": "user_provided",
+      "sql_condition": null,
+      "to_node": "entity:merchant_account"
+    },
+    {
+      "confidence": "high",
+      "description": "",
+      "from_node": "domain:user_attributes",
+      "grain_effect": null,
+      "id": "contains:domain:user_attributes:entity:user_profile",
+      "kind": "contains",
+      "metadata": {},
+      "relationship": null,
+      "source": "user_provided",
+      "sql_condition": null,
+      "to_node": "entity:user_profile"
+    },
+    {
+      "confidence": "high",
+      "description": "",
+      "from_node": "entity:checkout_order",
+      "grain_effect": null,
+      "id": "contains:entity:checkout_order:table:orders",
+      "kind": "contains",
+      "metadata": {},
+      "relationship": null,
+      "source": "user_provided",
+      "sql_condition": null,
+      "to_node": "table:orders"
+    },
+    {
+      "confidence": "high",
+      "description": "",
+      "from_node": "entity:payment_rail",
+      "grain_effect": null,
+      "id": "contains:entity:payment_rail:table:payment_attributes",
+      "kind": "contains",
+      "metadata": {},
+      "relationship": null,
+      "source": "user_provided",
+      "sql_condition": null,
+      "to_node": "table:payment_attributes"
+    },
+    {
+      "confidence": "high",
+      "description": "",
+      "from_node": "entity:payment_attempt",
+      "grain_effect": null,
+      "id": "contains:entity:payment_attempt:table:payments",
+      "kind": "contains",
+      "metadata": {},
+      "relationship": null,
+      "source": "user_provided",
+      "sql_condition": null,
+      "to_node": "table:payments"
+    },
+    {
+      "confidence": "high",
+      "description": "",
+      "from_node": "entity:user_profile",
+      "grain_effect": null,
+      "id": "contains:entity:user_profile:table:user_attributes",
+      "kind": "contains",
+      "metadata": {},
+      "relationship": null,
+      "source": "user_provided",
+      "sql_condition": null,
+      "to_node": "table:user_attributes"
+    },
+    {
+      "confidence": "high",
+      "description": "",
+      "from_node": "entity:merchant_account",
+      "grain_effect": null,
+      "id": "contains:entity:merchant_account:table:users",
+      "kind": "contains",
+      "metadata": {},
+      "relationship": null,
+      "source": "user_provided",
+      "sql_condition": null,
+      "to_node": "table:users"
+    },
+    {
+      "confidence": "high",
+      "description": "",
+      "from_node": "table:orders",
+      "grain_effect": null,
+      "id": "contains:table:orders:column:orders.checkout_surface",
+      "kind": "contains",
+      "metadata": {},
+      "relationship": null,
+      "source": "user_provided",
+      "sql_condition": null,
+      "to_node": "column:orders.checkout_surface"
+    },
+    {
+      "confidence": "high",
+      "description": "",
+      "from_node": "table:orders",
+      "grain_effect": null,
+      "id": "contains:table:orders:column:orders.order_amount",
+      "kind": "contains",
+      "metadata": {},
+      "relationship": null,
+      "source": "user_provided",
+      "sql_condition": null,
+      "to_node": "column:orders.order_amount"
+    },
+    {
+      "confidence": "high",
+      "description": "",
+      "from_node": "table:orders",
+      "grain_effect": null,
+      "id": "contains:table:orders:column:orders.order_ref",
+      "kind": "contains",
+      "metadata": {},
+      "relationship": null,
+      "source": "user_provided",
+      "sql_condition": null,
+      "to_node": "column:orders.order_ref"
+    },
+    {
+      "confidence": "high",
+      "description": "",
+      "from_node": "table:orders",
+      "grain_effect": null,
+      "id": "contains:table:orders:column:orders.order_state",
+      "kind": "contains",
+      "metadata": {},
+      "relationship": null,
+      "source": "user_provided",
+      "sql_condition": null,
+      "to_node": "column:orders.order_state"
+    },
+    {
+      "confidence": "high",
+      "description": "",
+      "from_node": "table:orders",
+      "grain_effect": null,
+      "id": "contains:table:orders:column:orders.order_time",
+      "kind": "contains",
+      "metadata": {},
+      "relationship": null,
+      "source": "user_provided",
+      "sql_condition": null,
+      "to_node": "column:orders.order_time"
+    },
+    {
+      "confidence": "high",
+      "description": "",
+      "from_node": "table:orders",
+      "grain_effect": null,
+      "id": "contains:table:orders:column:orders.product_area",
+      "kind": "contains",
+      "metadata": {},
+      "relationship": null,
+      "source": "user_provided",
+      "sql_condition": null,
+      "to_node": "column:orders.product_area"
+    },
+    {
+      "confidence": "high",
+      "description": "",
+      "from_node": "table:orders",
+      "grain_effect": null,
+      "id": "contains:table:orders:column:orders.user_ref",
+      "kind": "contains",
+      "metadata": {},
+      "relationship": null,
+      "source": "user_provided",
+      "sql_condition": null,
+      "to_node": "column:orders.user_ref"
+    },
+    {
+      "confidence": "high",
+      "description": "",
+      "from_node": "table:payment_attributes",
+      "grain_effect": null,
+      "id": "contains:table:payment_attributes:column:payment_attributes.authentication_mode",
+      "kind": "contains",
+      "metadata": {},
+      "relationship": null,
+      "source": "user_provided",
+      "sql_condition": null,
+      "to_node": "column:payment_attributes.authentication_mode"
+    },
+    {
+      "confidence": "high",
+      "description": "",
+      "from_node": "table:payment_attributes",
+      "grain_effect": null,
+      "id": "contains:table:payment_attributes:column:payment_attributes.issuer_name",
+      "kind": "contains",
+      "metadata": {},
+      "relationship": null,
+      "source": "user_provided",
+      "sql_condition": null,
+      "to_node": "column:payment_attributes.issuer_name"
+    },
+    {
+      "confidence": "high",
+      "description": "",
+      "from_node": "table:payment_attributes",
+      "grain_effect": null,
+      "id": "contains:table:payment_attributes:column:payment_attributes.rail_ref",
+      "kind": "contains",
+      "metadata": {},
+      "relationship": null,
+      "source": "user_provided",
+      "sql_condition": null,
+      "to_node": "column:payment_attributes.rail_ref"
+    },
+    {
+      "confidence": "high",
+      "description": "",
+      "from_node": "table:payment_attributes",
+      "grain_effect": null,
+      "id": "contains:table:payment_attributes:column:payment_attributes.rail_type",
+      "kind": "contains",
+      "metadata": {},
+      "relationship": null,
+      "source": "user_provided",
+      "sql_condition": null,
+      "to_node": "column:payment_attributes.rail_type"
+    },
+    {
+      "confidence": "high",
+      "description": "",
+      "from_node": "table:payment_attributes",
+      "grain_effect": null,
+      "id": "contains:table:payment_attributes:column:payment_attributes.risk_band",
+      "kind": "contains",
+      "metadata": {},
+      "relationship": null,
+      "source": "user_provided",
+      "sql_condition": null,
+      "to_node": "column:payment_attributes.risk_band"
+    },
+    {
+      "confidence": "high",
+      "description": "",
+      "from_node": "table:payment_attributes",
+      "grain_effect": null,
+      "id": "contains:table:payment_attributes:column:payment_attributes.route_partner",
+      "kind": "contains",
+      "metadata": {},
+      "relationship": null,
+      "source": "user_provided",
+      "sql_condition": null,
+      "to_node": "column:payment_attributes.route_partner"
+    },
+    {
+      "confidence": "high",
+      "description": "",
+      "from_node": "table:payment_attributes",
+      "grain_effect": null,
+      "id": "contains:table:payment_attributes:column:payment_attributes.settlement_speed",
+      "kind": "contains",
+      "metadata": {},
+      "relationship": null,
+      "source": "user_provided",
+      "sql_condition": null,
+      "to_node": "column:payment_attributes.settlement_speed"
+    },
+    {
+      "confidence": "high",
+      "description": "",
+      "from_node": "table:payments",
+      "grain_effect": null,
+      "id": "contains:table:payments:column:payments.amount",
+      "kind": "contains",
+      "metadata": {},
+      "relationship": null,
+      "source": "user_provided",
+      "sql_condition": null,
+      "to_node": "column:payments.amount"
+    },
+    {
+      "confidence": "high",
+      "description": "",
+      "from_node": "table:payments",
+      "grain_effect": null,
+      "id": "contains:table:payments:column:payments.order_ref",
+      "kind": "contains",
+      "metadata": {},
+      "relationship": null,
+      "source": "user_provided",
+      "sql_condition": null,
+      "to_node": "column:payments.order_ref"
+    },
+    {
+      "confidence": "high",
+      "description": "",
+      "from_node": "table:payments",
+      "grain_effect": null,
+      "id": "contains:table:payments:column:payments.payment_ref",
+      "kind": "contains",
+      "metadata": {},
+      "relationship": null,
+      "source": "user_provided",
+      "sql_condition": null,
+      "to_node": "column:payments.payment_ref"
+    },
+    {
+      "confidence": "high",
+      "description": "",
+      "from_node": "table:payments",
+      "grain_effect": null,
+      "id": "contains:table:payments:column:payments.payment_status",
+      "kind": "contains",
+      "metadata": {},
+      "relationship": null,
+      "source": "user_provided",
+      "sql_condition": null,
+      "to_node": "column:payments.payment_status"
+    },
+    {
+      "confidence": "high",
+      "description": "",
+      "from_node": "table:payments",
+      "grain_effect": null,
+      "id": "contains:table:payments:column:payments.payment_time",
+      "kind": "contains",
+      "metadata": {},
+      "relationship": null,
+      "source": "user_provided",
+      "sql_condition": null,
+      "to_node": "column:payments.payment_time"
+    },
+    {
+      "confidence": "high",
+      "description": "",
+      "from_node": "table:payments",
+      "grain_effect": null,
+      "id": "contains:table:payments:column:payments.rail_ref",
+      "kind": "contains",
+      "metadata": {},
+      "relationship": null,
+      "source": "user_provided",
+      "sql_condition": null,
+      "to_node": "column:payments.rail_ref"
+    },
+    {
+      "confidence": "high",
+      "description": "",
+      "from_node": "table:payments",
+      "grain_effect": null,
+      "id": "contains:table:payments:column:payments.user_ref",
+      "kind": "contains",
+      "metadata": {},
+      "relationship": null,
+      "source": "user_provided",
+      "sql_condition": null,
+      "to_node": "column:payments.user_ref"
+    },
+    {
+      "confidence": "high",
+      "description": "",
+      "from_node": "table:user_attributes",
+      "grain_effect": null,
+      "id": "contains:table:user_attributes:column:user_attributes.age",
+      "kind": "contains",
+      "metadata": {},
+      "relationship": null,
+      "source": "user_provided",
+      "sql_condition": null,
+      "to_node": "column:user_attributes.age"
+    },
+    {
+      "confidence": "high",
+      "description": "",
+      "from_node": "table:user_attributes",
+      "grain_effect": null,
+      "id": "contains:table:user_attributes:column:user_attributes.city",
+      "kind": "contains",
+      "metadata": {},
+      "relationship": null,
+      "source": "user_provided",
+      "sql_condition": null,
+      "to_node": "column:user_attributes.city"
+    },
+    {
+      "confidence": "high",
+      "description": "",
+      "from_node": "table:user_attributes",
+      "grain_effect": null,
+      "id": "contains:table:user_attributes:column:user_attributes.gender",
+      "kind": "contains",
+      "metadata": {},
+      "relationship": null,
+      "source": "user_provided",
+      "sql_condition": null,
+      "to_node": "column:user_attributes.gender"
+    },
+    {
+      "confidence": "high",
+      "description": "",
+      "from_node": "table:user_attributes",
+      "grain_effect": null,
+      "id": "contains:table:user_attributes:column:user_attributes.kyc_status",
+      "kind": "contains",
+      "metadata": {},
+      "relationship": null,
+      "source": "user_provided",
+      "sql_condition": null,
+      "to_node": "column:user_attributes.kyc_status"
+    },
+    {
+      "confidence": "high",
+      "description": "",
+      "from_node": "table:user_attributes",
+      "grain_effect": null,
+      "id": "contains:table:user_attributes:column:user_attributes.risk_band",
+      "kind": "contains",
+      "metadata": {},
+      "relationship": null,
+      "source": "user_provided",
+      "sql_condition": null,
+      "to_node": "column:user_attributes.risk_band"
+    },
+    {
+      "confidence": "high",
+      "description": "",
+      "from_node": "table:user_attributes",
+      "grain_effect": null,
+      "id": "contains:table:user_attributes:column:user_attributes.state",
+      "kind": "contains",
+      "metadata": {},
+      "relationship": null,
+      "source": "user_provided",
+      "sql_condition": null,
+      "to_node": "column:user_attributes.state"
+    },
+    {
+      "confidence": "high",
+      "description": "",
+      "from_node": "table:user_attributes",
+      "grain_effect": null,
+      "id": "contains:table:user_attributes:column:user_attributes.user_ref",
+      "kind": "contains",
+      "metadata": {},
+      "relationship": null,
+      "source": "user_provided",
+      "sql_condition": null,
+      "to_node": "column:user_attributes.user_ref"
+    },
+    {
+      "confidence": "high",
+      "description": "",
+      "from_node": "table:users",
+      "grain_effect": null,
+      "id": "contains:table:users:column:users.account_state",
+      "kind": "contains",
+      "metadata": {},
+      "relationship": null,
+      "source": "user_provided",
+      "sql_condition": null,
+      "to_node": "column:users.account_state"
+    },
+    {
+      "confidence": "high",
+      "description": "",
+      "from_node": "table:users",
+      "grain_effect": null,
+      "id": "contains:table:users:column:users.acquisition_channel",
+      "kind": "contains",
+      "metadata": {},
+      "relationship": null,
+      "source": "user_provided",
+      "sql_condition": null,
+      "to_node": "column:users.acquisition_channel"
+    },
+    {
+      "confidence": "high",
+      "description": "",
+      "from_node": "table:users",
+      "grain_effect": null,
+      "id": "contains:table:users:column:users.country",
+      "kind": "contains",
+      "metadata": {},
+      "relationship": null,
+      "source": "user_provided",
+      "sql_condition": null,
+      "to_node": "column:users.country"
+    },
+    {
+      "confidence": "high",
+      "description": "",
+      "from_node": "table:users",
+      "grain_effect": null,
+      "id": "contains:table:users:column:users.merchant_type",
+      "kind": "contains",
+      "metadata": {},
+      "relationship": null,
+      "source": "user_provided",
+      "sql_condition": null,
+      "to_node": "column:users.merchant_type"
+    },
+    {
+      "confidence": "high",
+      "description": "",
+      "from_node": "table:users",
+      "grain_effect": null,
+      "id": "contains:table:users:column:users.platform_plan",
+      "kind": "contains",
+      "metadata": {},
+      "relationship": null,
+      "source": "user_provided",
+      "sql_condition": null,
+      "to_node": "column:users.platform_plan"
+    },
+    {
+      "confidence": "high",
+      "description": "",
+      "from_node": "table:users",
+      "grain_effect": null,
+      "id": "contains:table:users:column:users.signup_time",
+      "kind": "contains",
+      "metadata": {},
+      "relationship": null,
+      "source": "user_provided",
+      "sql_condition": null,
+      "to_node": "column:users.signup_time"
+    },
+    {
+      "confidence": "high",
+      "description": "",
+      "from_node": "table:users",
+      "grain_effect": null,
+      "id": "contains:table:users:column:users.user_ref",
+      "kind": "contains",
+      "metadata": {},
+      "relationship": null,
+      "source": "user_provided",
+      "sql_condition": null,
+      "to_node": "column:users.user_ref"
+    }
+  ],
+  "indexes": {
+    "by_kind": {
+      "column": [
+        "column:orders.checkout_surface",
+        "column:orders.order_amount",
+        "column:orders.order_ref",
+        "column:orders.order_state",
+        "column:orders.order_time",
+        "column:orders.product_area",
+        "column:orders.user_ref",
+        "column:payment_attributes.authentication_mode",
+        "column:payment_attributes.issuer_name",
+        "column:payment_attributes.rail_ref",
+        "column:payment_attributes.rail_type",
+        "column:payment_attributes.risk_band",
+        "column:payment_attributes.route_partner",
+        "column:payment_attributes.settlement_speed",
+        "column:payments.amount",
+        "column:payments.order_ref",
+        "column:payments.payment_ref",
+        "column:payments.payment_status",
+        "column:payments.payment_time",
+        "column:payments.rail_ref",
+        "column:payments.user_ref",
+        "column:user_attributes.age",
+        "column:user_attributes.city",
+        "column:user_attributes.gender",
+        "column:user_attributes.kyc_status",
+        "column:user_attributes.risk_band",
+        "column:user_attributes.state",
+        "column:user_attributes.user_ref",
+        "column:users.account_state",
+        "column:users.acquisition_channel",
+        "column:users.country",
+        "column:users.merchant_type",
+        "column:users.platform_plan",
+        "column:users.signup_time",
+        "column:users.user_ref"
+      ],
+      "domain": [
+        "domain:orders",
+        "domain:payment_routing",
+        "domain:payments",
+        "domain:user_attributes",
+        "domain:users",
+        "schema:fintech_pod.analytics.fintech_schema"
+      ],
+      "entity": [
+        "entity:checkout_order",
+        "entity:merchant_account",
+        "entity:payment_attempt",
+        "entity:payment_rail",
+        "entity:user_profile"
+      ],
+      "table": [
+        "table:orders",
+        "table:payment_attributes",
+        "table:payments",
+        "table:user_attributes",
+        "table:users"
+      ]
+    },
+    "children_by_node": {
+      "domain:orders": [
+        "entity:checkout_order"
+      ],
+      "domain:payment_routing": [
+        "entity:payment_rail"
+      ],
+      "domain:payments": [
+        "entity:payment_attempt"
+      ],
+      "domain:user_attributes": [
+        "entity:user_profile"
+      ],
+      "domain:users": [
+        "entity:merchant_account"
+      ],
+      "entity:checkout_order": [
+        "table:orders"
+      ],
+      "entity:merchant_account": [
+        "table:users"
+      ],
+      "entity:payment_attempt": [
+        "table:payments"
+      ],
+      "entity:payment_rail": [
+        "table:payment_attributes"
+      ],
+      "entity:user_profile": [
+        "table:user_attributes"
+      ],
+      "schema:fintech_pod.analytics.fintech_schema": [
+        "domain:orders",
+        "domain:payment_routing",
+        "domain:payments",
+        "domain:user_attributes",
+        "domain:users"
+      ],
+      "table:orders": [
+        "column:orders.checkout_surface",
+        "column:orders.order_amount",
+        "column:orders.order_ref",
+        "column:orders.order_state",
+        "column:orders.order_time",
+        "column:orders.product_area",
+        "column:orders.user_ref"
+      ],
+      "table:payment_attributes": [
+        "column:payment_attributes.authentication_mode",
+        "column:payment_attributes.issuer_name",
+        "column:payment_attributes.rail_ref",
+        "column:payment_attributes.rail_type",
+        "column:payment_attributes.risk_band",
+        "column:payment_attributes.route_partner",
+        "column:payment_attributes.settlement_speed"
+      ],
+      "table:payments": [
+        "column:payments.amount",
+        "column:payments.order_ref",
+        "column:payments.payment_ref",
+        "column:payments.payment_status",
+        "column:payments.payment_time",
+        "column:payments.rail_ref",
+        "column:payments.user_ref"
+      ],
+      "table:user_attributes": [
+        "column:user_attributes.age",
+        "column:user_attributes.city",
+        "column:user_attributes.gender",
+        "column:user_attributes.kyc_status",
+        "column:user_attributes.risk_band",
+        "column:user_attributes.state",
+        "column:user_attributes.user_ref"
+      ],
+      "table:users": [
+        "column:users.account_state",
+        "column:users.acquisition_channel",
+        "column:users.country",
+        "column:users.merchant_type",
+        "column:users.platform_plan",
+        "column:users.signup_time",
+        "column:users.user_ref"
+      ]
+    },
+    "columns_by_table": {
+      "table:orders": [
+        "column:orders.checkout_surface",
+        "column:orders.order_amount",
+        "column:orders.order_ref",
+        "column:orders.order_state",
+        "column:orders.order_time",
+        "column:orders.product_area",
+        "column:orders.user_ref"
+      ],
+      "table:payment_attributes": [
+        "column:payment_attributes.authentication_mode",
+        "column:payment_attributes.issuer_name",
+        "column:payment_attributes.rail_ref",
+        "column:payment_attributes.rail_type",
+        "column:payment_attributes.risk_band",
+        "column:payment_attributes.route_partner",
+        "column:payment_attributes.settlement_speed"
+      ],
+      "table:payments": [
+        "column:payments.amount",
+        "column:payments.order_ref",
+        "column:payments.payment_ref",
+        "column:payments.payment_status",
+        "column:payments.payment_time",
+        "column:payments.rail_ref",
+        "column:payments.user_ref"
+      ],
+      "table:user_attributes": [
+        "column:user_attributes.age",
+        "column:user_attributes.city",
+        "column:user_attributes.gender",
+        "column:user_attributes.kyc_status",
+        "column:user_attributes.risk_band",
+        "column:user_attributes.state",
+        "column:user_attributes.user_ref"
+      ],
+      "table:users": [
+        "column:users.account_state",
+        "column:users.acquisition_channel",
+        "column:users.country",
+        "column:users.merchant_type",
+        "column:users.platform_plan",
+        "column:users.signup_time",
+        "column:users.user_ref"
+      ]
+    }
+  },
+  "nodes": [
+    {
+      "aliases": [],
+      "allowed_values": [],
+      "description": "Scoped analytics schema.",
+      "grain": null,
+      "id": "schema:fintech_pod.analytics.fintech_schema",
+      "kind": "domain",
+      "metadata": {
+        "node_role": "schema_root"
+      },
+      "name": "fintech_pod.analytics.fintech_schema",
+      "null_meaning": null,
+      "path": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema"
+      ],
+      "sql_guidance": null,
+      "sql_ref": null
+    },
+    {
+      "aliases": [
+        "checkout",
+        "order funnel"
+      ],
+      "allowed_values": [],
+      "description": "Checkout orders created before payment attempts, used for funnel analysis.",
+      "grain": null,
+      "id": "domain:orders",
+      "kind": "domain",
+      "metadata": {},
+      "name": "Orders",
+      "null_meaning": null,
+      "path": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "orders"
+      ],
+      "sql_guidance": null,
+      "sql_ref": null
+    },
+    {
+      "aliases": [
+        "transactions",
+        "TPV",
+        "PSR"
+      ],
+      "allowed_values": [],
+      "description": "Payment transaction attempts and their outcomes, the core of all payment metrics.",
+      "grain": null,
+      "id": "domain:payments",
+      "kind": "domain",
+      "metadata": {},
+      "name": "Payments",
+      "null_meaning": null,
+      "path": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "payments"
+      ],
+      "sql_guidance": null,
+      "sql_ref": null
+    },
+    {
+      "aliases": [
+        "rails",
+        "payment methods",
+        "routing"
+      ],
+      "allowed_values": [],
+      "description": "Payment rail and routing attributes such as method, issuer, settlement speed, and risk.",
+      "grain": null,
+      "id": "domain:payment_routing",
+      "kind": "domain",
+      "metadata": {},
+      "name": "Payment Routing",
+      "null_meaning": null,
+      "path": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "payment_routing"
+      ],
+      "sql_guidance": null,
+      "sql_ref": null
+    },
+    {
+      "aliases": [
+        "merchants",
+        "accounts"
+      ],
+      "allowed_values": [],
+      "description": "Merchant account profiles including type, plan, acquisition channel, and signup date.",
+      "grain": null,
+      "id": "domain:users",
+      "kind": "domain",
+      "metadata": {},
+      "name": "Users & Merchants",
+      "null_meaning": null,
+      "path": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "users"
+      ],
+      "sql_guidance": null,
+      "sql_ref": null
+    },
+    {
+      "aliases": [
+        "demographics",
+        "user profile",
+        "KYC"
+      ],
+      "allowed_values": [],
+      "description": "Demographic, geographic, KYC, and risk attributes for each user or merchant.",
+      "grain": null,
+      "id": "domain:user_attributes",
+      "kind": "domain",
+      "metadata": {},
+      "name": "User Demographics & Risk",
+      "null_meaning": null,
+      "path": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "user_attributes"
+      ],
+      "sql_guidance": null,
+      "sql_ref": null
+    },
+    {
+      "aliases": [
+        "order"
+      ],
+      "allowed_values": [],
+      "description": "A single order initiated on Razorpay before any payment attempt.",
+      "grain": null,
+      "id": "entity:checkout_order",
+      "kind": "entity",
+      "metadata": {},
+      "name": "Checkout Order",
+      "null_meaning": null,
+      "path": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "orders",
+        "checkout_order"
+      ],
+      "sql_guidance": null,
+      "sql_ref": null
+    },
+    {
+      "aliases": [
+        "transaction",
+        "payment"
+      ],
+      "allowed_values": [],
+      "description": "A single payment transaction attempt with amount, status, and timestamp.",
+      "grain": null,
+      "id": "entity:payment_attempt",
+      "kind": "entity",
+      "metadata": {},
+      "name": "Payment Attempt",
+      "null_meaning": null,
+      "path": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "payments",
+        "payment_attempt"
+      ],
+      "sql_guidance": null,
+      "sql_ref": null
+    },
+    {
+      "aliases": [
+        "rail",
+        "payment route",
+        "payment method"
+      ],
+      "allowed_values": [],
+      "description": "A unique payment route with method, issuer, routing partner, and risk classification.",
+      "grain": null,
+      "id": "entity:payment_rail",
+      "kind": "entity",
+      "metadata": {},
+      "name": "Payment Rail",
+      "null_meaning": null,
+      "path": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "payment_routing",
+        "payment_rail"
+      ],
+      "sql_guidance": null,
+      "sql_ref": null
+    },
+    {
+      "aliases": [
+        "user",
+        "merchant"
+      ],
+      "allowed_values": [],
+      "description": "A Razorpay merchant or user account with plan, type, and acquisition details.",
+      "grain": null,
+      "id": "entity:merchant_account",
+      "kind": "entity",
+      "metadata": {},
+      "name": "Merchant Account",
+      "null_meaning": null,
+      "path": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "users",
+        "merchant_account"
+      ],
+      "sql_guidance": null,
+      "sql_ref": null
+    },
+    {
+      "aliases": [
+        "user demographics",
+        "user segment"
+      ],
+      "allowed_values": [],
+      "description": "Demographic and risk profile attributes for a Razorpay user or merchant.",
+      "grain": null,
+      "id": "entity:user_profile",
+      "kind": "entity",
+      "metadata": {},
+      "name": "User Profile",
+      "null_meaning": null,
+      "path": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "user_attributes",
+        "user_profile"
+      ],
+      "sql_guidance": null,
+      "sql_ref": null
+    },
+    {
+      "aliases": [],
+      "allowed_values": [],
+      "description": "Every checkout order created on Razorpay before a payment attempt, with lifecycle state and product area.",
+      "grain": "One row per checkout order",
+      "id": "table:orders",
+      "kind": "table",
+      "metadata": {},
+      "name": "orders",
+      "null_meaning": null,
+      "path": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "orders",
+        "checkout_order",
+        "orders"
+      ],
+      "sql_guidance": null,
+      "sql_ref": "orders"
+    },
+    {
+      "aliases": [],
+      "allowed_values": [],
+      "description": "Attributes of each payment rail including type, issuer, routing partner, settlement speed, authentication mode, and risk band.",
+      "grain": "One row per payment rail",
+      "id": "table:payment_attributes",
+      "kind": "table",
+      "metadata": {},
+      "name": "payment_attributes",
+      "null_meaning": null,
+      "path": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "payment_routing",
+        "payment_rail",
+        "payment_attributes"
+      ],
+      "sql_guidance": null,
+      "sql_ref": "payment_attributes"
+    },
+    {
+      "aliases": [],
+      "allowed_values": [],
+      "description": "Every payment attempt on Razorpay with amount, status, rail, order, user, and timestamp.",
+      "grain": "One row per payment attempt",
+      "id": "table:payments",
+      "kind": "table",
+      "metadata": {},
+      "name": "payments",
+      "null_meaning": null,
+      "path": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "payments",
+        "payment_attempt",
+        "payments"
+      ],
+      "sql_guidance": null,
+      "sql_ref": "payments"
+    },
+    {
+      "aliases": [],
+      "allowed_values": [],
+      "description": "Demographic, geographic, KYC, and risk attributes for each Razorpay user or merchant.",
+      "grain": "One row per user",
+      "id": "table:user_attributes",
+      "kind": "table",
+      "metadata": {},
+      "name": "user_attributes",
+      "null_meaning": null,
+      "path": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "user_attributes",
+        "user_profile",
+        "user_attributes"
+      ],
+      "sql_guidance": null,
+      "sql_ref": "user_attributes"
+    },
+    {
+      "aliases": [],
+      "allowed_values": [],
+      "description": "Razorpay merchant and user accounts with signup date, merchant type, acquisition channel, plan, and account state.",
+      "grain": "One row per user or merchant account",
+      "id": "table:users",
+      "kind": "table",
+      "metadata": {},
+      "name": "users",
+      "null_meaning": null,
+      "path": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "users",
+        "merchant_account",
+        "users"
+      ],
+      "sql_guidance": null,
+      "sql_ref": "users"
+    },
+    {
+      "aliases": [
+        "channel",
+        "checkout channel",
+        "integration method"
+      ],
+      "allowed_values": [],
+      "description": "Channel or interface used to place the order: web, mobile_sdk, api, plugin, or dashboard.",
+      "grain": null,
+      "id": "column:orders.checkout_surface",
+      "kind": "column",
+      "metadata": {
+        "role": "dimension"
+      },
+      "name": "checkout_surface",
+      "null_meaning": null,
+      "path": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "orders",
+        "checkout_order",
+        "orders",
+        "checkout_surface"
+      ],
+      "sql_guidance": null,
+      "sql_ref": "orders.checkout_surface"
+    },
+    {
+      "aliases": [
+        "order value"
+      ],
+      "allowed_values": [],
+      "description": "Intended transaction value of the order at creation time.",
+      "grain": null,
+      "id": "column:orders.order_amount",
+      "kind": "column",
+      "metadata": {
+        "role": "measure"
+      },
+      "name": "order_amount",
+      "null_meaning": null,
+      "path": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "orders",
+        "checkout_order",
+        "orders",
+        "order_amount"
+      ],
+      "sql_guidance": null,
+      "sql_ref": "orders.order_amount"
+    },
+    {
+      "aliases": [
+        "order ID",
+        "order identifier"
+      ],
+      "allowed_values": [],
+      "description": "Unique identifier for a checkout order; links orders to payment attempts.",
+      "grain": null,
+      "id": "column:orders.order_ref",
+      "kind": "column",
+      "metadata": {
+        "role": "identifier"
+      },
+      "name": "order_ref",
+      "null_meaning": null,
+      "path": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "orders",
+        "checkout_order",
+        "orders",
+        "order_ref"
+      ],
+      "sql_guidance": "Join orders to payments on order_ref to count attempts per order.",
+      "sql_ref": "orders.order_ref"
+    },
+    {
+      "aliases": [
+        "order status",
+        "order lifecycle"
+      ],
+      "allowed_values": [],
+      "description": "Lifecycle status of the order: paid, created, cancelled, or expired.",
+      "grain": null,
+      "id": "column:orders.order_state",
+      "kind": "column",
+      "metadata": {
+        "role": "status"
+      },
+      "name": "order_state",
+      "null_meaning": null,
+      "path": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "orders",
+        "checkout_order",
+        "orders",
+        "order_state"
+      ],
+      "sql_guidance": "Filter order_state = 'paid' to count converted orders; use all states for funnel analysis.",
+      "sql_ref": "orders.order_state"
+    },
+    {
+      "aliases": [
+        "order created at",
+        "order date"
+      ],
+      "allowed_values": [],
+      "description": "Timestamp when the checkout order was created.",
+      "grain": null,
+      "id": "column:orders.order_time",
+      "kind": "column",
+      "metadata": {
+        "role": "time"
+      },
+      "name": "order_time",
+      "null_meaning": null,
+      "path": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "orders",
+        "checkout_order",
+        "orders",
+        "order_time"
+      ],
+      "sql_guidance": null,
+      "sql_ref": "orders.order_time"
+    },
+    {
+      "aliases": [
+        "product line",
+        "product segment"
+      ],
+      "allowed_values": [],
+      "description": "Razorpay product line associated with the order: checkout, payments, payouts, subscriptions, or marketplace.",
+      "grain": null,
+      "id": "column:orders.product_area",
+      "kind": "column",
+      "metadata": {
+        "role": "dimension"
+      },
+      "name": "product_area",
+      "null_meaning": null,
+      "path": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "orders",
+        "checkout_order",
+        "orders",
+        "product_area"
+      ],
+      "sql_guidance": null,
+      "sql_ref": "orders.product_area"
+    },
+    {
+      "aliases": [
+        "merchant ID",
+        "user ID"
+      ],
+      "allowed_values": [],
+      "description": "The user or merchant that created this order; links to users and user_attributes.",
+      "grain": null,
+      "id": "column:orders.user_ref",
+      "kind": "column",
+      "metadata": {
+        "role": "join_key"
+      },
+      "name": "user_ref",
+      "null_meaning": null,
+      "path": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "orders",
+        "checkout_order",
+        "orders",
+        "user_ref"
+      ],
+      "sql_guidance": null,
+      "sql_ref": "orders.user_ref"
+    },
+    {
+      "aliases": [
+        "auth method",
+        "authentication type"
+      ],
+      "allowed_values": [],
+      "description": "Authentication method used for the payment: upi_pin, otp_or_3ds, bank_auth, or wallet_auth.",
+      "grain": null,
+      "id": "column:payment_attributes.authentication_mode",
+      "kind": "column",
+      "metadata": {
+        "role": "dimension"
+      },
+      "name": "authentication_mode",
+      "null_meaning": null,
+      "path": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "payment_routing",
+        "payment_rail",
+        "payment_attributes",
+        "authentication_mode"
+      ],
+      "sql_guidance": null,
+      "sql_ref": "payment_attributes.authentication_mode"
+    },
+    {
+      "aliases": [
+        "bank",
+        "issuing bank",
+        "issuer"
+      ],
+      "allowed_values": [],
+      "description": "Bank or financial institution associated with the payment rail, such as HDFC, ICICI, SBI, or NPCI.",
+      "grain": null,
+      "id": "column:payment_attributes.issuer_name",
+      "kind": "column",
+      "metadata": {
+        "role": "dimension"
+      },
+      "name": "issuer_name",
+      "null_meaning": null,
+      "path": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "payment_routing",
+        "payment_rail",
+        "payment_attributes",
+        "issuer_name"
+      ],
+      "sql_guidance": null,
+      "sql_ref": "payment_attributes.issuer_name"
+    },
+    {
+      "aliases": [
+        "rail ID"
+      ],
+      "allowed_values": [],
+      "description": "Unique identifier for a payment rail; join key to the payments table.",
+      "grain": null,
+      "id": "column:payment_attributes.rail_ref",
+      "kind": "column",
+      "metadata": {
+        "role": "identifier"
+      },
+      "name": "rail_ref",
+      "null_meaning": null,
+      "path": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "payment_routing",
+        "payment_rail",
+        "payment_attributes",
+        "rail_ref"
+      ],
+      "sql_guidance": null,
+      "sql_ref": "payment_attributes.rail_ref"
+    },
+    {
+      "aliases": [
+        "payment method",
+        "payment network",
+        "payment type"
+      ],
+      "allowed_values": [],
+      "description": "Payment method or network: UPI, CC, DC, IMPS, NEFT, NETBANKING, or WALLET.",
+      "grain": null,
+      "id": "column:payment_attributes.rail_type",
+      "kind": "column",
+      "metadata": {
+        "role": "dimension"
+      },
+      "name": "rail_type",
+      "null_meaning": null,
+      "path": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "payment_routing",
+        "payment_rail",
+        "payment_attributes",
+        "rail_type"
+      ],
+      "sql_guidance": "Join payments to payment_attributes on rail_ref then group by rail_type to slice TPV or PSR by payment method.",
+      "sql_ref": "payment_attributes.rail_type"
+    },
+    {
+      "aliases": [
+        "rail risk",
+        "risk level"
+      ],
+      "allowed_values": [],
+      "description": "Risk classification of the payment rail: low, medium, or high.",
+      "grain": null,
+      "id": "column:payment_attributes.risk_band",
+      "kind": "column",
+      "metadata": {
+        "role": "dimension"
+      },
+      "name": "risk_band",
+      "null_meaning": null,
+      "path": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "payment_routing",
+        "payment_rail",
+        "payment_attributes",
+        "risk_band"
+      ],
+      "sql_guidance": null,
+      "sql_ref": "payment_attributes.risk_band"
+    },
+    {
+      "aliases": [
+        "routing partner",
+        "processor"
+      ],
+      "allowed_values": [],
+      "description": "Razorpay internal routing partner used to process the payment.",
+      "grain": null,
+      "id": "column:payment_attributes.route_partner",
+      "kind": "column",
+      "metadata": {
+        "role": "dimension"
+      },
+      "name": "route_partner",
+      "null_meaning": null,
+      "path": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "payment_routing",
+        "payment_rail",
+        "payment_attributes",
+        "route_partner"
+      ],
+      "sql_guidance": null,
+      "sql_ref": "payment_attributes.route_partner"
+    },
+    {
+      "aliases": [
+        "settlement timeline",
+        "settlement type"
+      ],
+      "allowed_values": [],
+      "description": "Settlement timeline for this rail: instant, same_day, or t_plus_1.",
+      "grain": null,
+      "id": "column:payment_attributes.settlement_speed",
+      "kind": "column",
+      "metadata": {
+        "role": "dimension"
+      },
+      "name": "settlement_speed",
+      "null_meaning": null,
+      "path": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "payment_routing",
+        "payment_rail",
+        "payment_attributes",
+        "settlement_speed"
+      ],
+      "sql_guidance": null,
+      "sql_ref": "payment_attributes.settlement_speed"
+    },
+    {
+      "aliases": [
+        "payment amount",
+        "transaction amount",
+        "TPV"
+      ],
+      "allowed_values": [],
+      "description": "Transaction amount for this payment attempt; sum over successful payments for TPV.",
+      "grain": null,
+      "id": "column:payments.amount",
+      "kind": "column",
+      "metadata": {
+        "role": "measure"
+      },
+      "name": "amount",
+      "null_meaning": null,
+      "path": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "payments",
+        "payment_attempt",
+        "payments",
+        "amount"
+      ],
+      "sql_guidance": "Sum amount WHERE payment_status = 'SUCCESS' to calculate TPV; do not filter by status for attempted volume.",
+      "sql_ref": "payments.amount"
+    },
+    {
+      "aliases": [
+        "order ID"
+      ],
+      "allowed_values": [],
+      "description": "The order this payment attempt belongs to; links payments to the orders table.",
+      "grain": null,
+      "id": "column:payments.order_ref",
+      "kind": "column",
+      "metadata": {
+        "role": "join_key"
+      },
+      "name": "order_ref",
+      "null_meaning": null,
+      "path": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "payments",
+        "payment_attempt",
+        "payments",
+        "order_ref"
+      ],
+      "sql_guidance": null,
+      "sql_ref": "payments.order_ref"
+    },
+    {
+      "aliases": [
+        "payment ID",
+        "transaction ID"
+      ],
+      "allowed_values": [],
+      "description": "Unique identifier for a single payment attempt.",
+      "grain": null,
+      "id": "column:payments.payment_ref",
+      "kind": "column",
+      "metadata": {
+        "role": "identifier"
+      },
+      "name": "payment_ref",
+      "null_meaning": null,
+      "path": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "payments",
+        "payment_attempt",
+        "payments",
+        "payment_ref"
+      ],
+      "sql_guidance": "Count distinct payment_ref for total payment attempts (PSR denominator).",
+      "sql_ref": "payments.payment_ref"
+    },
+    {
+      "aliases": [
+        "transaction status",
+        "payment outcome"
+      ],
+      "allowed_values": [],
+      "description": "Outcome of the payment attempt: SUCCESS, FAILED, AUTHORIZED, or REFUNDED.",
+      "grain": null,
+      "id": "column:payments.payment_status",
+      "kind": "column",
+      "metadata": {
+        "role": "status"
+      },
+      "name": "payment_status",
+      "null_meaning": null,
+      "path": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "payments",
+        "payment_attempt",
+        "payments",
+        "payment_status"
+      ],
+      "sql_guidance": "PSR = COUNT(*) FILTER (payment_status='SUCCESS') / COUNT(*) across all statuses; do not pre-filter for PSR denominator.",
+      "sql_ref": "payments.payment_status"
+    },
+    {
+      "aliases": [
+        "transaction time",
+        "payment date",
+        "transaction date"
+      ],
+      "allowed_values": [],
+      "description": "Timestamp when the payment attempt occurred; primary time dimension for all payment analytics.",
+      "grain": null,
+      "id": "column:payments.payment_time",
+      "kind": "column",
+      "metadata": {
+        "role": "time"
+      },
+      "name": "payment_time",
+      "null_meaning": null,
+      "path": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "payments",
+        "payment_attempt",
+        "payments",
+        "payment_time"
+      ],
+      "sql_guidance": "Truncate to month for calendar-month grouping; use date part for DAU; data spans Dec 2025 to Jun 2026.",
+      "sql_ref": "payments.payment_time"
+    },
+    {
+      "aliases": [
+        "rail ID",
+        "payment method ID"
+      ],
+      "allowed_values": [],
+      "description": "Payment rail used for this attempt; join to payment_attributes to get rail type and other routing details.",
+      "grain": null,
+      "id": "column:payments.rail_ref",
+      "kind": "column",
+      "metadata": {
+        "role": "join_key"
+      },
+      "name": "rail_ref",
+      "null_meaning": null,
+      "path": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "payments",
+        "payment_attempt",
+        "payments",
+        "rail_ref"
+      ],
+      "sql_guidance": "Join payments to payment_attributes on rail_ref to slice metrics by rail_type.",
+      "sql_ref": "payments.rail_ref"
+    },
+    {
+      "aliases": [
+        "merchant ID",
+        "user ID"
+      ],
+      "allowed_values": [],
+      "description": "The user or merchant that made this payment attempt; used for all user-level metrics.",
+      "grain": null,
+      "id": "column:payments.user_ref",
+      "kind": "column",
+      "metadata": {
+        "role": "join_key"
+      },
+      "name": "user_ref",
+      "null_meaning": null,
+      "path": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "payments",
+        "payment_attempt",
+        "payments",
+        "user_ref"
+      ],
+      "sql_guidance": "Filter payment_status = 'SUCCESS' before counting distinct user_ref for active user metrics.",
+      "sql_ref": "payments.user_ref"
+    },
+    {
+      "aliases": [
+        "user age"
+      ],
+      "allowed_values": [],
+      "description": "Age of the user in years, ranging from 19 to 68.",
+      "grain": null,
+      "id": "column:user_attributes.age",
+      "kind": "column",
+      "metadata": {
+        "role": "dimension"
+      },
+      "name": "age",
+      "null_meaning": null,
+      "path": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "user_attributes",
+        "user_profile",
+        "user_attributes",
+        "age"
+      ],
+      "sql_guidance": null,
+      "sql_ref": "user_attributes.age"
+    },
+    {
+      "aliases": [
+        "user city",
+        "location city"
+      ],
+      "allowed_values": [],
+      "description": "City where the user is located, covering major Indian cities.",
+      "grain": null,
+      "id": "column:user_attributes.city",
+      "kind": "column",
+      "metadata": {
+        "role": "dimension"
+      },
+      "name": "city",
+      "null_meaning": null,
+      "path": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "user_attributes",
+        "user_profile",
+        "user_attributes",
+        "city"
+      ],
+      "sql_guidance": null,
+      "sql_ref": "user_attributes.city"
+    },
+    {
+      "aliases": [
+        "user gender"
+      ],
+      "allowed_values": [],
+      "description": "Self-reported gender of the user: M, F, or Other.",
+      "grain": null,
+      "id": "column:user_attributes.gender",
+      "kind": "column",
+      "metadata": {
+        "role": "dimension"
+      },
+      "name": "gender",
+      "null_meaning": null,
+      "path": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "user_attributes",
+        "user_profile",
+        "user_attributes",
+        "gender"
+      ],
+      "sql_guidance": null,
+      "sql_ref": "user_attributes.gender"
+    },
+    {
+      "aliases": [
+        "KYC",
+        "verification status",
+        "know your customer"
+      ],
+      "allowed_values": [],
+      "description": "KYC verification status of the user: verified, pending, or rejected.",
+      "grain": null,
+      "id": "column:user_attributes.kyc_status",
+      "kind": "column",
+      "metadata": {
+        "role": "status"
+      },
+      "name": "kyc_status",
+      "null_meaning": null,
+      "path": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "user_attributes",
+        "user_profile",
+        "user_attributes",
+        "kyc_status"
+      ],
+      "sql_guidance": null,
+      "sql_ref": "user_attributes.kyc_status"
+    },
+    {
+      "aliases": [
+        "user risk",
+        "risk level",
+        "risk segment"
+      ],
+      "allowed_values": [],
+      "description": "Risk tier assigned to the user for transaction monitoring: low, medium, or high.",
+      "grain": null,
+      "id": "column:user_attributes.risk_band",
+      "kind": "column",
+      "metadata": {
+        "role": "dimension"
+      },
+      "name": "risk_band",
+      "null_meaning": null,
+      "path": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "user_attributes",
+        "user_profile",
+        "user_attributes",
+        "risk_band"
+      ],
+      "sql_guidance": null,
+      "sql_ref": "user_attributes.risk_band"
+    },
+    {
+      "aliases": [
+        "user state",
+        "region",
+        "geography"
+      ],
+      "allowed_values": [],
+      "description": "Indian state where the user is located; primary geographic dimension for state-level analysis.",
+      "grain": null,
+      "id": "column:user_attributes.state",
+      "kind": "column",
+      "metadata": {
+        "role": "dimension"
+      },
+      "name": "state",
+      "null_meaning": null,
+      "path": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "user_attributes",
+        "user_profile",
+        "user_attributes",
+        "state"
+      ],
+      "sql_guidance": "Use state for geographic slicing; combine with city for finer granularity.",
+      "sql_ref": "user_attributes.state"
+    },
+    {
+      "aliases": [
+        "merchant ID",
+        "user ID"
+      ],
+      "allowed_values": [],
+      "description": "Unique identifier for the user; join key to payments, orders, and users tables.",
+      "grain": null,
+      "id": "column:user_attributes.user_ref",
+      "kind": "column",
+      "metadata": {
+        "role": "identifier"
+      },
+      "name": "user_ref",
+      "null_meaning": null,
+      "path": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "user_attributes",
+        "user_profile",
+        "user_attributes",
+        "user_ref"
+      ],
+      "sql_guidance": null,
+      "sql_ref": "user_attributes.user_ref"
+    },
+    {
+      "aliases": [
+        "account status",
+        "merchant status"
+      ],
+      "allowed_values": [],
+      "description": "Current operational status of the merchant account: active, paused, restricted, or closed.",
+      "grain": null,
+      "id": "column:users.account_state",
+      "kind": "column",
+      "metadata": {
+        "role": "status"
+      },
+      "name": "account_state",
+      "null_meaning": null,
+      "path": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "users",
+        "merchant_account",
+        "users",
+        "account_state"
+      ],
+      "sql_guidance": "Filter account_state = 'active' to restrict analysis to operational accounts.",
+      "sql_ref": "users.account_state"
+    },
+    {
+      "aliases": [
+        "onboarding channel",
+        "acquisition source"
+      ],
+      "allowed_values": [],
+      "description": "How the merchant was acquired: self_serve, sales, referral, partner, or marketplace.",
+      "grain": null,
+      "id": "column:users.acquisition_channel",
+      "kind": "column",
+      "metadata": {
+        "role": "dimension"
+      },
+      "name": "acquisition_channel",
+      "null_meaning": null,
+      "path": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "users",
+        "merchant_account",
+        "users",
+        "acquisition_channel"
+      ],
+      "sql_guidance": null,
+      "sql_ref": "users.acquisition_channel"
+    },
+    {
+      "aliases": [
+        "merchant country"
+      ],
+      "allowed_values": [],
+      "description": "Country of the merchant account; all accounts in this dataset are India.",
+      "grain": null,
+      "id": "column:users.country",
+      "kind": "column",
+      "metadata": {
+        "role": "dimension"
+      },
+      "name": "country",
+      "null_meaning": null,
+      "path": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "users",
+        "merchant_account",
+        "users",
+        "country"
+      ],
+      "sql_guidance": null,
+      "sql_ref": "users.country"
+    },
+    {
+      "aliases": [
+        "merchant tier",
+        "business type",
+        "merchant segment"
+      ],
+      "allowed_values": [],
+      "description": "Category of the merchant account: enterprise, mid_market, smb, startup, or platform.",
+      "grain": null,
+      "id": "column:users.merchant_type",
+      "kind": "column",
+      "metadata": {
+        "role": "dimension"
+      },
+      "name": "merchant_type",
+      "null_meaning": null,
+      "path": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "users",
+        "merchant_account",
+        "users",
+        "merchant_type"
+      ],
+      "sql_guidance": null,
+      "sql_ref": "users.merchant_type"
+    },
+    {
+      "aliases": [
+        "plan",
+        "pricing tier",
+        "subscription plan"
+      ],
+      "allowed_values": [],
+      "description": "Razorpay pricing plan the merchant is on: starter, growth, scale, or enterprise.",
+      "grain": null,
+      "id": "column:users.platform_plan",
+      "kind": "column",
+      "metadata": {
+        "role": "dimension"
+      },
+      "name": "platform_plan",
+      "null_meaning": null,
+      "path": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "users",
+        "merchant_account",
+        "users",
+        "platform_plan"
+      ],
+      "sql_guidance": null,
+      "sql_ref": "users.platform_plan"
+    },
+    {
+      "aliases": [
+        "registration date",
+        "onboarding date",
+        "account created at"
+      ],
+      "allowed_values": [],
+      "description": "Timestamp when the merchant or user account was created on Razorpay.",
+      "grain": null,
+      "id": "column:users.signup_time",
+      "kind": "column",
+      "metadata": {
+        "role": "time"
+      },
+      "name": "signup_time",
+      "null_meaning": null,
+      "path": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "users",
+        "merchant_account",
+        "users",
+        "signup_time"
+      ],
+      "sql_guidance": null,
+      "sql_ref": "users.signup_time"
+    },
+    {
+      "aliases": [
+        "merchant ID",
+        "user ID"
+      ],
+      "allowed_values": [],
+      "description": "Primary key for the merchant or user account; links to payments, orders, and user_attributes.",
+      "grain": null,
+      "id": "column:users.user_ref",
+      "kind": "column",
+      "metadata": {
+        "role": "identifier"
+      },
+      "name": "user_ref",
+      "null_meaning": null,
+      "path": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "users",
+        "merchant_account",
+        "users",
+        "user_ref"
+      ],
+      "sql_guidance": null,
+      "sql_ref": "users.user_ref"
+    }
+  ],
+  "run_id": "fintech_schema_graph_v2_20260609",
+  "scope": {
+    "catalog": "fintech_pod",
+    "database": "analytics",
+    "schema": "fintech_schema"
+  },
+  "version": 1
+}

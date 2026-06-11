@@ -1,0 +1,151 @@
+{
+  "catalog": "retail_pod",
+  "database": "analytics",
+  "schema": "retail_analytics",
+  "tables": [
+    {
+      "name": "addresses",
+      "path": "s3://lake/retail_analytics/sf1/addresses.parquet",
+      "format": "parquet",
+      "description": "Client mailing and residential locations used for city, state, county, ZIP, and country analysis."
+    },
+    {
+      "name": "calendar_days",
+      "path": "s3://lake/retail_analytics/sf1/calendar_days.parquet",
+      "format": "parquet",
+      "description": "Calendar reference records for daily, weekly, monthly, quarterly, yearly, and fiscal reporting."
+    },
+    {
+      "name": "client_profiles",
+      "path": "s3://lake/retail_analytics/sf1/client_profiles.parquet",
+      "format": "parquet",
+      "description": "Client demographic segments such as gender, marital status, education, credit rating, and dependents."
+    },
+    {
+      "name": "clients",
+      "path": "s3://lake/retail_analytics/sf1/clients.parquet",
+      "format": "parquet",
+      "description": "Shopper account records connecting people to addresses, demographics, purchases, returns, and tenure."
+    },
+    {
+      "name": "clock_times",
+      "path": "s3://lake/retail_analytics/sf1/clock_times.parquet",
+      "format": "parquet",
+      "description": "Time-of-day reference records used to analyze activity by hour, minute, second, shift, and meal period."
+    },
+    {
+      "name": "delivery_methods",
+      "path": "s3://lake/retail_analytics/sf1/delivery_methods.parquet",
+      "format": "parquet",
+      "description": "Shipping and delivery method reference records, including carrier, service type, and contract."
+    },
+    {
+      "name": "fulfillment_centers",
+      "path": "s3://lake/retail_analytics/sf1/fulfillment_centers.parquet",
+      "format": "parquet",
+      "description": "Fulfillment center locations used for stock storage and order shipment."
+    },
+    {
+      "name": "household_profiles",
+      "path": "s3://lake/retail_analytics/sf1/household_profiles.parquet",
+      "format": "parquet",
+      "description": "Household-level segments including income range, buying potential, dependents, and vehicle ownership."
+    },
+    {
+      "name": "income_ranges",
+      "path": "s3://lake/retail_analytics/sf1/income_ranges.parquet",
+      "format": "parquet",
+      "description": "Income range bands used to classify households into economic tiers."
+    },
+    {
+      "name": "mail_order_purchases",
+      "path": "s3://lake/retail_analytics/sf1/mail_order_purchases.parquet",
+      "format": "parquet",
+      "description": "Purchases made through the mail-order channel, including pricing, discounts, shipping, and profitability."
+    },
+    {
+      "name": "mail_order_refunds",
+      "path": "s3://lake/retail_analytics/sf1/mail_order_refunds.parquet",
+      "format": "parquet",
+      "description": "Returned purchases from the mail-order channel, including refund amounts, return reasons, and client roles."
+    },
+    {
+      "name": "mailer_pages",
+      "path": "s3://lake/retail_analytics/sf1/mailer_pages.parquet",
+      "format": "parquet",
+      "description": "Catalog or mailer page records used to analyze print-assisted shopping journeys."
+    },
+    {
+      "name": "marketing_campaigns",
+      "path": "s3://lake/retail_analytics/sf1/marketing_campaigns.parquet",
+      "format": "parquet",
+      "description": "Campaign and offer records used to analyze promoted sales across channels."
+    },
+    {
+      "name": "merchandise",
+      "path": "s3://lake/retail_analytics/sf1/merchandise.parquet",
+      "format": "parquet",
+      "description": "Product catalog records describing items sold by the business, including brand, category, color, size, and pricing."
+    },
+    {
+      "name": "online_properties",
+      "path": "s3://lake/retail_analytics/sf1/online_properties.parquet",
+      "format": "parquet",
+      "description": "Website or digital commerce property records used for online-channel analysis."
+    },
+    {
+      "name": "online_purchases",
+      "path": "s3://lake/retail_analytics/sf1/online_purchases.parquet",
+      "format": "parquet",
+      "description": "Online purchases, including pricing, discounts, shipping, and profitability details."
+    },
+    {
+      "name": "online_refunds",
+      "path": "s3://lake/retail_analytics/sf1/online_refunds.parquet",
+      "format": "parquet",
+      "description": "Returned purchases from the online channel, including refund amounts, return reasons, and client roles."
+    },
+    {
+      "name": "retail_locations",
+      "path": "s3://lake/retail_analytics/sf1/retail_locations.parquet",
+      "format": "parquet",
+      "description": "Physical store locations and operating attributes for retail-channel analysis."
+    },
+    {
+      "name": "return_reasons",
+      "path": "s3://lake/retail_analytics/sf1/return_reasons.parquet",
+      "format": "parquet",
+      "description": "Reference records describing why an item was returned."
+    },
+    {
+      "name": "site_pages",
+      "path": "s3://lake/retail_analytics/sf1/site_pages.parquet",
+      "format": "parquet",
+      "description": "Online page records used to analyze website pages, content volume, and access timing."
+    },
+    {
+      "name": "stock_levels",
+      "path": "s3://lake/retail_analytics/sf1/stock_levels.parquet",
+      "format": "parquet",
+      "description": "Product stock counts by merchandise item, fulfillment center, and calendar day."
+    },
+    {
+      "name": "store_purchases",
+      "path": "s3://lake/retail_analytics/sf1/store_purchases.parquet",
+      "format": "parquet",
+      "description": "Item-level purchases made in physical stores, including pricing, discounts, tax, and profit."
+    },
+    {
+      "name": "store_refunds",
+      "path": "s3://lake/retail_analytics/sf1/store_refunds.parquet",
+      "format": "parquet",
+      "description": "Returned purchases from physical stores, including refund amounts, reasons, and client details."
+    },
+    {
+      "name": "support_centers",
+      "path": "s3://lake/retail_analytics/sf1/support_centers.parquet",
+      "format": "parquet",
+      "description": "Customer service and support center locations used to analyze assisted commerce operations."
+    }
+  ]
+}

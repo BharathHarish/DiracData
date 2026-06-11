@@ -1,0 +1,11 @@
+[project]
+name = "diracdata-v2"
+version = "0.0.0"
+description = "Clean-room context fabric prototype for DiracData"
+requires-python = ">=3.11"
+dependencies = []
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+

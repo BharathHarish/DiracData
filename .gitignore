@@ -1,0 +1,33 @@
+.env
+.env.*
+!.env.example
+.venv/
+.diracdata/
+/data/
+/artifacts/
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.DS_Store
+
+# Local generated datasets and database files. Rebuild with scripts.
+**/parquet/
+*.duckdb
+*.db
+v2/data/fintech_schema/
+v2/data/retail_analytics/
+v2/data/tpcds/
+
+# Local UAT/model traces can be large and may include provider output.
+**/data/uat_runs/
+**/tmp_model_runs*/
+
+# Build/test packaging output.
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+dist/
+build/

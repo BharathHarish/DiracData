@@ -1,0 +1,40 @@
+{
+  "artifact_type": "learning_manifest",
+  "artifacts": {
+    "schema_ast": {
+      "local_path": "/Users/bharath/Documents/DiracData/v2/learning/artifacts/retail_analytics_v2_20260610/schema_ast.json",
+      "object_key": "v2/learning/artifacts/retail_analytics_v2_20260610/schema_ast.json"
+    },
+    "schema_graph": {
+      "local_path": "/Users/bharath/Documents/DiracData/v2/learning/artifacts/retail_analytics_v2_20260610/schema_graph.json",
+      "object_key": "v2/learning/artifacts/retail_analytics_v2_20260610/schema_graph.json"
+    },
+    "sql_library": {
+      "local_path": "/Users/bharath/Documents/DiracData/v2/learning/artifacts/retail_analytics_v2_20260610/sql_library.json",
+      "object_key": "v2/learning/artifacts/retail_analytics_v2_20260610/sql_library.json"
+    }
+  },
+  "created_at": "2026-06-10T06:13:29.162101+00:00",
+  "inputs": {
+    "data_root": "v2/data",
+    "metadata_descriptions_path": "v2/context/retail_analytics_metadata_descriptions.json",
+    "query_history_path": "v2/data/query_history/retail_analytics_query_history.csv"
+  },
+  "run_id": "retail_analytics_v2_20260610",
+  "scope": {
+    "catalog": "retail_pod",
+    "database": "analytics",
+    "schema": "retail_analytics"
+  },
+  "summary": {
+    "columns": 425,
+    "domains": 7,
+    "entities": 21,
+    "history_entries": 12,
+    "missing_columns": 366,
+    "self_play_entries": 366,
+    "sql_library_entries": 378,
+    "tables": 24
+  },
+  "version": 1
+}

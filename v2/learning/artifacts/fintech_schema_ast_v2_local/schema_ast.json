@@ -1,0 +1,2181 @@
+{
+  "artifact_type": "schema_ast",
+  "created_at": "2026-06-09T15:32:14.632206+00:00",
+  "domains": [
+    {
+      "description": "Checkout orders created before payment attempts, used for funnel analysis.",
+      "entities": [
+        {
+          "description": "A single order initiated on Razorpay before any payment attempt.",
+          "id": "entity:checkout_order",
+          "kind": "entity",
+          "name": "Checkout Order",
+          "path": [
+            "fintech_pod",
+            "analytics",
+            "fintech_schema",
+            "orders",
+            "checkout_order"
+          ],
+          "sql_library_ids": [
+            "history:orders_payment_attributes_payments:checkout_surface_order_ref:c1919716d2",
+            "history:orders_payment_attributes_payments:checkout_surface_order_ref:d106d00b37",
+            "history:orders_payments:order_ref_order_time:011f1d950f",
+            "self_play:orders.order_amount",
+            "self_play:orders.order_state",
+            "self_play:orders.user_ref"
+          ],
+          "tables": [
+            {
+              "columns": [
+                {
+                  "aliases": [
+                    "channel",
+                    "checkout channel",
+                    "integration method"
+                  ],
+                  "description": "Channel or interface used to place the order: web, mobile_sdk, api, plugin, or dashboard.",
+                  "id": "column:orders.checkout_surface",
+                  "kind": "column",
+                  "name": "checkout_surface",
+                  "null_meaning": null,
+                  "path": [
+                    "fintech_pod",
+                    "analytics",
+                    "fintech_schema",
+                    "orders",
+                    "checkout_order",
+                    "orders",
+                    "checkout_surface"
+                  ],
+                  "role": "dimension",
+                  "sql_guidance": null,
+                  "sql_library_ids": [
+                    "history:orders_payment_attributes_payments:checkout_surface_order_ref:c1919716d2",
+                    "history:orders_payment_attributes_payments:checkout_surface_order_ref:d106d00b37"
+                  ],
+                  "sql_ref": "orders.checkout_surface"
+                },
+                {
+                  "aliases": [
+                    "order value"
+                  ],
+                  "description": "Intended transaction value of the order at creation time.",
+                  "id": "column:orders.order_amount",
+                  "kind": "column",
+                  "name": "order_amount",
+                  "null_meaning": null,
+                  "path": [
+                    "fintech_pod",
+                    "analytics",
+                    "fintech_schema",
+                    "orders",
+                    "checkout_order",
+                    "orders",
+                    "order_amount"
+                  ],
+                  "role": "measure",
+                  "sql_guidance": null,
+                  "sql_library_ids": [
+                    "self_play:orders.order_amount"
+                  ],
+                  "sql_ref": "orders.order_amount"
+                },
+                {
+                  "aliases": [
+                    "order ID",
+                    "order identifier"
+                  ],
+                  "description": "Unique identifier for a checkout order; links orders to payment attempts.",
+                  "id": "column:orders.order_ref",
+                  "kind": "column",
+                  "name": "order_ref",
+                  "null_meaning": null,
+                  "path": [
+                    "fintech_pod",
+                    "analytics",
+                    "fintech_schema",
+                    "orders",
+                    "checkout_order",
+                    "orders",
+                    "order_ref"
+                  ],
+                  "role": "identifier",
+                  "sql_guidance": "Join orders to payments on order_ref to count attempts per order.",
+                  "sql_library_ids": [
+                    "history:orders_payment_attributes_payments:checkout_surface_order_ref:c1919716d2",
+                    "history:orders_payment_attributes_payments:checkout_surface_order_ref:d106d00b37",
+                    "history:orders_payments:order_ref_order_time:011f1d950f"
+                  ],
+                  "sql_ref": "orders.order_ref"
+                },
+                {
+                  "aliases": [
+                    "order status",
+                    "order lifecycle"
+                  ],
+                  "description": "Lifecycle status of the order: paid, created, cancelled, or expired.",
+                  "id": "column:orders.order_state",
+                  "kind": "column",
+                  "name": "order_state",
+                  "null_meaning": null,
+                  "path": [
+                    "fintech_pod",
+                    "analytics",
+                    "fintech_schema",
+                    "orders",
+                    "checkout_order",
+                    "orders",
+                    "order_state"
+                  ],
+                  "role": "status",
+                  "sql_guidance": "Filter order_state = 'paid' to count converted orders; use all states for funnel analysis.",
+                  "sql_library_ids": [
+                    "self_play:orders.order_state"
+                  ],
+                  "sql_ref": "orders.order_state"
+                },
+                {
+                  "aliases": [
+                    "order created at",
+                    "order date"
+                  ],
+                  "description": "Timestamp when the checkout order was created.",
+                  "id": "column:orders.order_time",
+                  "kind": "column",
+                  "name": "order_time",
+                  "null_meaning": null,
+                  "path": [
+                    "fintech_pod",
+                    "analytics",
+                    "fintech_schema",
+                    "orders",
+                    "checkout_order",
+                    "orders",
+                    "order_time"
+                  ],
+                  "role": "time",
+                  "sql_guidance": null,
+                  "sql_library_ids": [
+                    "history:orders_payments:order_ref_order_time:011f1d950f"
+                  ],
+                  "sql_ref": "orders.order_time"
+                },
+                {
+                  "aliases": [
+                    "product line",
+                    "product segment"
+                  ],
+                  "description": "Razorpay product line associated with the order: checkout, payments, payouts, subscriptions, or marketplace.",
+                  "id": "column:orders.product_area",
+                  "kind": "column",
+                  "name": "product_area",
+                  "null_meaning": null,
+                  "path": [
+                    "fintech_pod",
+                    "analytics",
+                    "fintech_schema",
+                    "orders",
+                    "checkout_order",
+                    "orders",
+                    "product_area"
+                  ],
+                  "role": "dimension",
+                  "sql_guidance": null,
+                  "sql_library_ids": [
+                    "history:orders_payments:order_ref_order_time:011f1d950f"
+                  ],
+                  "sql_ref": "orders.product_area"
+                },
+                {
+                  "aliases": [
+                    "merchant ID",
+                    "user ID"
+                  ],
+                  "description": "The user or merchant that created this order; links to users and user_attributes.",
+                  "id": "column:orders.user_ref",
+                  "kind": "column",
+                  "name": "user_ref",
+                  "null_meaning": null,
+                  "path": [
+                    "fintech_pod",
+                    "analytics",
+                    "fintech_schema",
+                    "orders",
+                    "checkout_order",
+                    "orders",
+                    "user_ref"
+                  ],
+                  "role": "join_key",
+                  "sql_guidance": null,
+                  "sql_library_ids": [
+                    "self_play:orders.user_ref"
+                  ],
+                  "sql_ref": "orders.user_ref"
+                }
+              ],
+              "description": "Every checkout order created on Razorpay before a payment attempt, with lifecycle state and product area.",
+              "grain": "One row per checkout order",
+              "id": "table:orders",
+              "kind": "table",
+              "name": "orders",
+              "path": [
+                "fintech_pod",
+                "analytics",
+                "fintech_schema",
+                "orders",
+                "checkout_order",
+                "orders"
+              ],
+              "sql_library_ids": [
+                "history:orders_payment_attributes_payments:checkout_surface_order_ref:c1919716d2",
+                "history:orders_payment_attributes_payments:checkout_surface_order_ref:d106d00b37",
+                "history:orders_payments:order_ref_order_time:011f1d950f",
+                "self_play:orders.order_amount",
+                "self_play:orders.order_state",
+                "self_play:orders.user_ref"
+              ]
+            }
+          ]
+        }
+      ],
+      "id": "domain:orders",
+      "kind": "domain",
+      "name": "Orders",
+      "path": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "orders"
+      ],
+      "sql_library_ids": [
+        "history:orders_payment_attributes_payments:checkout_surface_order_ref:c1919716d2",
+        "history:orders_payment_attributes_payments:checkout_surface_order_ref:d106d00b37",
+        "history:orders_payments:order_ref_order_time:011f1d950f",
+        "self_play:orders.order_amount",
+        "self_play:orders.order_state",
+        "self_play:orders.user_ref"
+      ]
+    },
+    {
+      "description": "Payment rail and routing attributes such as method, issuer, settlement speed, and risk.",
+      "entities": [
+        {
+          "description": "A unique payment route with method, issuer, routing partner, and risk classification.",
+          "id": "entity:payment_rail",
+          "kind": "entity",
+          "name": "Payment Rail",
+          "path": [
+            "fintech_pod",
+            "analytics",
+            "fintech_schema",
+            "payment_routing",
+            "payment_rail"
+          ],
+          "sql_library_ids": [
+            "history:orders_payment_attributes_payments:checkout_surface_order_ref:c1919716d2",
+            "history:orders_payment_attributes_payments:checkout_surface_order_ref:d106d00b37",
+            "history:payment_attributes_payments:rail_ref_rail_type:3d4fd81ccb",
+            "history:payment_attributes_payments:rail_ref_rail_type:66648d65b5",
+            "history:payment_attributes_payments_user_attributes:rail_ref_rail_type:2826a33f83",
+            "self_play:payment_attributes.issuer_name",
+            "self_play:payment_attributes.risk_band",
+            "self_play:payment_attributes.route_partner",
+            "self_play:payment_attributes.settlement_speed"
+          ],
+          "tables": [
+            {
+              "columns": [
+                {
+                  "aliases": [
+                    "auth method",
+                    "authentication type"
+                  ],
+                  "description": "Authentication method used for the payment: upi_pin, otp_or_3ds, bank_auth, or wallet_auth.",
+                  "id": "column:payment_attributes.authentication_mode",
+                  "kind": "column",
+                  "name": "authentication_mode",
+                  "null_meaning": null,
+                  "path": [
+                    "fintech_pod",
+                    "analytics",
+                    "fintech_schema",
+                    "payment_routing",
+                    "payment_rail",
+                    "payment_attributes",
+                    "authentication_mode"
+                  ],
+                  "role": "dimension",
+                  "sql_guidance": null,
+                  "sql_library_ids": [
+                    "history:orders_payment_attributes_payments:checkout_surface_order_ref:c1919716d2"
+                  ],
+                  "sql_ref": "payment_attributes.authentication_mode"
+                },
+                {
+                  "aliases": [
+                    "bank",
+                    "issuing bank",
+                    "issuer"
+                  ],
+                  "description": "Bank or financial institution associated with the payment rail, such as HDFC, ICICI, SBI, or NPCI.",
+                  "id": "column:payment_attributes.issuer_name",
+                  "kind": "column",
+                  "name": "issuer_name",
+                  "null_meaning": null,
+                  "path": [
+                    "fintech_pod",
+                    "analytics",
+                    "fintech_schema",
+                    "payment_routing",
+                    "payment_rail",
+                    "payment_attributes",
+                    "issuer_name"
+                  ],
+                  "role": "dimension",
+                  "sql_guidance": null,
+                  "sql_library_ids": [
+                    "self_play:payment_attributes.issuer_name"
+                  ],
+                  "sql_ref": "payment_attributes.issuer_name"
+                },
+                {
+                  "aliases": [
+                    "rail ID"
+                  ],
+                  "description": "Unique identifier for a payment rail; join key to the payments table.",
+                  "id": "column:payment_attributes.rail_ref",
+                  "kind": "column",
+                  "name": "rail_ref",
+                  "null_meaning": null,
+                  "path": [
+                    "fintech_pod",
+                    "analytics",
+                    "fintech_schema",
+                    "payment_routing",
+                    "payment_rail",
+                    "payment_attributes",
+                    "rail_ref"
+                  ],
+                  "role": "identifier",
+                  "sql_guidance": null,
+                  "sql_library_ids": [
+                    "history:orders_payment_attributes_payments:checkout_surface_order_ref:c1919716d2",
+                    "history:orders_payment_attributes_payments:checkout_surface_order_ref:d106d00b37",
+                    "history:payment_attributes_payments:rail_ref_rail_type:3d4fd81ccb",
+                    "history:payment_attributes_payments:rail_ref_rail_type:66648d65b5",
+                    "history:payment_attributes_payments_user_attributes:rail_ref_rail_type:2826a33f83"
+                  ],
+                  "sql_ref": "payment_attributes.rail_ref"
+                },
+                {
+                  "aliases": [
+                    "payment method",
+                    "payment network",
+                    "payment type"
+                  ],
+                  "description": "Payment method or network: UPI, CC, DC, IMPS, NEFT, NETBANKING, or WALLET.",
+                  "id": "column:payment_attributes.rail_type",
+                  "kind": "column",
+                  "name": "rail_type",
+                  "null_meaning": null,
+                  "path": [
+                    "fintech_pod",
+                    "analytics",
+                    "fintech_schema",
+                    "payment_routing",
+                    "payment_rail",
+                    "payment_attributes",
+                    "rail_type"
+                  ],
+                  "role": "dimension",
+                  "sql_guidance": "Join payments to payment_attributes on rail_ref then group by rail_type to slice TPV or PSR by payment method.",
+                  "sql_library_ids": [
+                    "history:orders_payment_attributes_payments:checkout_surface_order_ref:d106d00b37",
+                    "history:payment_attributes_payments:rail_ref_rail_type:3d4fd81ccb",
+                    "history:payment_attributes_payments:rail_ref_rail_type:66648d65b5",
+                    "history:payment_attributes_payments_user_attributes:rail_ref_rail_type:2826a33f83"
+                  ],
+                  "sql_ref": "payment_attributes.rail_type"
+                },
+                {
+                  "aliases": [
+                    "rail risk",
+                    "risk level"
+                  ],
+                  "description": "Risk classification of the payment rail: low, medium, or high.",
+                  "id": "column:payment_attributes.risk_band",
+                  "kind": "column",
+                  "name": "risk_band",
+                  "null_meaning": null,
+                  "path": [
+                    "fintech_pod",
+                    "analytics",
+                    "fintech_schema",
+                    "payment_routing",
+                    "payment_rail",
+                    "payment_attributes",
+                    "risk_band"
+                  ],
+                  "role": "dimension",
+                  "sql_guidance": null,
+                  "sql_library_ids": [
+                    "self_play:payment_attributes.risk_band"
+                  ],
+                  "sql_ref": "payment_attributes.risk_band"
+                },
+                {
+                  "aliases": [
+                    "routing partner",
+                    "processor"
+                  ],
+                  "description": "Razorpay internal routing partner used to process the payment.",
+                  "id": "column:payment_attributes.route_partner",
+                  "kind": "column",
+                  "name": "route_partner",
+                  "null_meaning": null,
+                  "path": [
+                    "fintech_pod",
+                    "analytics",
+                    "fintech_schema",
+                    "payment_routing",
+                    "payment_rail",
+                    "payment_attributes",
+                    "route_partner"
+                  ],
+                  "role": "dimension",
+                  "sql_guidance": null,
+                  "sql_library_ids": [
+                    "self_play:payment_attributes.route_partner"
+                  ],
+                  "sql_ref": "payment_attributes.route_partner"
+                },
+                {
+                  "aliases": [
+                    "settlement timeline",
+                    "settlement type"
+                  ],
+                  "description": "Settlement timeline for this rail: instant, same_day, or t_plus_1.",
+                  "id": "column:payment_attributes.settlement_speed",
+                  "kind": "column",
+                  "name": "settlement_speed",
+                  "null_meaning": null,
+                  "path": [
+                    "fintech_pod",
+                    "analytics",
+                    "fintech_schema",
+                    "payment_routing",
+                    "payment_rail",
+                    "payment_attributes",
+                    "settlement_speed"
+                  ],
+                  "role": "dimension",
+                  "sql_guidance": null,
+                  "sql_library_ids": [
+                    "self_play:payment_attributes.settlement_speed"
+                  ],
+                  "sql_ref": "payment_attributes.settlement_speed"
+                }
+              ],
+              "description": "Attributes of each payment rail including type, issuer, routing partner, settlement speed, authentication mode, and risk band.",
+              "grain": "One row per payment rail",
+              "id": "table:payment_attributes",
+              "kind": "table",
+              "name": "payment_attributes",
+              "path": [
+                "fintech_pod",
+                "analytics",
+                "fintech_schema",
+                "payment_routing",
+                "payment_rail",
+                "payment_attributes"
+              ],
+              "sql_library_ids": [
+                "history:orders_payment_attributes_payments:checkout_surface_order_ref:c1919716d2",
+                "history:orders_payment_attributes_payments:checkout_surface_order_ref:d106d00b37",
+                "history:payment_attributes_payments:rail_ref_rail_type:3d4fd81ccb",
+                "history:payment_attributes_payments:rail_ref_rail_type:66648d65b5",
+                "history:payment_attributes_payments_user_attributes:rail_ref_rail_type:2826a33f83",
+                "self_play:payment_attributes.issuer_name",
+                "self_play:payment_attributes.risk_band",
+                "self_play:payment_attributes.route_partner",
+                "self_play:payment_attributes.settlement_speed"
+              ]
+            }
+          ]
+        }
+      ],
+      "id": "domain:payment_routing",
+      "kind": "domain",
+      "name": "Payment Routing",
+      "path": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "payment_routing"
+      ],
+      "sql_library_ids": [
+        "history:orders_payment_attributes_payments:checkout_surface_order_ref:c1919716d2",
+        "history:orders_payment_attributes_payments:checkout_surface_order_ref:d106d00b37",
+        "history:payment_attributes_payments:rail_ref_rail_type:3d4fd81ccb",
+        "history:payment_attributes_payments:rail_ref_rail_type:66648d65b5",
+        "history:payment_attributes_payments_user_attributes:rail_ref_rail_type:2826a33f83",
+        "self_play:payment_attributes.issuer_name",
+        "self_play:payment_attributes.risk_band",
+        "self_play:payment_attributes.route_partner",
+        "self_play:payment_attributes.settlement_speed"
+      ]
+    },
+    {
+      "description": "Payment transaction attempts and their outcomes, the core of all payment metrics.",
+      "entities": [
+        {
+          "description": "A single payment transaction attempt with amount, status, and timestamp.",
+          "id": "entity:payment_attempt",
+          "kind": "entity",
+          "name": "Payment Attempt",
+          "path": [
+            "fintech_pod",
+            "analytics",
+            "fintech_schema",
+            "payments",
+            "payment_attempt"
+          ],
+          "sql_library_ids": [
+            "history:orders_payment_attributes_payments:checkout_surface_order_ref:c1919716d2",
+            "history:orders_payment_attributes_payments:checkout_surface_order_ref:d106d00b37",
+            "history:orders_payments:order_ref_order_time:011f1d950f",
+            "history:payment_attributes_payments:rail_ref_rail_type:3d4fd81ccb",
+            "history:payment_attributes_payments:rail_ref_rail_type:66648d65b5",
+            "history:payment_attributes_payments_user_attributes:rail_ref_rail_type:2826a33f83",
+            "history:payments_user_attributes:payment_status_payment_time:2fd098276d",
+            "history:payments_user_attributes_users:amount_payment_status:67182c2c5f",
+            "history:payments_user_attributes_users:payment_status_payment_time:52c4fe9da0",
+            "history:payments_user_attributes_users:payment_status_user_ref:d642f3c490",
+            "history:payments_users:payment_status_payment_time:2ab114a148"
+          ],
+          "tables": [
+            {
+              "columns": [
+                {
+                  "aliases": [
+                    "payment amount",
+                    "transaction amount",
+                    "TPV"
+                  ],
+                  "description": "Transaction amount for this payment attempt; sum over successful payments for TPV.",
+                  "id": "column:payments.amount",
+                  "kind": "column",
+                  "name": "amount",
+                  "null_meaning": null,
+                  "path": [
+                    "fintech_pod",
+                    "analytics",
+                    "fintech_schema",
+                    "payments",
+                    "payment_attempt",
+                    "payments",
+                    "amount"
+                  ],
+                  "role": "measure",
+                  "sql_guidance": "Sum amount WHERE payment_status = 'SUCCESS' to calculate TPV; do not filter by status for attempted volume.",
+                  "sql_library_ids": [
+                    "history:orders_payment_attributes_payments:checkout_surface_order_ref:c1919716d2",
+                    "history:orders_payment_attributes_payments:checkout_surface_order_ref:d106d00b37",
+                    "history:payment_attributes_payments:rail_ref_rail_type:66648d65b5",
+                    "history:payment_attributes_payments_user_attributes:rail_ref_rail_type:2826a33f83",
+                    "history:payments_user_attributes_users:amount_payment_status:67182c2c5f"
+                  ],
+                  "sql_ref": "payments.amount"
+                },
+                {
+                  "aliases": [
+                    "order ID"
+                  ],
+                  "description": "The order this payment attempt belongs to; links payments to the orders table.",
+                  "id": "column:payments.order_ref",
+                  "kind": "column",
+                  "name": "order_ref",
+                  "null_meaning": null,
+                  "path": [
+                    "fintech_pod",
+                    "analytics",
+                    "fintech_schema",
+                    "payments",
+                    "payment_attempt",
+                    "payments",
+                    "order_ref"
+                  ],
+                  "role": "join_key",
+                  "sql_guidance": null,
+                  "sql_library_ids": [
+                    "history:orders_payment_attributes_payments:checkout_surface_order_ref:c1919716d2",
+                    "history:orders_payment_attributes_payments:checkout_surface_order_ref:d106d00b37",
+                    "history:orders_payments:order_ref_order_time:011f1d950f"
+                  ],
+                  "sql_ref": "payments.order_ref"
+                },
+                {
+                  "aliases": [
+                    "payment ID",
+                    "transaction ID"
+                  ],
+                  "description": "Unique identifier for a single payment attempt.",
+                  "id": "column:payments.payment_ref",
+                  "kind": "column",
+                  "name": "payment_ref",
+                  "null_meaning": null,
+                  "path": [
+                    "fintech_pod",
+                    "analytics",
+                    "fintech_schema",
+                    "payments",
+                    "payment_attempt",
+                    "payments",
+                    "payment_ref"
+                  ],
+                  "role": "identifier",
+                  "sql_guidance": "Count distinct payment_ref for total payment attempts (PSR denominator).",
+                  "sql_library_ids": [
+                    "history:orders_payments:order_ref_order_time:011f1d950f"
+                  ],
+                  "sql_ref": "payments.payment_ref"
+                },
+                {
+                  "aliases": [
+                    "transaction status",
+                    "payment outcome"
+                  ],
+                  "description": "Outcome of the payment attempt: SUCCESS, FAILED, AUTHORIZED, or REFUNDED.",
+                  "id": "column:payments.payment_status",
+                  "kind": "column",
+                  "name": "payment_status",
+                  "null_meaning": null,
+                  "path": [
+                    "fintech_pod",
+                    "analytics",
+                    "fintech_schema",
+                    "payments",
+                    "payment_attempt",
+                    "payments",
+                    "payment_status"
+                  ],
+                  "role": "status",
+                  "sql_guidance": "PSR = COUNT(*) FILTER (payment_status='SUCCESS') / COUNT(*) across all statuses; do not pre-filter for PSR denominator.",
+                  "sql_library_ids": [
+                    "history:orders_payment_attributes_payments:checkout_surface_order_ref:c1919716d2",
+                    "history:orders_payment_attributes_payments:checkout_surface_order_ref:d106d00b37",
+                    "history:orders_payments:order_ref_order_time:011f1d950f",
+                    "history:payment_attributes_payments:rail_ref_rail_type:3d4fd81ccb",
+                    "history:payment_attributes_payments:rail_ref_rail_type:66648d65b5",
+                    "history:payment_attributes_payments_user_attributes:rail_ref_rail_type:2826a33f83",
+                    "history:payments_user_attributes:payment_status_payment_time:2fd098276d",
+                    "history:payments_user_attributes_users:amount_payment_status:67182c2c5f",
+                    "history:payments_user_attributes_users:payment_status_payment_time:52c4fe9da0",
+                    "history:payments_user_attributes_users:payment_status_user_ref:d642f3c490",
+                    "history:payments_users:payment_status_payment_time:2ab114a148"
+                  ],
+                  "sql_ref": "payments.payment_status"
+                },
+                {
+                  "aliases": [
+                    "transaction time",
+                    "payment date",
+                    "transaction date"
+                  ],
+                  "description": "Timestamp when the payment attempt occurred; primary time dimension for all payment analytics.",
+                  "id": "column:payments.payment_time",
+                  "kind": "column",
+                  "name": "payment_time",
+                  "null_meaning": null,
+                  "path": [
+                    "fintech_pod",
+                    "analytics",
+                    "fintech_schema",
+                    "payments",
+                    "payment_attempt",
+                    "payments",
+                    "payment_time"
+                  ],
+                  "role": "time",
+                  "sql_guidance": "Truncate to month for calendar-month grouping; use date part for DAU; data spans Dec 2025 to Jun 2026.",
+                  "sql_library_ids": [
+                    "history:orders_payment_attributes_payments:checkout_surface_order_ref:c1919716d2",
+                    "history:payment_attributes_payments:rail_ref_rail_type:3d4fd81ccb",
+                    "history:payment_attributes_payments:rail_ref_rail_type:66648d65b5",
+                    "history:payments_user_attributes:payment_status_payment_time:2fd098276d",
+                    "history:payments_user_attributes_users:payment_status_payment_time:52c4fe9da0",
+                    "history:payments_users:payment_status_payment_time:2ab114a148"
+                  ],
+                  "sql_ref": "payments.payment_time"
+                },
+                {
+                  "aliases": [
+                    "rail ID",
+                    "payment method ID"
+                  ],
+                  "description": "Payment rail used for this attempt; join to payment_attributes to get rail type and other routing details.",
+                  "id": "column:payments.rail_ref",
+                  "kind": "column",
+                  "name": "rail_ref",
+                  "null_meaning": null,
+                  "path": [
+                    "fintech_pod",
+                    "analytics",
+                    "fintech_schema",
+                    "payments",
+                    "payment_attempt",
+                    "payments",
+                    "rail_ref"
+                  ],
+                  "role": "join_key",
+                  "sql_guidance": "Join payments to payment_attributes on rail_ref to slice metrics by rail_type.",
+                  "sql_library_ids": [
+                    "history:orders_payment_attributes_payments:checkout_surface_order_ref:c1919716d2",
+                    "history:orders_payment_attributes_payments:checkout_surface_order_ref:d106d00b37",
+                    "history:payment_attributes_payments:rail_ref_rail_type:3d4fd81ccb",
+                    "history:payment_attributes_payments:rail_ref_rail_type:66648d65b5",
+                    "history:payment_attributes_payments_user_attributes:rail_ref_rail_type:2826a33f83"
+                  ],
+                  "sql_ref": "payments.rail_ref"
+                },
+                {
+                  "aliases": [
+                    "merchant ID",
+                    "user ID"
+                  ],
+                  "description": "The user or merchant that made this payment attempt; used for all user-level metrics.",
+                  "id": "column:payments.user_ref",
+                  "kind": "column",
+                  "name": "user_ref",
+                  "null_meaning": null,
+                  "path": [
+                    "fintech_pod",
+                    "analytics",
+                    "fintech_schema",
+                    "payments",
+                    "payment_attempt",
+                    "payments",
+                    "user_ref"
+                  ],
+                  "role": "join_key",
+                  "sql_guidance": "Filter payment_status = 'SUCCESS' before counting distinct user_ref for active user metrics.",
+                  "sql_library_ids": [
+                    "history:orders_payment_attributes_payments:checkout_surface_order_ref:c1919716d2",
+                    "history:payment_attributes_payments_user_attributes:rail_ref_rail_type:2826a33f83",
+                    "history:payments_user_attributes:payment_status_payment_time:2fd098276d",
+                    "history:payments_user_attributes_users:amount_payment_status:67182c2c5f",
+                    "history:payments_user_attributes_users:payment_status_payment_time:52c4fe9da0",
+                    "history:payments_user_attributes_users:payment_status_user_ref:d642f3c490",
+                    "history:payments_users:payment_status_payment_time:2ab114a148"
+                  ],
+                  "sql_ref": "payments.user_ref"
+                }
+              ],
+              "description": "Every payment attempt on Razorpay with amount, status, rail, order, user, and timestamp.",
+              "grain": "One row per payment attempt",
+              "id": "table:payments",
+              "kind": "table",
+              "name": "payments",
+              "path": [
+                "fintech_pod",
+                "analytics",
+                "fintech_schema",
+                "payments",
+                "payment_attempt",
+                "payments"
+              ],
+              "sql_library_ids": [
+                "history:orders_payment_attributes_payments:checkout_surface_order_ref:c1919716d2",
+                "history:orders_payment_attributes_payments:checkout_surface_order_ref:d106d00b37",
+                "history:orders_payments:order_ref_order_time:011f1d950f",
+                "history:payment_attributes_payments:rail_ref_rail_type:3d4fd81ccb",
+                "history:payment_attributes_payments:rail_ref_rail_type:66648d65b5",
+                "history:payment_attributes_payments_user_attributes:rail_ref_rail_type:2826a33f83",
+                "history:payments_user_attributes:payment_status_payment_time:2fd098276d",
+                "history:payments_user_attributes_users:amount_payment_status:67182c2c5f",
+                "history:payments_user_attributes_users:payment_status_payment_time:52c4fe9da0",
+                "history:payments_user_attributes_users:payment_status_user_ref:d642f3c490",
+                "history:payments_users:payment_status_payment_time:2ab114a148"
+              ]
+            }
+          ]
+        }
+      ],
+      "id": "domain:payments",
+      "kind": "domain",
+      "name": "Payments",
+      "path": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "payments"
+      ],
+      "sql_library_ids": [
+        "history:orders_payment_attributes_payments:checkout_surface_order_ref:c1919716d2",
+        "history:orders_payment_attributes_payments:checkout_surface_order_ref:d106d00b37",
+        "history:orders_payments:order_ref_order_time:011f1d950f",
+        "history:payment_attributes_payments:rail_ref_rail_type:3d4fd81ccb",
+        "history:payment_attributes_payments:rail_ref_rail_type:66648d65b5",
+        "history:payment_attributes_payments_user_attributes:rail_ref_rail_type:2826a33f83",
+        "history:payments_user_attributes:payment_status_payment_time:2fd098276d",
+        "history:payments_user_attributes_users:amount_payment_status:67182c2c5f",
+        "history:payments_user_attributes_users:payment_status_payment_time:52c4fe9da0",
+        "history:payments_user_attributes_users:payment_status_user_ref:d642f3c490",
+        "history:payments_users:payment_status_payment_time:2ab114a148"
+      ]
+    },
+    {
+      "description": "Demographic, geographic, KYC, and risk attributes for each user or merchant.",
+      "entities": [
+        {
+          "description": "Demographic and risk profile attributes for a Razorpay user or merchant.",
+          "id": "entity:user_profile",
+          "kind": "entity",
+          "name": "User Profile",
+          "path": [
+            "fintech_pod",
+            "analytics",
+            "fintech_schema",
+            "user_attributes",
+            "user_profile"
+          ],
+          "sql_library_ids": [
+            "history:orders_payment_attributes_payments:checkout_surface_order_ref:c1919716d2",
+            "history:payment_attributes_payments_user_attributes:rail_ref_rail_type:2826a33f83",
+            "history:payments_user_attributes:payment_status_payment_time:2fd098276d",
+            "history:payments_user_attributes_users:amount_payment_status:67182c2c5f",
+            "history:payments_user_attributes_users:payment_status_payment_time:52c4fe9da0",
+            "history:payments_user_attributes_users:payment_status_user_ref:d642f3c490",
+            "self_play:user_attributes.age",
+            "self_play:user_attributes.city"
+          ],
+          "tables": [
+            {
+              "columns": [
+                {
+                  "aliases": [
+                    "user age"
+                  ],
+                  "description": "Age of the user in years, ranging from 19 to 68.",
+                  "id": "column:user_attributes.age",
+                  "kind": "column",
+                  "name": "age",
+                  "null_meaning": null,
+                  "path": [
+                    "fintech_pod",
+                    "analytics",
+                    "fintech_schema",
+                    "user_attributes",
+                    "user_profile",
+                    "user_attributes",
+                    "age"
+                  ],
+                  "role": "dimension",
+                  "sql_guidance": null,
+                  "sql_library_ids": [
+                    "self_play:user_attributes.age"
+                  ],
+                  "sql_ref": "user_attributes.age"
+                },
+                {
+                  "aliases": [
+                    "user city",
+                    "location city"
+                  ],
+                  "description": "City where the user is located, covering major Indian cities.",
+                  "id": "column:user_attributes.city",
+                  "kind": "column",
+                  "name": "city",
+                  "null_meaning": null,
+                  "path": [
+                    "fintech_pod",
+                    "analytics",
+                    "fintech_schema",
+                    "user_attributes",
+                    "user_profile",
+                    "user_attributes",
+                    "city"
+                  ],
+                  "role": "dimension",
+                  "sql_guidance": null,
+                  "sql_library_ids": [
+                    "self_play:user_attributes.city"
+                  ],
+                  "sql_ref": "user_attributes.city"
+                },
+                {
+                  "aliases": [
+                    "user gender"
+                  ],
+                  "description": "Self-reported gender of the user: M, F, or Other.",
+                  "id": "column:user_attributes.gender",
+                  "kind": "column",
+                  "name": "gender",
+                  "null_meaning": null,
+                  "path": [
+                    "fintech_pod",
+                    "analytics",
+                    "fintech_schema",
+                    "user_attributes",
+                    "user_profile",
+                    "user_attributes",
+                    "gender"
+                  ],
+                  "role": "dimension",
+                  "sql_guidance": null,
+                  "sql_library_ids": [
+                    "history:payments_user_attributes_users:amount_payment_status:67182c2c5f"
+                  ],
+                  "sql_ref": "user_attributes.gender"
+                },
+                {
+                  "aliases": [
+                    "KYC",
+                    "verification status",
+                    "know your customer"
+                  ],
+                  "description": "KYC verification status of the user: verified, pending, or rejected.",
+                  "id": "column:user_attributes.kyc_status",
+                  "kind": "column",
+                  "name": "kyc_status",
+                  "null_meaning": null,
+                  "path": [
+                    "fintech_pod",
+                    "analytics",
+                    "fintech_schema",
+                    "user_attributes",
+                    "user_profile",
+                    "user_attributes",
+                    "kyc_status"
+                  ],
+                  "role": "status",
+                  "sql_guidance": null,
+                  "sql_library_ids": [
+                    "history:orders_payment_attributes_payments:checkout_surface_order_ref:c1919716d2",
+                    "history:payments_user_attributes_users:payment_status_user_ref:d642f3c490"
+                  ],
+                  "sql_ref": "user_attributes.kyc_status"
+                },
+                {
+                  "aliases": [
+                    "user risk",
+                    "risk level",
+                    "risk segment"
+                  ],
+                  "description": "Risk tier assigned to the user for transaction monitoring: low, medium, or high.",
+                  "id": "column:user_attributes.risk_band",
+                  "kind": "column",
+                  "name": "risk_band",
+                  "null_meaning": null,
+                  "path": [
+                    "fintech_pod",
+                    "analytics",
+                    "fintech_schema",
+                    "user_attributes",
+                    "user_profile",
+                    "user_attributes",
+                    "risk_band"
+                  ],
+                  "role": "dimension",
+                  "sql_guidance": null,
+                  "sql_library_ids": [
+                    "history:orders_payment_attributes_payments:checkout_surface_order_ref:c1919716d2",
+                    "history:payment_attributes_payments_user_attributes:rail_ref_rail_type:2826a33f83",
+                    "history:payments_user_attributes:payment_status_payment_time:2fd098276d"
+                  ],
+                  "sql_ref": "user_attributes.risk_band"
+                },
+                {
+                  "aliases": [
+                    "user state",
+                    "region",
+                    "geography"
+                  ],
+                  "description": "Indian state where the user is located; primary geographic dimension for state-level analysis.",
+                  "id": "column:user_attributes.state",
+                  "kind": "column",
+                  "name": "state",
+                  "null_meaning": null,
+                  "path": [
+                    "fintech_pod",
+                    "analytics",
+                    "fintech_schema",
+                    "user_attributes",
+                    "user_profile",
+                    "user_attributes",
+                    "state"
+                  ],
+                  "role": "dimension",
+                  "sql_guidance": "Use state for geographic slicing; combine with city for finer granularity.",
+                  "sql_library_ids": [
+                    "history:orders_payment_attributes_payments:checkout_surface_order_ref:c1919716d2",
+                    "history:payments_user_attributes_users:payment_status_payment_time:52c4fe9da0",
+                    "history:payments_user_attributes_users:payment_status_user_ref:d642f3c490"
+                  ],
+                  "sql_ref": "user_attributes.state"
+                },
+                {
+                  "aliases": [
+                    "merchant ID",
+                    "user ID"
+                  ],
+                  "description": "Unique identifier for the user; join key to payments, orders, and users tables.",
+                  "id": "column:user_attributes.user_ref",
+                  "kind": "column",
+                  "name": "user_ref",
+                  "null_meaning": null,
+                  "path": [
+                    "fintech_pod",
+                    "analytics",
+                    "fintech_schema",
+                    "user_attributes",
+                    "user_profile",
+                    "user_attributes",
+                    "user_ref"
+                  ],
+                  "role": "identifier",
+                  "sql_guidance": null,
+                  "sql_library_ids": [
+                    "history:orders_payment_attributes_payments:checkout_surface_order_ref:c1919716d2",
+                    "history:payment_attributes_payments_user_attributes:rail_ref_rail_type:2826a33f83",
+                    "history:payments_user_attributes:payment_status_payment_time:2fd098276d",
+                    "history:payments_user_attributes_users:amount_payment_status:67182c2c5f",
+                    "history:payments_user_attributes_users:payment_status_payment_time:52c4fe9da0",
+                    "history:payments_user_attributes_users:payment_status_user_ref:d642f3c490"
+                  ],
+                  "sql_ref": "user_attributes.user_ref"
+                }
+              ],
+              "description": "Demographic, geographic, KYC, and risk attributes for each Razorpay user or merchant.",
+              "grain": "One row per user",
+              "id": "table:user_attributes",
+              "kind": "table",
+              "name": "user_attributes",
+              "path": [
+                "fintech_pod",
+                "analytics",
+                "fintech_schema",
+                "user_attributes",
+                "user_profile",
+                "user_attributes"
+              ],
+              "sql_library_ids": [
+                "history:orders_payment_attributes_payments:checkout_surface_order_ref:c1919716d2",
+                "history:payment_attributes_payments_user_attributes:rail_ref_rail_type:2826a33f83",
+                "history:payments_user_attributes:payment_status_payment_time:2fd098276d",
+                "history:payments_user_attributes_users:amount_payment_status:67182c2c5f",
+                "history:payments_user_attributes_users:payment_status_payment_time:52c4fe9da0",
+                "history:payments_user_attributes_users:payment_status_user_ref:d642f3c490",
+                "self_play:user_attributes.age",
+                "self_play:user_attributes.city"
+              ]
+            }
+          ]
+        }
+      ],
+      "id": "domain:user_attributes",
+      "kind": "domain",
+      "name": "User Demographics & Risk",
+      "path": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "user_attributes"
+      ],
+      "sql_library_ids": [
+        "history:orders_payment_attributes_payments:checkout_surface_order_ref:c1919716d2",
+        "history:payment_attributes_payments_user_attributes:rail_ref_rail_type:2826a33f83",
+        "history:payments_user_attributes:payment_status_payment_time:2fd098276d",
+        "history:payments_user_attributes_users:amount_payment_status:67182c2c5f",
+        "history:payments_user_attributes_users:payment_status_payment_time:52c4fe9da0",
+        "history:payments_user_attributes_users:payment_status_user_ref:d642f3c490",
+        "self_play:user_attributes.age",
+        "self_play:user_attributes.city"
+      ]
+    },
+    {
+      "description": "Merchant account profiles including type, plan, acquisition channel, and signup date.",
+      "entities": [
+        {
+          "description": "A Razorpay merchant or user account with plan, type, and acquisition details.",
+          "id": "entity:merchant_account",
+          "kind": "entity",
+          "name": "Merchant Account",
+          "path": [
+            "fintech_pod",
+            "analytics",
+            "fintech_schema",
+            "users",
+            "merchant_account"
+          ],
+          "sql_library_ids": [
+            "history:orders_payment_attributes_payments:checkout_surface_order_ref:c1919716d2",
+            "history:payments_user_attributes_users:amount_payment_status:67182c2c5f",
+            "history:payments_user_attributes_users:payment_status_payment_time:52c4fe9da0",
+            "history:payments_user_attributes_users:payment_status_user_ref:d642f3c490",
+            "history:payments_users:payment_status_payment_time:2ab114a148",
+            "self_play:users.acquisition_channel",
+            "self_play:users.country",
+            "self_play:users.merchant_type",
+            "self_play:users.signup_time"
+          ],
+          "tables": [
+            {
+              "columns": [
+                {
+                  "aliases": [
+                    "account status",
+                    "merchant status"
+                  ],
+                  "description": "Current operational status of the merchant account: active, paused, restricted, or closed.",
+                  "id": "column:users.account_state",
+                  "kind": "column",
+                  "name": "account_state",
+                  "null_meaning": null,
+                  "path": [
+                    "fintech_pod",
+                    "analytics",
+                    "fintech_schema",
+                    "users",
+                    "merchant_account",
+                    "users",
+                    "account_state"
+                  ],
+                  "role": "status",
+                  "sql_guidance": "Filter account_state = 'active' to restrict analysis to operational accounts.",
+                  "sql_library_ids": [
+                    "history:orders_payment_attributes_payments:checkout_surface_order_ref:c1919716d2"
+                  ],
+                  "sql_ref": "users.account_state"
+                },
+                {
+                  "aliases": [
+                    "onboarding channel",
+                    "acquisition source"
+                  ],
+                  "description": "How the merchant was acquired: self_serve, sales, referral, partner, or marketplace.",
+                  "id": "column:users.acquisition_channel",
+                  "kind": "column",
+                  "name": "acquisition_channel",
+                  "null_meaning": null,
+                  "path": [
+                    "fintech_pod",
+                    "analytics",
+                    "fintech_schema",
+                    "users",
+                    "merchant_account",
+                    "users",
+                    "acquisition_channel"
+                  ],
+                  "role": "dimension",
+                  "sql_guidance": null,
+                  "sql_library_ids": [
+                    "self_play:users.acquisition_channel"
+                  ],
+                  "sql_ref": "users.acquisition_channel"
+                },
+                {
+                  "aliases": [
+                    "merchant country"
+                  ],
+                  "description": "Country of the merchant account; all accounts in this dataset are India.",
+                  "id": "column:users.country",
+                  "kind": "column",
+                  "name": "country",
+                  "null_meaning": null,
+                  "path": [
+                    "fintech_pod",
+                    "analytics",
+                    "fintech_schema",
+                    "users",
+                    "merchant_account",
+                    "users",
+                    "country"
+                  ],
+                  "role": "dimension",
+                  "sql_guidance": null,
+                  "sql_library_ids": [
+                    "self_play:users.country"
+                  ],
+                  "sql_ref": "users.country"
+                },
+                {
+                  "aliases": [
+                    "merchant tier",
+                    "business type",
+                    "merchant segment"
+                  ],
+                  "description": "Category of the merchant account: enterprise, mid_market, smb, startup, or platform.",
+                  "id": "column:users.merchant_type",
+                  "kind": "column",
+                  "name": "merchant_type",
+                  "null_meaning": null,
+                  "path": [
+                    "fintech_pod",
+                    "analytics",
+                    "fintech_schema",
+                    "users",
+                    "merchant_account",
+                    "users",
+                    "merchant_type"
+                  ],
+                  "role": "dimension",
+                  "sql_guidance": null,
+                  "sql_library_ids": [
+                    "self_play:users.merchant_type"
+                  ],
+                  "sql_ref": "users.merchant_type"
+                },
+                {
+                  "aliases": [
+                    "plan",
+                    "pricing tier",
+                    "subscription plan"
+                  ],
+                  "description": "Razorpay pricing plan the merchant is on: starter, growth, scale, or enterprise.",
+                  "id": "column:users.platform_plan",
+                  "kind": "column",
+                  "name": "platform_plan",
+                  "null_meaning": null,
+                  "path": [
+                    "fintech_pod",
+                    "analytics",
+                    "fintech_schema",
+                    "users",
+                    "merchant_account",
+                    "users",
+                    "platform_plan"
+                  ],
+                  "role": "dimension",
+                  "sql_guidance": null,
+                  "sql_library_ids": [
+                    "history:payments_user_attributes_users:amount_payment_status:67182c2c5f"
+                  ],
+                  "sql_ref": "users.platform_plan"
+                },
+                {
+                  "aliases": [
+                    "registration date",
+                    "onboarding date",
+                    "account created at"
+                  ],
+                  "description": "Timestamp when the merchant or user account was created on Razorpay.",
+                  "id": "column:users.signup_time",
+                  "kind": "column",
+                  "name": "signup_time",
+                  "null_meaning": null,
+                  "path": [
+                    "fintech_pod",
+                    "analytics",
+                    "fintech_schema",
+                    "users",
+                    "merchant_account",
+                    "users",
+                    "signup_time"
+                  ],
+                  "role": "time",
+                  "sql_guidance": null,
+                  "sql_library_ids": [
+                    "self_play:users.signup_time"
+                  ],
+                  "sql_ref": "users.signup_time"
+                },
+                {
+                  "aliases": [
+                    "merchant ID",
+                    "user ID"
+                  ],
+                  "description": "Primary key for the merchant or user account; links to payments, orders, and user_attributes.",
+                  "id": "column:users.user_ref",
+                  "kind": "column",
+                  "name": "user_ref",
+                  "null_meaning": null,
+                  "path": [
+                    "fintech_pod",
+                    "analytics",
+                    "fintech_schema",
+                    "users",
+                    "merchant_account",
+                    "users",
+                    "user_ref"
+                  ],
+                  "role": "identifier",
+                  "sql_guidance": null,
+                  "sql_library_ids": [
+                    "history:orders_payment_attributes_payments:checkout_surface_order_ref:c1919716d2",
+                    "history:payments_user_attributes_users:amount_payment_status:67182c2c5f",
+                    "history:payments_user_attributes_users:payment_status_payment_time:52c4fe9da0",
+                    "history:payments_user_attributes_users:payment_status_user_ref:d642f3c490",
+                    "history:payments_users:payment_status_payment_time:2ab114a148"
+                  ],
+                  "sql_ref": "users.user_ref"
+                }
+              ],
+              "description": "Razorpay merchant and user accounts with signup date, merchant type, acquisition channel, plan, and account state.",
+              "grain": "One row per user or merchant account",
+              "id": "table:users",
+              "kind": "table",
+              "name": "users",
+              "path": [
+                "fintech_pod",
+                "analytics",
+                "fintech_schema",
+                "users",
+                "merchant_account",
+                "users"
+              ],
+              "sql_library_ids": [
+                "history:orders_payment_attributes_payments:checkout_surface_order_ref:c1919716d2",
+                "history:payments_user_attributes_users:amount_payment_status:67182c2c5f",
+                "history:payments_user_attributes_users:payment_status_payment_time:52c4fe9da0",
+                "history:payments_user_attributes_users:payment_status_user_ref:d642f3c490",
+                "history:payments_users:payment_status_payment_time:2ab114a148",
+                "self_play:users.acquisition_channel",
+                "self_play:users.country",
+                "self_play:users.merchant_type",
+                "self_play:users.signup_time"
+              ]
+            }
+          ]
+        }
+      ],
+      "id": "domain:users",
+      "kind": "domain",
+      "name": "Users & Merchants",
+      "path": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "users"
+      ],
+      "sql_library_ids": [
+        "history:orders_payment_attributes_payments:checkout_surface_order_ref:c1919716d2",
+        "history:payments_user_attributes_users:amount_payment_status:67182c2c5f",
+        "history:payments_user_attributes_users:payment_status_payment_time:52c4fe9da0",
+        "history:payments_user_attributes_users:payment_status_user_ref:d642f3c490",
+        "history:payments_users:payment_status_payment_time:2ab114a148",
+        "self_play:users.acquisition_channel",
+        "self_play:users.country",
+        "self_play:users.merchant_type",
+        "self_play:users.signup_time"
+      ]
+    }
+  ],
+  "indexes": {
+    "by_kind": {
+      "column": [
+        "column:orders.checkout_surface",
+        "column:orders.order_amount",
+        "column:orders.order_ref",
+        "column:orders.order_state",
+        "column:orders.order_time",
+        "column:orders.product_area",
+        "column:orders.user_ref",
+        "column:payment_attributes.authentication_mode",
+        "column:payment_attributes.issuer_name",
+        "column:payment_attributes.rail_ref",
+        "column:payment_attributes.rail_type",
+        "column:payment_attributes.risk_band",
+        "column:payment_attributes.route_partner",
+        "column:payment_attributes.settlement_speed",
+        "column:payments.amount",
+        "column:payments.order_ref",
+        "column:payments.payment_ref",
+        "column:payments.payment_status",
+        "column:payments.payment_time",
+        "column:payments.rail_ref",
+        "column:payments.user_ref",
+        "column:user_attributes.age",
+        "column:user_attributes.city",
+        "column:user_attributes.gender",
+        "column:user_attributes.kyc_status",
+        "column:user_attributes.risk_band",
+        "column:user_attributes.state",
+        "column:user_attributes.user_ref",
+        "column:users.account_state",
+        "column:users.acquisition_channel",
+        "column:users.country",
+        "column:users.merchant_type",
+        "column:users.platform_plan",
+        "column:users.signup_time",
+        "column:users.user_ref"
+      ],
+      "domain": [
+        "domain:orders",
+        "domain:payment_routing",
+        "domain:payments",
+        "domain:user_attributes",
+        "domain:users"
+      ],
+      "entity": [
+        "entity:checkout_order",
+        "entity:merchant_account",
+        "entity:payment_attempt",
+        "entity:payment_rail",
+        "entity:user_profile"
+      ],
+      "table": [
+        "table:orders",
+        "table:payment_attributes",
+        "table:payments",
+        "table:user_attributes",
+        "table:users"
+      ]
+    },
+    "path_by_id": {
+      "column:orders.checkout_surface": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "orders",
+        "checkout_order",
+        "orders",
+        "checkout_surface"
+      ],
+      "column:orders.order_amount": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "orders",
+        "checkout_order",
+        "orders",
+        "order_amount"
+      ],
+      "column:orders.order_ref": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "orders",
+        "checkout_order",
+        "orders",
+        "order_ref"
+      ],
+      "column:orders.order_state": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "orders",
+        "checkout_order",
+        "orders",
+        "order_state"
+      ],
+      "column:orders.order_time": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "orders",
+        "checkout_order",
+        "orders",
+        "order_time"
+      ],
+      "column:orders.product_area": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "orders",
+        "checkout_order",
+        "orders",
+        "product_area"
+      ],
+      "column:orders.user_ref": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "orders",
+        "checkout_order",
+        "orders",
+        "user_ref"
+      ],
+      "column:payment_attributes.authentication_mode": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "payment_routing",
+        "payment_rail",
+        "payment_attributes",
+        "authentication_mode"
+      ],
+      "column:payment_attributes.issuer_name": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "payment_routing",
+        "payment_rail",
+        "payment_attributes",
+        "issuer_name"
+      ],
+      "column:payment_attributes.rail_ref": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "payment_routing",
+        "payment_rail",
+        "payment_attributes",
+        "rail_ref"
+      ],
+      "column:payment_attributes.rail_type": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "payment_routing",
+        "payment_rail",
+        "payment_attributes",
+        "rail_type"
+      ],
+      "column:payment_attributes.risk_band": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "payment_routing",
+        "payment_rail",
+        "payment_attributes",
+        "risk_band"
+      ],
+      "column:payment_attributes.route_partner": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "payment_routing",
+        "payment_rail",
+        "payment_attributes",
+        "route_partner"
+      ],
+      "column:payment_attributes.settlement_speed": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "payment_routing",
+        "payment_rail",
+        "payment_attributes",
+        "settlement_speed"
+      ],
+      "column:payments.amount": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "payments",
+        "payment_attempt",
+        "payments",
+        "amount"
+      ],
+      "column:payments.order_ref": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "payments",
+        "payment_attempt",
+        "payments",
+        "order_ref"
+      ],
+      "column:payments.payment_ref": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "payments",
+        "payment_attempt",
+        "payments",
+        "payment_ref"
+      ],
+      "column:payments.payment_status": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "payments",
+        "payment_attempt",
+        "payments",
+        "payment_status"
+      ],
+      "column:payments.payment_time": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "payments",
+        "payment_attempt",
+        "payments",
+        "payment_time"
+      ],
+      "column:payments.rail_ref": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "payments",
+        "payment_attempt",
+        "payments",
+        "rail_ref"
+      ],
+      "column:payments.user_ref": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "payments",
+        "payment_attempt",
+        "payments",
+        "user_ref"
+      ],
+      "column:user_attributes.age": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "user_attributes",
+        "user_profile",
+        "user_attributes",
+        "age"
+      ],
+      "column:user_attributes.city": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "user_attributes",
+        "user_profile",
+        "user_attributes",
+        "city"
+      ],
+      "column:user_attributes.gender": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "user_attributes",
+        "user_profile",
+        "user_attributes",
+        "gender"
+      ],
+      "column:user_attributes.kyc_status": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "user_attributes",
+        "user_profile",
+        "user_attributes",
+        "kyc_status"
+      ],
+      "column:user_attributes.risk_band": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "user_attributes",
+        "user_profile",
+        "user_attributes",
+        "risk_band"
+      ],
+      "column:user_attributes.state": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "user_attributes",
+        "user_profile",
+        "user_attributes",
+        "state"
+      ],
+      "column:user_attributes.user_ref": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "user_attributes",
+        "user_profile",
+        "user_attributes",
+        "user_ref"
+      ],
+      "column:users.account_state": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "users",
+        "merchant_account",
+        "users",
+        "account_state"
+      ],
+      "column:users.acquisition_channel": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "users",
+        "merchant_account",
+        "users",
+        "acquisition_channel"
+      ],
+      "column:users.country": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "users",
+        "merchant_account",
+        "users",
+        "country"
+      ],
+      "column:users.merchant_type": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "users",
+        "merchant_account",
+        "users",
+        "merchant_type"
+      ],
+      "column:users.platform_plan": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "users",
+        "merchant_account",
+        "users",
+        "platform_plan"
+      ],
+      "column:users.signup_time": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "users",
+        "merchant_account",
+        "users",
+        "signup_time"
+      ],
+      "column:users.user_ref": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "users",
+        "merchant_account",
+        "users",
+        "user_ref"
+      ],
+      "domain:orders": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "orders"
+      ],
+      "domain:payment_routing": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "payment_routing"
+      ],
+      "domain:payments": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "payments"
+      ],
+      "domain:user_attributes": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "user_attributes"
+      ],
+      "domain:users": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "users"
+      ],
+      "entity:checkout_order": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "orders",
+        "checkout_order"
+      ],
+      "entity:merchant_account": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "users",
+        "merchant_account"
+      ],
+      "entity:payment_attempt": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "payments",
+        "payment_attempt"
+      ],
+      "entity:payment_rail": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "payment_routing",
+        "payment_rail"
+      ],
+      "entity:user_profile": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "user_attributes",
+        "user_profile"
+      ],
+      "table:orders": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "orders",
+        "checkout_order",
+        "orders"
+      ],
+      "table:payment_attributes": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "payment_routing",
+        "payment_rail",
+        "payment_attributes"
+      ],
+      "table:payments": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "payments",
+        "payment_attempt",
+        "payments"
+      ],
+      "table:user_attributes": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "user_attributes",
+        "user_profile",
+        "user_attributes"
+      ],
+      "table:users": [
+        "fintech_pod",
+        "analytics",
+        "fintech_schema",
+        "users",
+        "merchant_account",
+        "users"
+      ]
+    },
+    "sql_library_ids_by_node": {
+      "column:orders.checkout_surface": [
+        "history:orders_payment_attributes_payments:checkout_surface_order_ref:c1919716d2",
+        "history:orders_payment_attributes_payments:checkout_surface_order_ref:d106d00b37"
+      ],
+      "column:orders.order_amount": [
+        "self_play:orders.order_amount"
+      ],
+      "column:orders.order_ref": [
+        "history:orders_payment_attributes_payments:checkout_surface_order_ref:c1919716d2",
+        "history:orders_payment_attributes_payments:checkout_surface_order_ref:d106d00b37",
+        "history:orders_payments:order_ref_order_time:011f1d950f"
+      ],
+      "column:orders.order_state": [
+        "self_play:orders.order_state"
+      ],
+      "column:orders.order_time": [
+        "history:orders_payments:order_ref_order_time:011f1d950f"
+      ],
+      "column:orders.product_area": [
+        "history:orders_payments:order_ref_order_time:011f1d950f"
+      ],
+      "column:orders.user_ref": [
+        "self_play:orders.user_ref"
+      ],
+      "column:payment_attributes.authentication_mode": [
+        "history:orders_payment_attributes_payments:checkout_surface_order_ref:c1919716d2"
+      ],
+      "column:payment_attributes.issuer_name": [
+        "self_play:payment_attributes.issuer_name"
+      ],
+      "column:payment_attributes.rail_ref": [
+        "history:orders_payment_attributes_payments:checkout_surface_order_ref:c1919716d2",
+        "history:orders_payment_attributes_payments:checkout_surface_order_ref:d106d00b37",
+        "history:payment_attributes_payments:rail_ref_rail_type:3d4fd81ccb",
+        "history:payment_attributes_payments:rail_ref_rail_type:66648d65b5",
+        "history:payment_attributes_payments_user_attributes:rail_ref_rail_type:2826a33f83"
+      ],
+      "column:payment_attributes.rail_type": [
+        "history:orders_payment_attributes_payments:checkout_surface_order_ref:d106d00b37",
+        "history:payment_attributes_payments:rail_ref_rail_type:3d4fd81ccb",
+        "history:payment_attributes_payments:rail_ref_rail_type:66648d65b5",
+        "history:payment_attributes_payments_user_attributes:rail_ref_rail_type:2826a33f83"
+      ],
+      "column:payment_attributes.risk_band": [
+        "self_play:payment_attributes.risk_band"
+      ],
+      "column:payment_attributes.route_partner": [
+        "self_play:payment_attributes.route_partner"
+      ],
+      "column:payment_attributes.settlement_speed": [
+        "self_play:payment_attributes.settlement_speed"
+      ],
+      "column:payments.amount": [
+        "history:orders_payment_attributes_payments:checkout_surface_order_ref:c1919716d2",
+        "history:orders_payment_attributes_payments:checkout_surface_order_ref:d106d00b37",
+        "history:payment_attributes_payments:rail_ref_rail_type:66648d65b5",
+        "history:payment_attributes_payments_user_attributes:rail_ref_rail_type:2826a33f83",
+        "history:payments_user_attributes_users:amount_payment_status:67182c2c5f"
+      ],
+      "column:payments.order_ref": [
+        "history:orders_payment_attributes_payments:checkout_surface_order_ref:c1919716d2",
+        "history:orders_payment_attributes_payments:checkout_surface_order_ref:d106d00b37",
+        "history:orders_payments:order_ref_order_time:011f1d950f"
+      ],
+      "column:payments.payment_ref": [
+        "history:orders_payments:order_ref_order_time:011f1d950f"
+      ],
+      "column:payments.payment_status": [
+        "history:orders_payment_attributes_payments:checkout_surface_order_ref:c1919716d2",
+        "history:orders_payment_attributes_payments:checkout_surface_order_ref:d106d00b37",
+        "history:orders_payments:order_ref_order_time:011f1d950f",
+        "history:payment_attributes_payments:rail_ref_rail_type:3d4fd81ccb",
+        "history:payment_attributes_payments:rail_ref_rail_type:66648d65b5",
+        "history:payment_attributes_payments_user_attributes:rail_ref_rail_type:2826a33f83",
+        "history:payments_user_attributes:payment_status_payment_time:2fd098276d",
+        "history:payments_user_attributes_users:amount_payment_status:67182c2c5f",
+        "history:payments_user_attributes_users:payment_status_payment_time:52c4fe9da0",
+        "history:payments_user_attributes_users:payment_status_user_ref:d642f3c490",
+        "history:payments_users:payment_status_payment_time:2ab114a148"
+      ],
+      "column:payments.payment_time": [
+        "history:orders_payment_attributes_payments:checkout_surface_order_ref:c1919716d2",
+        "history:payment_attributes_payments:rail_ref_rail_type:3d4fd81ccb",
+        "history:payment_attributes_payments:rail_ref_rail_type:66648d65b5",
+        "history:payments_user_attributes:payment_status_payment_time:2fd098276d",
+        "history:payments_user_attributes_users:payment_status_payment_time:52c4fe9da0",
+        "history:payments_users:payment_status_payment_time:2ab114a148"
+      ],
+      "column:payments.rail_ref": [
+        "history:orders_payment_attributes_payments:checkout_surface_order_ref:c1919716d2",
+        "history:orders_payment_attributes_payments:checkout_surface_order_ref:d106d00b37",
+        "history:payment_attributes_payments:rail_ref_rail_type:3d4fd81ccb",
+        "history:payment_attributes_payments:rail_ref_rail_type:66648d65b5",
+        "history:payment_attributes_payments_user_attributes:rail_ref_rail_type:2826a33f83"
+      ],
+      "column:payments.user_ref": [
+        "history:orders_payment_attributes_payments:checkout_surface_order_ref:c1919716d2",
+        "history:payment_attributes_payments_user_attributes:rail_ref_rail_type:2826a33f83",
+        "history:payments_user_attributes:payment_status_payment_time:2fd098276d",
+        "history:payments_user_attributes_users:amount_payment_status:67182c2c5f",
+        "history:payments_user_attributes_users:payment_status_payment_time:52c4fe9da0",
+        "history:payments_user_attributes_users:payment_status_user_ref:d642f3c490",
+        "history:payments_users:payment_status_payment_time:2ab114a148"
+      ],
+      "column:user_attributes.age": [
+        "self_play:user_attributes.age"
+      ],
+      "column:user_attributes.city": [
+        "self_play:user_attributes.city"
+      ],
+      "column:user_attributes.gender": [
+        "history:payments_user_attributes_users:amount_payment_status:67182c2c5f"
+      ],
+      "column:user_attributes.kyc_status": [
+        "history:orders_payment_attributes_payments:checkout_surface_order_ref:c1919716d2",
+        "history:payments_user_attributes_users:payment_status_user_ref:d642f3c490"
+      ],
+      "column:user_attributes.risk_band": [
+        "history:orders_payment_attributes_payments:checkout_surface_order_ref:c1919716d2",
+        "history:payment_attributes_payments_user_attributes:rail_ref_rail_type:2826a33f83",
+        "history:payments_user_attributes:payment_status_payment_time:2fd098276d"
+      ],
+      "column:user_attributes.state": [
+        "history:orders_payment_attributes_payments:checkout_surface_order_ref:c1919716d2",
+        "history:payments_user_attributes_users:payment_status_payment_time:52c4fe9da0",
+        "history:payments_user_attributes_users:payment_status_user_ref:d642f3c490"
+      ],
+      "column:user_attributes.user_ref": [
+        "history:orders_payment_attributes_payments:checkout_surface_order_ref:c1919716d2",
+        "history:payment_attributes_payments_user_attributes:rail_ref_rail_type:2826a33f83",
+        "history:payments_user_attributes:payment_status_payment_time:2fd098276d",
+        "history:payments_user_attributes_users:amount_payment_status:67182c2c5f",
+        "history:payments_user_attributes_users:payment_status_payment_time:52c4fe9da0",
+        "history:payments_user_attributes_users:payment_status_user_ref:d642f3c490"
+      ],
+      "column:users.account_state": [
+        "history:orders_payment_attributes_payments:checkout_surface_order_ref:c1919716d2"
+      ],
+      "column:users.acquisition_channel": [
+        "self_play:users.acquisition_channel"
+      ],
+      "column:users.country": [
+        "self_play:users.country"
+      ],
+      "column:users.merchant_type": [
+        "self_play:users.merchant_type"
+      ],
+      "column:users.platform_plan": [
+        "history:payments_user_attributes_users:amount_payment_status:67182c2c5f"
+      ],
+      "column:users.signup_time": [
+        "self_play:users.signup_time"
+      ],
+      "column:users.user_ref": [
+        "history:orders_payment_attributes_payments:checkout_surface_order_ref:c1919716d2",
+        "history:payments_user_attributes_users:amount_payment_status:67182c2c5f",
+        "history:payments_user_attributes_users:payment_status_payment_time:52c4fe9da0",
+        "history:payments_user_attributes_users:payment_status_user_ref:d642f3c490",
+        "history:payments_users:payment_status_payment_time:2ab114a148"
+      ],
+      "domain:orders": [
+        "history:orders_payment_attributes_payments:checkout_surface_order_ref:c1919716d2",
+        "history:orders_payment_attributes_payments:checkout_surface_order_ref:d106d00b37",
+        "history:orders_payments:order_ref_order_time:011f1d950f",
+        "self_play:orders.order_amount",
+        "self_play:orders.order_state",
+        "self_play:orders.user_ref"
+      ],
+      "domain:payment_routing": [
+        "history:orders_payment_attributes_payments:checkout_surface_order_ref:c1919716d2",
+        "history:orders_payment_attributes_payments:checkout_surface_order_ref:d106d00b37",
+        "history:payment_attributes_payments:rail_ref_rail_type:3d4fd81ccb",
+        "history:payment_attributes_payments:rail_ref_rail_type:66648d65b5",
+        "history:payment_attributes_payments_user_attributes:rail_ref_rail_type:2826a33f83",
+        "self_play:payment_attributes.issuer_name",
+        "self_play:payment_attributes.risk_band",
+        "self_play:payment_attributes.route_partner",
+        "self_play:payment_attributes.settlement_speed"
+      ],
+      "domain:payments": [
+        "history:orders_payment_attributes_payments:checkout_surface_order_ref:c1919716d2",
+        "history:orders_payment_attributes_payments:checkout_surface_order_ref:d106d00b37",
+        "history:orders_payments:order_ref_order_time:011f1d950f",
+        "history:payment_attributes_payments:rail_ref_rail_type:3d4fd81ccb",
+        "history:payment_attributes_payments:rail_ref_rail_type:66648d65b5",
+        "history:payment_attributes_payments_user_attributes:rail_ref_rail_type:2826a33f83",
+        "history:payments_user_attributes:payment_status_payment_time:2fd098276d",
+        "history:payments_user_attributes_users:amount_payment_status:67182c2c5f",
+        "history:payments_user_attributes_users:payment_status_payment_time:52c4fe9da0",
+        "history:payments_user_attributes_users:payment_status_user_ref:d642f3c490",
+        "history:payments_users:payment_status_payment_time:2ab114a148"
+      ],
+      "domain:user_attributes": [
+        "history:orders_payment_attributes_payments:checkout_surface_order_ref:c1919716d2",
+        "history:payment_attributes_payments_user_attributes:rail_ref_rail_type:2826a33f83",
+        "history:payments_user_attributes:payment_status_payment_time:2fd098276d",
+        "history:payments_user_attributes_users:amount_payment_status:67182c2c5f",
+        "history:payments_user_attributes_users:payment_status_payment_time:52c4fe9da0",
+        "history:payments_user_attributes_users:payment_status_user_ref:d642f3c490",
+        "self_play:user_attributes.age",
+        "self_play:user_attributes.city"
+      ],
+      "domain:users": [
+        "history:orders_payment_attributes_payments:checkout_surface_order_ref:c1919716d2",
+        "history:payments_user_attributes_users:amount_payment_status:67182c2c5f",
+        "history:payments_user_attributes_users:payment_status_payment_time:52c4fe9da0",
+        "history:payments_user_attributes_users:payment_status_user_ref:d642f3c490",
+        "history:payments_users:payment_status_payment_time:2ab114a148",
+        "self_play:users.acquisition_channel",
+        "self_play:users.country",
+        "self_play:users.merchant_type",
+        "self_play:users.signup_time"
+      ],
+      "entity:checkout_order": [
+        "history:orders_payment_attributes_payments:checkout_surface_order_ref:c1919716d2",
+        "history:orders_payment_attributes_payments:checkout_surface_order_ref:d106d00b37",
+        "history:orders_payments:order_ref_order_time:011f1d950f",
+        "self_play:orders.order_amount",
+        "self_play:orders.order_state",
+        "self_play:orders.user_ref"
+      ],
+      "entity:merchant_account": [
+        "history:orders_payment_attributes_payments:checkout_surface_order_ref:c1919716d2",
+        "history:payments_user_attributes_users:amount_payment_status:67182c2c5f",
+        "history:payments_user_attributes_users:payment_status_payment_time:52c4fe9da0",
+        "history:payments_user_attributes_users:payment_status_user_ref:d642f3c490",
+        "history:payments_users:payment_status_payment_time:2ab114a148",
+        "self_play:users.acquisition_channel",
+        "self_play:users.country",
+        "self_play:users.merchant_type",
+        "self_play:users.signup_time"
+      ],
+      "entity:payment_attempt": [
+        "history:orders_payment_attributes_payments:checkout_surface_order_ref:c1919716d2",
+        "history:orders_payment_attributes_payments:checkout_surface_order_ref:d106d00b37",
+        "history:orders_payments:order_ref_order_time:011f1d950f",
+        "history:payment_attributes_payments:rail_ref_rail_type:3d4fd81ccb",
+        "history:payment_attributes_payments:rail_ref_rail_type:66648d65b5",
+        "history:payment_attributes_payments_user_attributes:rail_ref_rail_type:2826a33f83",
+        "history:payments_user_attributes:payment_status_payment_time:2fd098276d",
+        "history:payments_user_attributes_users:amount_payment_status:67182c2c5f",
+        "history:payments_user_attributes_users:payment_status_payment_time:52c4fe9da0",
+        "history:payments_user_attributes_users:payment_status_user_ref:d642f3c490",
+        "history:payments_users:payment_status_payment_time:2ab114a148"
+      ],
+      "entity:payment_rail": [
+        "history:orders_payment_attributes_payments:checkout_surface_order_ref:c1919716d2",
+        "history:orders_payment_attributes_payments:checkout_surface_order_ref:d106d00b37",
+        "history:payment_attributes_payments:rail_ref_rail_type:3d4fd81ccb",
+        "history:payment_attributes_payments:rail_ref_rail_type:66648d65b5",
+        "history:payment_attributes_payments_user_attributes:rail_ref_rail_type:2826a33f83",
+        "self_play:payment_attributes.issuer_name",
+        "self_play:payment_attributes.risk_band",
+        "self_play:payment_attributes.route_partner",
+        "self_play:payment_attributes.settlement_speed"
+      ],
+      "entity:user_profile": [
+        "history:orders_payment_attributes_payments:checkout_surface_order_ref:c1919716d2",
+        "history:payment_attributes_payments_user_attributes:rail_ref_rail_type:2826a33f83",
+        "history:payments_user_attributes:payment_status_payment_time:2fd098276d",
+        "history:payments_user_attributes_users:amount_payment_status:67182c2c5f",
+        "history:payments_user_attributes_users:payment_status_payment_time:52c4fe9da0",
+        "history:payments_user_attributes_users:payment_status_user_ref:d642f3c490",
+        "self_play:user_attributes.age",
+        "self_play:user_attributes.city"
+      ],
+      "table:orders": [
+        "history:orders_payment_attributes_payments:checkout_surface_order_ref:c1919716d2",
+        "history:orders_payment_attributes_payments:checkout_surface_order_ref:d106d00b37",
+        "history:orders_payments:order_ref_order_time:011f1d950f",
+        "self_play:orders.order_amount",
+        "self_play:orders.order_state",
+        "self_play:orders.user_ref"
+      ],
+      "table:payment_attributes": [
+        "history:orders_payment_attributes_payments:checkout_surface_order_ref:c1919716d2",
+        "history:orders_payment_attributes_payments:checkout_surface_order_ref:d106d00b37",
+        "history:payment_attributes_payments:rail_ref_rail_type:3d4fd81ccb",
+        "history:payment_attributes_payments:rail_ref_rail_type:66648d65b5",
+        "history:payment_attributes_payments_user_attributes:rail_ref_rail_type:2826a33f83",
+        "self_play:payment_attributes.issuer_name",
+        "self_play:payment_attributes.risk_band",
+        "self_play:payment_attributes.route_partner",
+        "self_play:payment_attributes.settlement_speed"
+      ],
+      "table:payments": [
+        "history:orders_payment_attributes_payments:checkout_surface_order_ref:c1919716d2",
+        "history:orders_payment_attributes_payments:checkout_surface_order_ref:d106d00b37",
+        "history:orders_payments:order_ref_order_time:011f1d950f",
+        "history:payment_attributes_payments:rail_ref_rail_type:3d4fd81ccb",
+        "history:payment_attributes_payments:rail_ref_rail_type:66648d65b5",
+        "history:payment_attributes_payments_user_attributes:rail_ref_rail_type:2826a33f83",
+        "history:payments_user_attributes:payment_status_payment_time:2fd098276d",
+        "history:payments_user_attributes_users:amount_payment_status:67182c2c5f",
+        "history:payments_user_attributes_users:payment_status_payment_time:52c4fe9da0",
+        "history:payments_user_attributes_users:payment_status_user_ref:d642f3c490",
+        "history:payments_users:payment_status_payment_time:2ab114a148"
+      ],
+      "table:user_attributes": [
+        "history:orders_payment_attributes_payments:checkout_surface_order_ref:c1919716d2",
+        "history:payment_attributes_payments_user_attributes:rail_ref_rail_type:2826a33f83",
+        "history:payments_user_attributes:payment_status_payment_time:2fd098276d",
+        "history:payments_user_attributes_users:amount_payment_status:67182c2c5f",
+        "history:payments_user_attributes_users:payment_status_payment_time:52c4fe9da0",
+        "history:payments_user_attributes_users:payment_status_user_ref:d642f3c490",
+        "self_play:user_attributes.age",
+        "self_play:user_attributes.city"
+      ],
+      "table:users": [
+        "history:orders_payment_attributes_payments:checkout_surface_order_ref:c1919716d2",
+        "history:payments_user_attributes_users:amount_payment_status:67182c2c5f",
+        "history:payments_user_attributes_users:payment_status_payment_time:52c4fe9da0",
+        "history:payments_user_attributes_users:payment_status_user_ref:d642f3c490",
+        "history:payments_users:payment_status_payment_time:2ab114a148",
+        "self_play:users.acquisition_channel",
+        "self_play:users.country",
+        "self_play:users.merchant_type",
+        "self_play:users.signup_time"
+      ]
+    }
+  },
+  "run_id": "fintech_schema_ast_v2_local",
+  "scope": {
+    "catalog": "fintech_pod",
+    "database": "analytics",
+    "schema": "fintech_schema"
+  },
+  "source_artifacts": {
+    "schema_graph_run_id": "fintech_schema_graph_v2_20260609",
+    "sql_library_run_id": "fintech_sql_library_v2_20260609"
+  },
+  "version": 1
+}

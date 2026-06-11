@@ -1,0 +1,176 @@
+{
+  "columns": {
+    "orders": {
+      "checkout_surface": {
+        "long_description": "Identifies the checkout interface or integration method used to create the order. Observed values include 'web' (browser-based checkout), 'mobile_sdk' (mobile app integration), 'api' (direct API call), 'plugin' (e-commerce plugin), and 'dashboard' (Razorpay dashboard). This column is useful for comparing order volumes, conversion rates, and payment success across different checkout surfaces.",
+        "short_description": "The channel or interface through which the order was placed, such as web, mobile SDK, API, plugin, or dashboard."
+      },
+      "order_amount": {
+        "long_description": "The amount associated with the checkout order at the time it was created, expressed as a decimal value. This represents the intended transaction value before any payment attempt is made. It can be compared to the actual payment amount in the payments table to identify discrepancies or partial payments. Values range from small amounts to over one lakh rupees in this dataset.",
+        "short_description": "The monetary value of the checkout order as set at the time of order creation."
+      },
+      "order_ref": {
+        "long_description": "A unique reference code assigned to each checkout order created on the Razorpay platform. This identifier links the orders table to the payments table, allowing analysts to track how many payment attempts were made for a given order and whether the order was ultimately paid. Each order_ref appears once in the orders table and may appear multiple times in payments if the user retried payment.",
+        "short_description": "Unique identifier for a checkout order. Links orders to payment attempts in the payments table."
+      },
+      "order_state": {
+        "long_description": "Indicates the current state of the checkout order in its lifecycle. Possible values are: 'paid' (a successful payment was completed), 'created' (the order exists but no successful payment has been made yet), 'cancelled' (the order was cancelled before payment), and 'expired' (the order timed out without a successful payment). This column is essential for funnel analysis \u2014 for example, calculating the share of orders that convert to paid versus those that drop off.",
+        "short_description": "Current lifecycle status of the order: paid, created, cancelled, or expired."
+      },
+      "order_time": {
+        "long_description": "The date and time at which the checkout order was created on the Razorpay platform. This timestamp is used for time-based analysis of order creation trends, such as daily or monthly order volumes, and for funnel analysis comparing when orders were created versus when payment attempts occurred.",
+        "short_description": "Timestamp when the checkout order was created."
+      },
+      "product_area": {
+        "long_description": "Categorises the order by the Razorpay product line it belongs to. Observed values are 'checkout', 'payments', 'payouts', 'subscriptions', and 'marketplace'. This column allows analysts to segment order and payment metrics by product area \u2014 for example, comparing TPV or conversion rates across subscriptions versus marketplace orders.",
+        "short_description": "The Razorpay product area associated with the order, such as checkout, payments, payouts, subscriptions, or marketplace."
+      },
+      "user_ref": {
+        "long_description": "Identifies the Razorpay user or merchant account that initiated the checkout order. This reference links the orders table to the users table (for account-level attributes such as merchant type and plan) and to the user_attributes table (for demographic and risk attributes). It can also be used to join with the payments table to trace a user's full order and payment history.",
+        "short_description": "The user or merchant account that created this order. Links to the users and user_attributes tables."
+      }
+    },
+    "payment_attributes": {
+      "authentication_mode": {
+        "long_description": "Describes how the payer was authenticated during the payment transaction. Observed values are 'upi_pin' (UPI PIN entry), 'otp_or_3ds' (one-time password or 3D Secure for cards), 'bank_auth' (bank-level authentication, typically for netbanking), and 'wallet_auth' (wallet-specific authentication). This column can be used to analyse how authentication method affects payment success rates.",
+        "short_description": "The authentication method used for the payment, such as UPI PIN, OTP or 3DS, bank auth, or wallet auth."
+      },
+      "issuer_name": {
+        "long_description": "Identifies the bank or financial institution associated with the payment rail. Observed issuers include major Indian banks such as HDFC, ICICI, SBI, Axis, Kotak, RBL, and Yes Bank, as well as NPCI (the National Payments Corporation of India, which governs UPI). This column can be used to analyse payment success rates or volumes broken down by issuing bank.",
+        "short_description": "The bank or financial institution that issued the payment instrument, such as HDFC, ICICI, SBI, Axis, or NPCI."
+      },
+      "rail_ref": {
+        "long_description": "A unique reference code that identifies a specific payment rail or routing configuration. This is the join key between the payment_attributes table and the payments table. When analysing payment metrics by rail type (UPI, credit card, NEFT, etc.), payments is joined to payment_attributes on this field to resolve the rail type and other routing attributes for each transaction.",
+        "short_description": "Unique identifier for a payment rail or route. Used to join payment_attributes to the payments table."
+      },
+      "rail_type": {
+        "long_description": "Describes the payment method or network associated with a rail. Observed values are UPI, CC (credit card), DC (debit card), IMPS, NEFT, NETBANKING, and WALLET. This is the primary dimension for slicing payment metrics by payment method. For example, to calculate TPV or PSR by UPI versus credit card, join payments to payment_attributes on rail_ref and group by rail_type. UPI is the most common rail in this dataset, followed by credit cards and debit cards.",
+        "short_description": "Payment method or network used for the transaction, such as UPI, credit card, debit card, NEFT, IMPS, netbanking, or wallet."
+      },
+      "risk_band": {
+        "long_description": "Categorises the payment rail into a risk segment for transaction monitoring purposes. Observed values are 'low', 'medium', and 'high'. The majority of rails in this dataset are classified as low risk. This column can be used to filter or segment payment analysis by risk level, for example to understand the volume or success rate of high-risk payment routes.",
+        "short_description": "Risk classification of the payment rail: low, medium, or high."
+      },
+      "route_partner": {
+        "long_description": "Identifies the internal Razorpay routing partner or processing entity used for a given payment rail. Observed values are rzp_router_a through rzp_router_d, representing different Razorpay route or processing partners. This column can be used to compare performance metrics such as success rates across different routing configurations.",
+        "short_description": "The Razorpay routing partner or processor used to process the payment."
+      },
+      "settlement_speed": {
+        "long_description": "Indicates the settlement timeline for funds processed through this payment rail. Observed values are 'instant' (funds settle immediately), 'same_day' (funds settle on the same business day), and 't_plus_1' (funds settle the next business day). This attribute is useful for analysing settlement patterns across different payment methods and for understanding liquidity implications by rail type.",
+        "short_description": "How quickly funds settle for this payment rail: instant, same-day, or T+1."
+      }
+    },
+    "payments": {
+      "amount": {
+        "long_description": "The monetary value of the payment attempt. This field is the measure used to calculate TPV (total payment volume), which is defined as the sum of amounts where payment_status is SUCCESS. It should not be summed across all payment statuses unless the intent is to measure attempted volume rather than completed volume. Values in this dataset range from approximately 53 to nearly 148,000 rupees.",
+        "short_description": "The transaction amount for this payment attempt. Summed over successful payments to calculate TPV (total payment volume)."
+      },
+      "order_ref": {
+        "long_description": "Identifies the checkout order associated with this payment attempt. Multiple payment attempts can belong to the same order (for example, if a user retries after a failed attempt). This field links the payments table to the orders table, enabling order-to-payment funnel analysis and allowing analysts to see how many attempts were made per order.",
+        "short_description": "The order that this payment attempt belongs to. Links payments to the orders table."
+      },
+      "payment_ref": {
+        "long_description": "A unique reference code assigned to each individual payment attempt on the Razorpay platform. This is the grain of the payments table \u2014 each row represents one payment attempt. It is used to count total payment attempts (the denominator in PSR calculations) and to uniquely identify transactions for debugging or reconciliation purposes.",
+        "short_description": "Unique identifier for a single payment transaction attempt."
+      },
+      "payment_status": {
+        "long_description": "Indicates the outcome or current state of the payment attempt. Observed values are SUCCESS (payment completed), FAILED (payment did not go through), AUTHORIZED (payment authorised but not yet captured), and REFUNDED (payment was reversed). This field is the filter used in nearly all business metrics: TPV and active user metrics require payment_status = 'SUCCESS'. PSR is calculated as the count of SUCCESS rows divided by the total count of all rows (all statuses). Do not pre-filter to SUCCESS when calculating PSR, as the denominator must include all attempts.",
+        "short_description": "Lifecycle state of the payment attempt: SUCCESS, FAILED, AUTHORIZED, or REFUNDED."
+      },
+      "payment_time": {
+        "long_description": "The exact date and time at which the payment attempt was recorded. This is the primary time dimension for all payment analytics. It is used to calculate daily active users (DAU), monthly active users (MAU), calendar-month TPV and PSR, retained users (activity across a 3-month window), and churned users (no activity in the past 15 days). For calendar-month grouping, this field is truncated to the month. Data in this dataset spans from December 2025 to June 2026.",
+        "short_description": "Timestamp when the payment attempt occurred. Used for all time-based analysis including daily, monthly, and period-over-period metrics."
+      },
+      "rail_ref": {
+        "long_description": "Identifies the payment rail or routing configuration used for this specific payment attempt. This field links the payments table to the payment_attributes table, where the actual rail type (UPI, credit card, debit card, NEFT, IMPS, netbanking, wallet) and other routing attributes are stored. To slice any payment metric by payment method, join payments to payment_attributes on rail_ref and filter or group by payment_attributes.rail_type.",
+        "short_description": "The payment rail or method used for this transaction. Join to payment_attributes to get rail type (UPI, card, NEFT, etc.)."
+      },
+      "user_ref": {
+        "long_description": "Identifies the Razorpay user or merchant account that initiated the payment attempt. This field is central to all user-level metrics: active users (at least one successful payment in a calendar month), DAU (at least one successful payment on a given day), MAU (at least three successful payments in a calendar month), retained users (at least 10 successful transactions across 3 consecutive months with activity in every month), and churned users (no successful payment in the past 15 days). Join to users or user_attributes on this field to add demographic or account-level context.",
+        "short_description": "The user or merchant account that made this payment attempt. Used for active user, MAU, DAU, retained user, and churned user metrics."
+      }
+    },
+    "user_attributes": {
+      "age": {
+        "long_description": "The age of the user or merchant account holder in years. Values in this dataset range from 19 to 68. This column can be used to segment payment metrics such as TPV, PSR, or active user counts by age group, for example to compare behaviour across younger versus older users.",
+        "short_description": "Age of the user in years, ranging from 19 to 68 in this dataset."
+      },
+      "city": {
+        "long_description": "The city associated with the user's account. Observed values include 21 Indian cities such as Mumbai, Bengaluru, Hyderabad, Chennai, Pune, New Delhi, Ahmedabad, Surat, Jaipur, and others. This column enables geographic segmentation of payment metrics at the city level. It can be combined with the state column for broader regional analysis.",
+        "short_description": "City where the user is located, covering major Indian cities such as Mumbai, Bengaluru, Hyderabad, and Delhi."
+      },
+      "gender": {
+        "long_description": "The self-reported gender of the user or merchant account holder. Observed values are 'M' (male), 'F' (female), and 'Other'. The majority of users in this dataset identify as male. This column can be used to segment payment or order metrics by gender for demographic analysis.",
+        "short_description": "Gender of the user: M (male), F (female), or Other."
+      },
+      "kyc_status": {
+        "long_description": "Indicates the KYC (Know Your Customer) verification state for the user's account. Observed values are 'verified' (KYC completed successfully), 'pending' (KYC submitted but not yet reviewed), and 'rejected' (KYC was not approved). The large majority of users in this dataset are verified. This column is useful for compliance-related analysis and for understanding whether KYC status correlates with payment behaviour or success rates.",
+        "short_description": "KYC (Know Your Customer) verification status of the user: verified, pending, or rejected."
+      },
+      "risk_band": {
+        "long_description": "Classifies the user into a risk tier for transaction monitoring and fraud management purposes. Observed values are 'low', 'medium', and 'high', with the majority of users classified as low risk. This column can be used to filter or segment payment analysis by user risk level, for example to compare payment success rates or volumes across risk tiers.",
+        "short_description": "Risk segment assigned to the user for transaction monitoring: low, medium, or high."
+      },
+      "state": {
+        "long_description": "The Indian state associated with the user's account. Observed values are Gujarat, Telangana, Karnataka, Tamil Nadu, Rajasthan, Delhi, and Maharashtra. This column is the primary geographic dimension for state-level analysis of payment volumes, success rates, or user activity. It is explicitly noted in the business context as the field for geographic slicing.",
+        "short_description": "Indian state where the user is located. Used for geographic slicing of payment metrics."
+      },
+      "user_ref": {
+        "long_description": "Identifies the Razorpay user or merchant account to which these demographic and risk attributes belong. This is the join key to the payments table (for combining transactional metrics with demographic segments), the orders table (for order-level analysis by user profile), and the users table (for account-level attributes). Each user_ref appears once in this table.",
+        "short_description": "Unique identifier for the user or merchant. Links user_attributes to the payments, orders, and users tables."
+      }
+    },
+    "users": {
+      "account_state": {
+        "long_description": "Indicates the operational state of the Razorpay merchant account. Observed values are 'active' (account is fully operational), 'paused' (account activity is temporarily suspended), 'restricted' (account has limitations applied), and 'closed' (account is no longer active). The vast majority of accounts in this dataset are active. This column is useful for filtering analyses to active accounts or for understanding the distribution of account health.",
+        "short_description": "Current status of the merchant account: active, paused, restricted, or closed."
+      },
+      "acquisition_channel": {
+        "long_description": "Indicates the channel through which the Razorpay merchant account was onboarded. Observed values are 'self_serve' (merchant signed up independently), 'sales' (acquired through a sales team), 'referral' (referred by another user), 'partner' (onboarded via a partner), and 'marketplace' (acquired through a marketplace integration). This column is useful for analysing the quality and payment behaviour of accounts by acquisition source.",
+        "short_description": "How the merchant account was acquired: self-serve, sales, referral, partner, or marketplace."
+      },
+      "country": {
+        "long_description": "The country associated with the Razorpay merchant account. All 1,000 accounts in this dataset have a value of 'India', consistent with Razorpay's primary market. This column may be used for filtering in multi-country contexts, but currently provides no segmentation value within this dataset.",
+        "short_description": "Country of the merchant account. All accounts in this dataset are based in India."
+      },
+      "merchant_type": {
+        "long_description": "Classifies the Razorpay merchant account by business size or type. Observed values are 'enterprise', 'mid_market', 'smb' (small and medium business), 'startup', and 'platform'. This column is used to segment payment volumes, success rates, or user activity by merchant tier, for example to compare TPV between enterprise and SMB merchants.",
+        "short_description": "Category of the merchant account: enterprise, mid-market, SMB, startup, or platform."
+      },
+      "platform_plan": {
+        "long_description": "Identifies the Razorpay platform plan or pricing tier associated with the merchant account. Observed values are 'starter', 'growth', 'scale', and 'enterprise'. This column can be used to segment payment metrics by plan tier, for example to compare average TPV or payment success rates across starter versus enterprise plan merchants.",
+        "short_description": "The Razorpay pricing or subscription plan the merchant is on: starter, growth, scale, or enterprise."
+      },
+      "signup_time": {
+        "long_description": "The date and time at which the Razorpay merchant or user account was registered. This field can be used to calculate account tenure, cohort users by signup month, or analyse how payment behaviour evolves over time since onboarding. Data in this dataset spans signups from December 2024 through May 2026.",
+        "short_description": "Timestamp when the user or merchant account was created on Razorpay."
+      },
+      "user_ref": {
+        "long_description": "Identifies the Razorpay merchant or user account. This is the primary key of the users table and the join key to the payments table (for transactional metrics), the orders table (for order activity), and the user_attributes table (for demographic attributes). Each user_ref appears once in this table.",
+        "short_description": "Unique identifier for the Razorpay merchant or user account. Links to payments, orders, and user_attributes tables."
+      }
+    }
+  },
+  "tables": {
+    "orders": {
+      "long_description": "The orders table records every checkout order initiated on the Razorpay platform before a payment attempt occurs. Each row represents a single order with its value, lifecycle state, the surface through which checkout happened, and the Razorpay product area it belongs to. This table is the starting point for order-to-payment funnel analysis \u2014 for example, understanding how many orders were created versus paid, cancelled, or expired. It links to the payments table via order_ref, allowing analysts to track how many payment attempts were made against each order.",
+      "short_description": "Checkout orders created by users or merchants before a payment attempt is made. Supports order-to-payment funnel analysis."
+    },
+    "payment_attributes": {
+      "long_description": "The payment_attributes table describes the characteristics of each payment rail or route used on the Razorpay platform. Each row represents a unique payment rail identified by rail_ref, and captures the rail type (UPI, credit card, debit card, NEFT, IMPS, netbanking, or wallet), the issuing bank, the Razorpay routing partner, how quickly funds settle, the authentication method used, and the risk classification of the rail. This table is joined to the payments table on rail_ref to slice payment metrics such as TPV (total payment volume) and PSR (payment success rate) by payment method or network. It is the primary source for any analysis that needs to break down performance by UPI versus cards versus NEFT or other rails.",
+      "short_description": "Payment rail and routing details such as UPI, credit card, NEFT, IMPS, issuer bank, settlement speed, and risk band for each payment route."
+    },
+    "payments": {
+      "long_description": "The payments table is the central fact table for Razorpay payment analytics. Each row represents a single payment attempt, capturing the transaction amount, the lifecycle status (SUCCESS, FAILED, AUTHORIZED, or REFUNDED), the payment rail used, the order it belongs to, the user or merchant who made the attempt, and the exact timestamp. This table is used to calculate all key business metrics: TPV (total payment volume, summing amounts where status is SUCCESS), PSR (payment success rate, successful attempts divided by all attempts), DAU (distinct users with at least one successful payment on a given day), MAU (users with at least three successful payments in a calendar month), retained users (at least 10 successful transactions across 3 consecutive months), and churned users (no successful payment in the past 15 days). Payment time is used for all calendar-period grouping. Join to payment_attributes on rail_ref to slice by payment method.",
+      "short_description": "All payment transaction attempts on Razorpay, including amount, status, payment method, and timestamp. Core table for TPV, PSR, active users, and retention metrics."
+    },
+    "user_attributes": {
+      "long_description": "The user_attributes table stores descriptive profile information about each Razorpay user or merchant account. Each row corresponds to one user and includes their age, gender, city, Indian state, risk segment, and KYC verification status. This table is used to slice payment metrics \u2014 such as TPV, PSR, active users, or churned users \u2014 by demographic or geographic dimensions. For example, analysts can compare payment success rates across states like Gujarat, Karnataka, or Maharashtra, or filter by KYC status to understand verified versus pending users. The risk_band column supports transaction monitoring and fraud-related segmentation. Join to payments or orders on user_ref to combine behavioral data with demographic attributes.",
+      "short_description": "Demographic, geographic, risk, and KYC attributes for each user or merchant. Used for segmenting payment metrics by location, age, gender, or risk profile."
+    },
+    "users": {
+      "long_description": "The users table contains one row per Razorpay merchant or user account and captures account-level attributes set at or after signup. It records when the account was created, the type of merchant (enterprise, mid-market, SMB, startup, or platform), how the account was acquired (self-serve, sales, referral, partner, or marketplace), the platform pricing plan, the current account state (active, paused, restricted, or closed), and the country (all accounts in this dataset are India-based). This table is used to segment payment and order activity by merchant tier, acquisition source, or account health. Join to payments or orders on user_ref to combine transactional metrics with account-level dimensions.",
+      "short_description": "Razorpay merchant and user accounts, including signup date, merchant type, acquisition channel, platform plan, and account status."
+    }
+  }
+}
