@@ -12,6 +12,7 @@ from diracdata_v2.agent import (
     load_primitive_data_steward_prompt,
     load_primitive_intent_prompt,
     load_primitive_outer_prompt,
+    load_primitive_supervisor_prompt,
     load_primitive_sql_author_prompt,
     load_primitive_sql_validator_prompt,
 )
@@ -63,6 +64,16 @@ class PrimitiveDataAgentTests(unittest.TestCase):
             {"analyst_subagent", "data_steward_subagent", "data_engineer_subagent"},
         )
         self.assertEqual(
+            set(runtime.supervisor_agent._tools_by_name),
+            {
+                "intent_subagent",
+                "sql_author_subagent",
+                "data_steward_subagent",
+                "data_engineer_subagent",
+                "execute_sql",
+            },
+        )
+        self.assertEqual(
             set(runtime.subagents),
             {
                 "intent_subagent",
@@ -89,6 +100,7 @@ class PrimitiveDataAgentTests(unittest.TestCase):
                 load_primitive_analyst_prompt(),
                 load_primitive_data_steward_prompt(),
                 load_primitive_data_engineering_prompt(),
+                load_primitive_supervisor_prompt(),
                 load_primitive_sql_author_prompt(),
                 load_primitive_sql_validator_prompt(),
             ]
@@ -111,8 +123,13 @@ class PrimitiveDataAgentTests(unittest.TestCase):
         self.assertIn("intent_status: ok", combined)
         self.assertIn("sql_author_status: ok", combined)
         self.assertIn("sql_dry_run", combined)
+        self.assertIn("clause_bindings", combined)
+        self.assertIn("approved intent packet is the executable contract", combined)
+        self.assertIn("mcq_options", combined)
         self.assertIn("not exists", combined)
         self.assertIn("predicate pushdown", combined)
+        self.assertIn("steward fails", combined)
+        self.assertIn("call data engineering", combined)
         self.assertNotIn("retail", combined)
         self.assertNotIn("arizona", combined)
         self.assertNotIn("electronics", combined)

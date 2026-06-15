@@ -28,6 +28,9 @@ class LearningPipelineConfig:
     history_limit: int = 80
     pattern_batch_size: int = 20
     pattern_limit: int = 80
+    nl_sql_pair_paths: tuple[Path, ...] = ()
+    nl_sql_pair_limit: int | None = None
+    nl_sql_pair_review_status: str = "approved"
 
 
 @dataclass(frozen=True)
@@ -102,6 +105,9 @@ class LearningPipeline:
             history_limit=config.history_limit,
             pattern_batch_size=config.pattern_batch_size,
             pattern_limit=config.pattern_limit,
+            nl_sql_pair_paths=config.nl_sql_pair_paths,
+            nl_sql_pair_limit=config.nl_sql_pair_limit,
+            nl_sql_pair_review_status=config.nl_sql_pair_review_status,
         )
         ast_result = self._schema_ast_builder.build(
             schema_graph=graph_result.document,
@@ -177,6 +183,7 @@ def _manifest(
         "inputs": {
             "metadata_descriptions_path": str(config.metadata_descriptions_path),
             "query_history_path": str(config.query_history_path),
+            "nl_sql_pair_paths": [str(path) for path in config.nl_sql_pair_paths],
             "data_root": str(config.data_root),
         },
         "artifacts": {
@@ -207,6 +214,7 @@ def _manifest(
             "semantic_catalog_cards": len(semantic_catalog.document.get("cards", {})),
             "semantic_catalog_join_edges": len(semantic_catalog.document.get("join_edges", {})),
             "history_entries": sum(1 for item in library_entries.values() if item.get("source") == "query_history"),
+            "nl_sql_pair_entries": sum(1 for item in library_entries.values() if item.get("source") == "nl_sql_pair"),
             "self_play_entries": sum(1 for item in library_entries.values() if item.get("source") == "self_play"),
             "missing_columns": len(sql_library.document.get("coverage", {}).get("columns_missing", [])),
         },

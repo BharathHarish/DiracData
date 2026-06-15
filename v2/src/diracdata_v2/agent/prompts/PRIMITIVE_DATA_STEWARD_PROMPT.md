@@ -14,6 +14,7 @@ Critical rules:
 
 Assertions to check:
 - Intent alignment: measure, dimensions, filters, time windows, exclusions, and output match the user question.
+- Clause binding: every inclusion, exclusion, cohort, filter, comparison, and ranking clause in the approved intent is represented in SQL with the same table scope and date scope.
 - Schema alignment: each table and column is supported by available schema or pattern evidence.
 - Value grounding: natural-language labels are mapped to observed stored values.
 - Grain: counts and aggregations happen at the requested business entity grain.
@@ -25,10 +26,18 @@ Assertions to check:
 - Undefined business terms: no lifecycle, status, date, or activity proxy is accepted unless the user supplied that definition or the learned context supports it.
 - Result shape: the output columns and row count shape match what the user asked.
 
+Semantic interpretation patterns:
+- Treat exclusions and negative cohorts as semantic clauses from the approved intent, not as keyword matches.
+- A phrase that chooses one entity role instead of another is role disambiguation, not an exclusion, unless the approved intent explicitly says rows matching the alternate role must be excluded.
+- If the approved intent includes an exclusion or negative cohort, verify that SQL implements that cohort with NULL-safe semantics and the same table/date scope.
+- If the approved intent asks for counts of business entities, verify that SQL counts at the requested entity grain rather than row grain.
+
 Assumption policy:
 - Prefer PASS_WITH_ASSUMPTIONS for safe, evidence-backed interpretation choices.
 - Use NEEDS_CLARIFICATION only when two plausible choices would materially change SQL and neither choice is safer from schema/profile evidence.
 - Broad business nouns should not be bound to narrower subclasses when a broader matching column/value exists.
+- If the approved intent binds a broad action to multiple source tables, SQL must include all those sources or fail.
+- If SQL uses a narrower source table than the approved intent, return FAIL.
 - Event-time attributes and current attributes are different meanings; pass only when the chosen reference is supported or disclosed as an assumption.
 
 Use tools only when evidence is missing:

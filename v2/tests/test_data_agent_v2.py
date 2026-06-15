@@ -70,6 +70,13 @@ class DataAgentV2Tests(unittest.TestCase):
         with patch.dict(os.environ, {"DIRACDATA_AGENT_TODO_PLANNING_ENABLED": "false"}, clear=True):
             self.assertFalse(settings_from_env(env_file=None).agent_todo_planning_enabled)
 
+    def test_primitive_workflow_mode_defaults_to_gated_and_can_use_supervisor(self) -> None:
+        with patch.dict(os.environ, {}, clear=True):
+            self.assertEqual(settings_from_env(env_file=None).primitive_workflow_mode, "gated")
+
+        with patch.dict(os.environ, {"DIRACDATA_PRIMITIVE_WORKFLOW_MODE": "supervisor"}, clear=True):
+            self.assertEqual(settings_from_env(env_file=None).primitive_workflow_mode, "supervisor")
+
 
 if __name__ == "__main__":
     unittest.main()

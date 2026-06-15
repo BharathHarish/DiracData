@@ -77,7 +77,10 @@ class ChatModelFactory:
         self.settings = settings
 
     def create_agent_chat_model(self) -> object:
-        profile = BUILT_IN_MODEL_PROFILES.get(self.settings.agent_model_profile)
+        return self.create_chat_model(profile_id=self.settings.agent_model_profile)
+
+    def create_chat_model(self, *, profile_id: str | None = None) -> object:
+        profile = BUILT_IN_MODEL_PROFILES.get(profile_id or self.settings.agent_model_profile)
         provider = profile.provider if profile else ModelProvider(self.settings.agent_llm_provider)
         model = profile.model if profile else self.settings.agent_llm_model
         max_tokens = min(self.settings.agent_llm_max_tokens, profile.max_tokens) if profile else self.settings.agent_llm_max_tokens
@@ -153,4 +156,3 @@ def _provider_environment(
                 os.environ.pop(key, None)
             else:
                 os.environ[key] = value
-

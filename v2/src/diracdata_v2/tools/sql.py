@@ -99,7 +99,7 @@ def build_sql_dry_run_tool(*, engine: DuckDBEngine) -> object:
 
 
 def validate_sql(sql: str, *, available_tables: set[str]) -> dict[str, Any]:
-    validation_sql = _strip_leading_comments(sql)
+    validation_sql = _strip_sql_comments(sql).strip()
     if not validation_sql:
         return {"status": "error", "error": "SQL cannot be empty"}
     lowered = validation_sql.lower()
@@ -123,7 +123,7 @@ def validate_sql(sql: str, *, available_tables: set[str]) -> dict[str, Any]:
 
 
 def _to_explain_sql(sql: str) -> str | None:
-    validation_sql = _strip_leading_comments(sql)
+    validation_sql = _strip_sql_comments(sql).strip()
     semantic_sql = _strip_explain_prefix(validation_sql)
     if semantic_sql is None:
         return None
@@ -153,9 +153,6 @@ def _cte_names(sql: str) -> set[str]:
     return set(re.findall(r"(?:with|,)\s*([a-zA-Z_][\w]*)\s+as\s*\(", sql))
 
 
-def _strip_leading_comments(sql: str) -> str:
-    remaining = sql.strip()
-    while remaining.startswith("--"):
-        _, _, tail = remaining.partition("\n")
-        remaining = tail.strip()
-    return remaining
+def _strip_sql_comments(sql: str) -> str:
+    without_line_comments = re.sub(r"--.*?$", "", sql, flags=re.MULTILINE)
+    return re.sub(r"/\*.*?\*/", "", without_line_comments, flags=re.DOTALL)

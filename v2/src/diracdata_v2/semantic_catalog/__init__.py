@@ -14,6 +14,12 @@ from diracdata_v2.semantic_catalog.contracts import (
     CatalogSource,
     CompiledContext,
 )
+from diracdata_v2.semantic_catalog.intent import (
+    DeterministicIntentFrameExtractor,
+    IntentFrameExtractor,
+    LLMIntentFrameExtractor,
+    QueryIntentFrame,
+)
 
 __all__ = [
     "CatalogCard",
@@ -22,6 +28,10 @@ __all__ = [
     "CatalogReviewStatus",
     "CatalogSource",
     "CompiledContext",
+    "DeterministicIntentFrameExtractor",
+    "IntentFrameExtractor",
+    "LLMIntentFrameExtractor",
+    "QueryIntentFrame",
     "SemanticCatalogBuilder",
     "SemanticCatalogBuildResult",
     "SemanticCatalogCompiler",

@@ -734,7 +734,9 @@ def _extract_sections(text: str) -> dict[str, str]:
     headers = [
         "INTERPRETATION",
         "INTENT_SUMMARY",
+        "CLAUSE_BINDINGS",
         "BUSINESS_TERMS",
+        "GROUNDED_MAPPINGS",
         "UNRESOLVED_TERMS",
         "CONTEXT_USED",
         "FINAL_SQL",
@@ -748,6 +750,7 @@ def _extract_sections(text: str) -> dict[str, str]:
         "ASSUMPTIONS",
         "DATA_ENGINEERING_REVIEW",
         "CLARIFICATION_QUESTION",
+        "MCQ_OPTIONS",
         "ISSUES",
         "REQUIRED_ANALYST_CORRECTION",
         "EVIDENCE",
@@ -813,11 +816,15 @@ def _definition_gate_for_packet(packet: StatusPacket) -> StatusPacket | None:
     assumptions = packet.sections.get("ASSUMPTIONS", "")
     if _has_blocking_section(unresolved):
         return _clarification_packet(
-            "A SQL-affecting business term is unresolved. Please define it before I write or execute SQL."
+            "A SQL-affecting business term is unresolved. Please define it before I write or execute SQL.",
+            details_label="Unresolved details",
+            details=unresolved,
         )
     if _has_blocking_section(assumptions):
         return _clarification_packet(
-            "The agent introduced a SQL-affecting assumption. Please confirm or correct it before I execute SQL."
+            "The agent introduced a SQL-affecting assumption. Please confirm or correct it before I execute SQL.",
+            details_label="Assumption details",
+            details=assumptions,
         )
     inferred = _definition_clarification_for_analyst_packet(packet)
     if inferred is not None:
@@ -825,18 +832,30 @@ def _definition_gate_for_packet(packet: StatusPacket) -> StatusPacket | None:
     status_text = "\n".join(packet.sections.values()).lower()
     if re.search(r"\b(status|resolution_status)\s*:\s*(unresolved|conflicting|inferred)\b", status_text):
         return _clarification_packet(
-            "A business term was marked unresolved, conflicting, or inferred. Please define it before I execute SQL."
+            "A business term was marked unresolved, conflicting, or inferred. Please define it before I execute SQL.",
+            details_label="Packet details",
+            details="\n\n".join(packet.sections.values()),
         )
     return None
 
 
-def _clarification_packet(question: str) -> StatusPacket:
+def _clarification_packet(
+    question: str,
+    *,
+    details_label: str | None = None,
+    details: str | None = None,
+) -> StatusPacket:
+    detailed_question = question
+    clean_details = _clarification_details(details)
+    if clean_details:
+        label = details_label or "Details"
+        detailed_question = f"{question}\n\n{label}:\n{clean_details}"
     return StatusPacket(
         component="intent",
         status=GateDecision.NEEDS_CLARIFICATION.value.upper(),
         sections={
-            "CLARIFICATION_QUESTION": question,
-            "ISSUES": question,
+            "CLARIFICATION_QUESTION": detailed_question,
+            "ISSUES": detailed_question,
         },
     )
 
@@ -862,8 +881,29 @@ def _has_blocking_section(text: str) -> bool:
         "no unresolved terms",
         "empty",
     }
-    lines = [line.strip(" -`.\t") for line in clean.splitlines() if line.strip(" -`.\t")]
-    return any(line not in non_blocking for line in lines)
+    lines = [line.strip(" -`.\t<>") for line in clean.splitlines() if line.strip(" -`.\t<>")]
+    return any(not _is_non_blocking_line(line, non_blocking=non_blocking) for line in lines)
+
+
+def _is_non_blocking_line(line: str, *, non_blocking: set[str]) -> bool:
+    clean = line.strip(" -`.\t<>").lower()
+    if clean in non_blocking:
+        return True
+    if re.match(r"^(none|no unresolved terms|no assumptions)\b", clean) and not re.search(
+        r"\b(except|but|however|interpret|infer|inferred|proxy|approx)\b",
+        clean,
+    ):
+        return True
+    return False
+
+
+def _clarification_details(details: str | None, *, max_chars: int = 1600) -> str:
+    if not details:
+        return ""
+    clean = details.strip().strip("`").strip()
+    if not clean:
+        return ""
+    return _truncate(clean, max_chars)
 
 
 def _initial_analyst_task(
@@ -913,7 +953,8 @@ def _sql_author_task(
 ) -> str:
     parts = [
         "Write a SQL Author packet from this approved intent. Use sql_dry_run only; do not execute final SQL.",
-        f"USER_QUESTION:\n{question}",
+        "The approved intent packet is the executable contract. The original question is provenance only.",
+        f"ORIGINAL_USER_QUESTION:\n{question}",
         f"APPROVED_INTENT_PACKET:\n{intent_output}",
     ]
     if compiled_context:
@@ -930,7 +971,8 @@ def _staged_steward_task(
 ) -> str:
     parts = [
         "Validate this SQL Author packet as a semantic unit test. Use sql_dry_run only; do not execute final SQL.",
-        f"USER_QUESTION:\n{question}",
+        "The approved intent packet is the executable contract. The original question is provenance only.",
+        f"ORIGINAL_USER_QUESTION:\n{question}",
         f"APPROVED_INTENT_PACKET:\n{intent_output}",
         f"SQL_AUTHOR_PACKET:\n{sql_author_output}",
         "Return PASS only when the SQL can be executed exactly by the harness with no SQL-affecting assumptions.",
@@ -1015,6 +1057,7 @@ def _clarification_result(
             {
                 "source": source,
                 "question": question,
+                "choices": _clarification_choices(packet),
                 "previous_context": _truncate(previous_context, 4000),
             },
         )
@@ -1026,6 +1069,21 @@ def _clarification_result(
         iterations=iterations,
         stop_reason="needs_clarification",
     )
+
+
+def _clarification_choices(packet: StatusPacket) -> list[str]:
+    options = packet.sections.get("MCQ_OPTIONS", "")
+    if not options:
+        return []
+    choices: list[str] = []
+    for line in options.splitlines():
+        clean = line.strip()
+        if not clean:
+            continue
+        clean = re.sub(r"^\s*(?:[-*]|\d+[\).])\s*", "", clean).strip()
+        if clean:
+            choices.append(clean)
+    return choices[:4]
 
 
 def _render_final_answer(
@@ -1202,6 +1260,8 @@ def _plain_compiled_context(compiled: Any) -> dict[str, Any]:
 
 
 def _compiled_context_event_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    retrieval = payload.get("retrieval") or {}
+    intent_frame = retrieval.get("intent_frame") if isinstance(retrieval, dict) else {}
     return {
         "status": payload.get("status", "ok"),
         "needs_clarification": bool(payload.get("needs_clarification")),
@@ -1209,7 +1269,8 @@ def _compiled_context_event_payload(payload: dict[str, Any]) -> dict[str, Any]:
         "candidate_count": len(payload.get("candidate_cards", []) or []),
         "pattern_count": len(payload.get("sql_patterns", []) or []),
         "join_edge_count": len(payload.get("join_edges", []) or []),
-        "required_tables": (payload.get("retrieval") or {}).get("required_tables", []),
+        "required_tables": retrieval.get("required_tables", []),
+        "intent_frame": intent_frame if isinstance(intent_frame, dict) else {},
     }
 
 

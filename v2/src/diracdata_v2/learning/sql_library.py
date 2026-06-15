@@ -11,6 +11,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Protocol
 
+from diracdata_v2.semantic_catalog.sql_analysis import analyze_sql_references
+
 
 class PatternGenerator(Protocol):
     """LLM adapter used to translate SQL templates into NL pattern metadata."""
@@ -59,11 +61,15 @@ class SQLLibraryBuilder:
         history_limit: int = 80,
         pattern_batch_size: int | None = None,
         pattern_limit: int | None = None,
+        nl_sql_pair_paths: tuple[Path, ...] = (),
+        nl_sql_pair_limit: int | None = None,
+        nl_sql_pair_review_status: str = "approved",
     ) -> SQLLibraryBuildResult:
         table_columns = _table_columns(schema_graph)
         covered = query_history_coverage(
             query_history_path=query_history_path,
             table_columns=table_columns,
+            nl_sql_pair_paths=nl_sql_pair_paths,
         )
         entries: dict[str, dict[str, Any]] = {}
         entries.update(
@@ -71,6 +77,14 @@ class SQLLibraryBuilder:
                 query_history_path=query_history_path,
                 table_columns=table_columns,
                 limit=history_limit,
+            )
+        )
+        entries.update(
+            mine_nl_sql_pair_templates(
+                pair_paths=nl_sql_pair_paths,
+                table_columns=table_columns,
+                limit=nl_sql_pair_limit,
+                review_status=nl_sql_pair_review_status,
             )
         )
         entries.update(
@@ -115,6 +129,7 @@ def query_history_coverage(
     *,
     query_history_path: Path,
     table_columns: dict[str, list[str]],
+    nl_sql_pair_paths: tuple[Path, ...] = (),
 ) -> dict[str, Any]:
     table_mentions: dict[str, int] = {table: 0 for table in table_columns}
     column_mentions: dict[str, int] = {
@@ -125,10 +140,27 @@ def query_history_coverage(
     successful_queries = 0
     for sql in _successful_sql(query_history_path):
         successful_queries += 1
-        aliases = _aliases(sql, table_columns)
-        for table in sorted(set(aliases.values())):
+        analysis = analyze_sql_references(sql, table_columns)
+        for table in analysis.tables:
             table_mentions[table] = table_mentions.get(table, 0) + 1
-        for column_ref in _qualified_columns(sql, aliases, table_columns):
+        for column_ref in analysis.columns:
+            column_mentions[column_ref] = column_mentions.get(column_ref, 0) + 1
+    trusted_pair_queries = 0
+    for row in _nl_sql_pair_rows(nl_sql_pair_paths):
+        sql = _row_sql(row)
+        if not sql:
+            continue
+        trusted_pair_queries += 1
+        analysis = analyze_sql_references(sql, table_columns)
+        tables = _row_refs(row, table_fields=("tables", "tables_used", "expected_tables")) or list(analysis.tables)
+        columns = _valid_column_refs(
+            _row_refs(row, table_fields=("columns", "columns_used", "expected_columns")),
+            table_columns=table_columns,
+        ) or list(analysis.columns)
+        for table in tables:
+            if table in table_columns:
+                table_mentions[table] = table_mentions.get(table, 0) + 1
+        for column_ref in columns:
             column_mentions[column_ref] = column_mentions.get(column_ref, 0) + 1
 
     mentioned_tables = sorted(table for table, count in table_mentions.items() if count)
@@ -136,6 +168,7 @@ def query_history_coverage(
     all_columns = sorted(column_mentions)
     return {
         "successful_queries": successful_queries,
+        "trusted_pair_queries": trusted_pair_queries,
         "tables_total": len(table_columns),
         "tables_covered": mentioned_tables,
         "tables_missing": sorted(set(table_columns) - set(mentioned_tables)),
@@ -160,9 +193,9 @@ def mine_history_templates(
         if normalized in seen:
             continue
         seen.add(normalized)
-        aliases = _aliases(sql, table_columns)
-        tables = sorted(set(aliases.values()))
-        columns = sorted(_qualified_columns(sql, aliases, table_columns))
+        analysis = analyze_sql_references(sql, table_columns)
+        tables = list(analysis.tables)
+        columns = list(analysis.columns)
         if not tables or not columns:
             continue
         key = _history_key(tables=tables, columns=columns, normalized_sql=normalized)
@@ -173,8 +206,68 @@ def mine_history_templates(
             "review_status": "observed",
             "tables": tables,
             "columns": columns,
+            "join_edges": [pair.to_dict() for pair in analysis.join_pairs],
+            "analysis": {"parser": analysis.parser},
         }
         if len(templates) >= limit:
+            break
+    return templates
+
+
+def mine_nl_sql_pair_templates(
+    *,
+    pair_paths: tuple[Path, ...],
+    table_columns: dict[str, list[str]],
+    limit: int | None,
+    review_status: str = "approved",
+) -> dict[str, dict[str, Any]]:
+    """Turn trusted NL-SQL pairs into reusable SQL library entries."""
+
+    templates: dict[str, dict[str, Any]] = {}
+    seen: set[str] = set()
+    for row in _nl_sql_pair_rows(pair_paths):
+        question = _row_question(row)
+        sql = _row_sql(row)
+        if not question or not sql:
+            continue
+        normalized = _normalize_sql(sql)
+        dedupe_key = f"{question.strip().lower()}|{normalized}"
+        if dedupe_key in seen:
+            continue
+        seen.add(dedupe_key)
+        analysis = analyze_sql_references(sql, table_columns)
+        tables = _valid_tables(
+            _row_refs(row, table_fields=("tables", "tables_used", "expected_tables")),
+            table_columns=table_columns,
+        ) or list(analysis.tables)
+        columns = _valid_column_refs(
+            _row_refs(row, table_fields=("columns", "columns_used", "expected_columns")),
+            table_columns=table_columns,
+        ) or list(analysis.columns)
+        if not tables or not columns:
+            continue
+        join_edges = _row_join_edges(row, table_columns=table_columns) or [
+            pair.to_dict() for pair in analysis.join_pairs
+        ]
+        source_id = _row_identifier(row) or hashlib.sha1(dedupe_key.encode("utf-8")).hexdigest()[:12]
+        key = _nl_sql_pair_key(source_id=source_id, question=question, normalized_sql=normalized)
+        templates[key] = {
+            "template": _one_line(row.get("template") or row.get("source_template")) or _template_name(tables=tables, columns=columns),
+            "sql": normalized,
+            "source": "nl_sql_pair",
+            "review_status": _one_line(row.get("review_status")) or review_status,
+            "tables": tables,
+            "columns": columns,
+            "join_edges": join_edges,
+            "canonical_question": question,
+            "paraphrases": _strings(row.get("paraphrases")),
+            "source_case_id": source_id,
+            "source_category": _one_line(row.get("category")),
+            "source_difficulty": _one_line(row.get("difficulty")),
+            "source_notes": _one_line(row.get("notes")),
+            "analysis": {"parser": analysis.parser},
+        }
+        if limit is not None and len(templates) >= max(0, limit):
             break
     return templates
 
@@ -223,12 +316,12 @@ def build_sql_patterns(
     limit: int,
 ) -> dict[str, dict[str, Any]]:
     """Create NL-searchable SQL patterns from SQL library entries."""
-    history_entries = {
+    pattern_entries = {
         entry_id: entry
         for entry_id, entry in entries.items()
-        if entry.get("source") == "query_history"
+        if entry.get("source") in {"query_history", "nl_sql_pair"}
     }
-    selected = list(history_entries.items())[: max(0, limit)]
+    selected = list(pattern_entries.items())[: max(0, limit)]
     if not selected:
         return {}
 
@@ -242,7 +335,7 @@ def build_sql_patterns(
                 generator=generator,
             )
             for pattern in generated:
-                normalized = _normalize_pattern(pattern, entries=history_entries)
+                normalized = _normalize_pattern(pattern, entries=pattern_entries)
                 if normalized is not None:
                     patterns[normalized["id"]] = normalized
     for entry_id, entry in selected:
@@ -265,6 +358,8 @@ def _generate_patterns_batch(
         payload.append(
             {
                 "entry_id": entry_id,
+                "canonical_question": entry.get("canonical_question"),
+                "paraphrases": entry.get("paraphrases", []),
                 "tables": entry.get("tables", []),
                 "columns": entry.get("columns", []),
                 "schema_meanings": {
@@ -345,11 +440,12 @@ def _normalize_pattern(
     return {
         "id": pattern_id,
         "entry_id": entry_id,
-        "source": "query_history",
+        "source": entry.get("source") or "query_history",
         "review_status": entry.get("review_status", "observed"),
         "canonical_question": _one_line(pattern.get("canonical_question"))
+        or _one_line(entry.get("canonical_question"))
         or _heuristic_question(entry),
-        "paraphrases": _strings(pattern.get("paraphrases"))[:5],
+        "paraphrases": (_strings(pattern.get("paraphrases")) or _strings(entry.get("paraphrases")))[:5],
         "intent_signature": _intent_signature(pattern.get("intent_signature"), entry=entry),
         "summary": _one_line(pattern.get("summary")),
         "assumptions": _strings(pattern.get("assumptions"))[:5],
@@ -364,13 +460,13 @@ def _heuristic_pattern(*, entry_id: str, entry: dict[str, Any]) -> dict[str, Any
     return {
         "id": f"pattern:{entry_id}",
         "entry_id": entry_id,
-        "source": "query_history",
+        "source": entry.get("source") or "query_history",
         "review_status": entry.get("review_status", "observed"),
-        "canonical_question": _heuristic_question(entry),
-        "paraphrases": [_heuristic_paraphrase(entry)],
+        "canonical_question": _one_line(entry.get("canonical_question")) or _heuristic_question(entry),
+        "paraphrases": _strings(entry.get("paraphrases")) or [_heuristic_paraphrase(entry)],
         "intent_signature": _intent_signature({}, entry=entry),
-        "summary": str(entry.get("template") or ""),
-        "assumptions": [],
+        "summary": _one_line(entry.get("template")) or _one_line(entry.get("canonical_question")),
+        "assumptions": _strings(entry.get("assumptions")),
         "tables": list(entry.get("tables", [])),
         "columns": list(entry.get("columns", [])),
         "sql_template": str(entry.get("sql") or ""),
@@ -529,37 +625,103 @@ def _successful_sql(query_history_path: Path) -> list[str]:
         return [
             row["statement_text"]
             for row in rows
-            if row.get("execution_status") == "FINISHED" and row.get("statement_text")
+            if str(row.get("execution_status") or "").upper() == "FINISHED" and row.get("statement_text")
         ]
 
 
-def _aliases(sql: str, table_columns: dict[str, list[str]]) -> dict[str, str]:
-    aliases: dict[str, str] = {}
-    pattern = re.compile(
-        r"\b(?:FROM|JOIN)\s+([a-zA-Z_][\w]*)\s+(?:AS\s+)?([a-zA-Z_][\w]*)?",
-        re.IGNORECASE,
-    )
-    reserved = {"ON", "WHERE", "GROUP", "ORDER", "JOIN", "LEFT", "RIGHT", "INNER", "FULL", "CROSS"}
-    for table, alias in pattern.findall(sql):
-        if table not in table_columns:
+def _nl_sql_pair_rows(pair_paths: tuple[Path, ...]) -> list[dict[str, str]]:
+    rows: list[dict[str, str]] = []
+    for path in pair_paths:
+        if not path.exists():
             continue
-        aliases[table] = table
-        if alias and alias.upper() not in reserved:
-            aliases[alias] = table
-    return aliases
+        with path.open(newline="", encoding="utf-8") as handle:
+            reader = csv.DictReader(handle)
+            for row in reader:
+                rows.append({str(key): str(value or "") for key, value in row.items()})
+    return rows
 
 
-def _qualified_columns(
-    sql: str,
-    aliases: dict[str, str],
-    table_columns: dict[str, list[str]],
-) -> set[str]:
-    result: set[str] = set()
-    for qualifier, column in re.findall(r"\b([a-zA-Z_][\w]*)\.([a-zA-Z_][\w]*)\b", sql):
-        table = aliases.get(qualifier, qualifier if qualifier in table_columns else None)
-        if table and column in table_columns.get(table, []):
-            result.add(f"{table}.{column}")
-    return result
+def _row_identifier(row: dict[str, str]) -> str:
+    for field in ("case_id", "history_id", "id", "entry_id", "query_id", "statement_id"):
+        value = _one_line(row.get(field))
+        if value:
+            return value
+    return ""
+
+
+def _row_question(row: dict[str, str]) -> str:
+    for field in ("question", "nl_query", "canonical_question", "natural_language", "user_question"):
+        value = _one_line(row.get(field))
+        if value:
+            return value
+    return ""
+
+
+def _row_sql(row: dict[str, str]) -> str:
+    for field in ("sql", "statement_text", "query", "sql_template"):
+        value = str(row.get(field) or "").strip()
+        if value:
+            return value
+    return ""
+
+
+def _row_refs(row: dict[str, str], *, table_fields: tuple[str, ...]) -> list[str]:
+    for field in table_fields:
+        values = _split_refs(row.get(field))
+        if values:
+            return values
+    return []
+
+
+def _split_refs(value: Any) -> list[str]:
+    text = str(value or "").strip()
+    if not text:
+        return []
+    refs: list[str] = []
+    for chunk in re.split(r"[;\n]", text):
+        clean = _one_line(chunk)
+        if clean:
+            refs.append(clean)
+    return refs
+
+
+def _valid_tables(values: list[str], *, table_columns: dict[str, list[str]]) -> list[str]:
+    tables = set(table_columns)
+    return sorted({value for value in values if value in tables})
+
+
+def _valid_column_refs(values: list[str], *, table_columns: dict[str, list[str]]) -> list[str]:
+    return sorted({value for value in values if _valid_column_ref(value, table_columns)})
+
+
+def _valid_column_ref(ref: str, table_columns: dict[str, list[str]]) -> bool:
+    if "." not in ref:
+        return False
+    table, column = ref.split(".", 1)
+    return column in table_columns.get(table, [])
+
+
+def _row_join_edges(row: dict[str, str], *, table_columns: dict[str, list[str]]) -> list[dict[str, Any]]:
+    output = []
+    for value in _split_refs(row.get("join_edges") or row.get("expected_join_edges")):
+        if "=" not in value:
+            continue
+        left, right = [_one_line(item) for item in value.split("=", 1)]
+        if not (_valid_column_ref(left, table_columns) and _valid_column_ref(right, table_columns)):
+            continue
+        tables = sorted({left.split(".", 1)[0], right.split(".", 1)[0]})
+        if len(tables) != 2:
+            continue
+        left_ref, right_ref = sorted([left, right])
+        output.append(
+            {
+                "left_column": left_ref,
+                "right_column": right_ref,
+                "tables": tables,
+                "sql_condition": f"{left_ref} = {right_ref}",
+            }
+        )
+    return output
 
 
 def _normalize_sql(sql: str) -> str:
@@ -575,6 +737,12 @@ def _history_key(*, tables: list[str], columns: list[str], normalized_sql: str) 
     table_part = "_".join(tables[:3])
     column_part = "_".join(column.split(".")[-1] for column in columns[:2])
     return f"history:{table_part}:{column_part}:{digest}"
+
+
+def _nl_sql_pair_key(*, source_id: str, question: str, normalized_sql: str) -> str:
+    digest = hashlib.sha1(f"{source_id}|{question}|{normalized_sql}".encode("utf-8")).hexdigest()[:10]
+    clean_source = re.sub(r"[^a-zA-Z0-9_]+", "_", source_id.strip().lower()).strip("_")
+    return f"nl_sql:{clean_source or 'pair'}:{digest}"
 
 
 def _template_name(*, tables: list[str], columns: list[str]) -> str:

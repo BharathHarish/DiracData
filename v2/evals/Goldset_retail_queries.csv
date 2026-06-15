@@ -1,0 +1,1073 @@
+case_id,category,difficulty,nl_query,sql,tables_used,columns_used,join_edges,expected_ambiguities,source_template,template_variant,notes
+gold_001,customer,easy,Count current F customers from TX whose first sale year is 2001.,"
+        SELECT cp.gender, a.state, cd.year, COUNT(DISTINCT c.client_record) AS customers
+        FROM clients c
+        JOIN client_profiles cp ON c.current_client_profile_ref = cp.client_profile_record
+        JOIN addresses a ON c.current_address_ref = a.address_record
+        JOIN calendar_days cd ON c.first_sale_calendar_day_ref = cd.calendar_day_record
+        WHERE cp.gender = 'F' AND a.state = 'TX' AND cd.year = 2001
+        GROUP BY cp.gender, a.state, cd.year
+        ",addresses;calendar_days;client_profiles;clients,addresses.address_record;addresses.state;calendar_days.calendar_day_record;calendar_days.year;client_profiles.client_profile_record;client_profiles.gender;clients.client_record;clients.current_address_ref;clients.current_client_profile_ref;clients.first_sale_calendar_day_ref,addresses.address_record = clients.current_address_ref;calendar_days.calendar_day_record = clients.first_sale_calendar_day_ref;client_profiles.client_profile_record = clients.current_client_profile_ref,,current_customer_profile,1,Current customer profile and geography.
+gold_002,customer,easy,Count current F customers from TX whose first sale year is 2002.,"
+        SELECT cp.gender, a.state, cd.year, COUNT(DISTINCT c.client_record) AS customers
+        FROM clients c
+        JOIN client_profiles cp ON c.current_client_profile_ref = cp.client_profile_record
+        JOIN addresses a ON c.current_address_ref = a.address_record
+        JOIN calendar_days cd ON c.first_sale_calendar_day_ref = cd.calendar_day_record
+        WHERE cp.gender = 'F' AND a.state = 'TX' AND cd.year = 2002
+        GROUP BY cp.gender, a.state, cd.year
+        ",addresses;calendar_days;client_profiles;clients,addresses.address_record;addresses.state;calendar_days.calendar_day_record;calendar_days.year;client_profiles.client_profile_record;client_profiles.gender;clients.client_record;clients.current_address_ref;clients.current_client_profile_ref;clients.first_sale_calendar_day_ref,addresses.address_record = clients.current_address_ref;calendar_days.calendar_day_record = clients.first_sale_calendar_day_ref;client_profiles.client_profile_record = clients.current_client_profile_ref,,current_customer_profile,2,Current customer profile and geography.
+gold_003,customer,easy,Count current F customers from TX whose first sale year is 2003.,"
+        SELECT cp.gender, a.state, cd.year, COUNT(DISTINCT c.client_record) AS customers
+        FROM clients c
+        JOIN client_profiles cp ON c.current_client_profile_ref = cp.client_profile_record
+        JOIN addresses a ON c.current_address_ref = a.address_record
+        JOIN calendar_days cd ON c.first_sale_calendar_day_ref = cd.calendar_day_record
+        WHERE cp.gender = 'F' AND a.state = 'TX' AND cd.year = 2003
+        GROUP BY cp.gender, a.state, cd.year
+        ",addresses;calendar_days;client_profiles;clients,addresses.address_record;addresses.state;calendar_days.calendar_day_record;calendar_days.year;client_profiles.client_profile_record;client_profiles.gender;clients.client_record;clients.current_address_ref;clients.current_client_profile_ref;clients.first_sale_calendar_day_ref,addresses.address_record = clients.current_address_ref;calendar_days.calendar_day_record = clients.first_sale_calendar_day_ref;client_profiles.client_profile_record = clients.current_client_profile_ref,,current_customer_profile,3,Current customer profile and geography.
+gold_004,customer,easy,Count current F customers from TX whose first sale year is 2004.,"
+        SELECT cp.gender, a.state, cd.year, COUNT(DISTINCT c.client_record) AS customers
+        FROM clients c
+        JOIN client_profiles cp ON c.current_client_profile_ref = cp.client_profile_record
+        JOIN addresses a ON c.current_address_ref = a.address_record
+        JOIN calendar_days cd ON c.first_sale_calendar_day_ref = cd.calendar_day_record
+        WHERE cp.gender = 'F' AND a.state = 'TX' AND cd.year = 2004
+        GROUP BY cp.gender, a.state, cd.year
+        ",addresses;calendar_days;client_profiles;clients,addresses.address_record;addresses.state;calendar_days.calendar_day_record;calendar_days.year;client_profiles.client_profile_record;client_profiles.gender;clients.client_record;clients.current_address_ref;clients.current_client_profile_ref;clients.first_sale_calendar_day_ref,addresses.address_record = clients.current_address_ref;calendar_days.calendar_day_record = clients.first_sale_calendar_day_ref;client_profiles.client_profile_record = clients.current_client_profile_ref,,current_customer_profile,4,Current customer profile and geography.
+gold_005,customer,medium,Show preferred-customer counts by first sale year for customers born in VANUATU with preferred flag N.,"
+        SELECT c.birth_country, c.preferred_client_flag, cd.year, COUNT(DISTINCT c.client_record) AS customers
+        FROM clients c
+        JOIN calendar_days cd ON c.first_sale_calendar_day_ref = cd.calendar_day_record
+        WHERE c.birth_country = 'VANUATU' AND c.preferred_client_flag = 'N'
+        GROUP BY c.birth_country, c.preferred_client_flag, cd.year
+        ORDER BY cd.year
+        ",calendar_days;clients,calendar_days.calendar_day_record;calendar_days.year;clients.birth_country;clients.client_record;clients.first_sale_calendar_day_ref;clients.preferred_client_flag,calendar_days.calendar_day_record = clients.first_sale_calendar_day_ref,,current_customer_lifecycle,1,Customer lifecycle and preferred flag.
+gold_006,customer,medium,Show preferred-customer counts by first sale year for customers born in VANUATU with preferred flag N.,"
+        SELECT c.birth_country, c.preferred_client_flag, cd.year, COUNT(DISTINCT c.client_record) AS customers
+        FROM clients c
+        JOIN calendar_days cd ON c.first_sale_calendar_day_ref = cd.calendar_day_record
+        WHERE c.birth_country = 'VANUATU' AND c.preferred_client_flag = 'N'
+        GROUP BY c.birth_country, c.preferred_client_flag, cd.year
+        ORDER BY cd.year
+        ",calendar_days;clients,calendar_days.calendar_day_record;calendar_days.year;clients.birth_country;clients.client_record;clients.first_sale_calendar_day_ref;clients.preferred_client_flag,calendar_days.calendar_day_record = clients.first_sale_calendar_day_ref,,current_customer_lifecycle,2,Customer lifecycle and preferred flag.
+gold_007,customer,medium,Show preferred-customer counts by first sale year for customers born in VANUATU with preferred flag N.,"
+        SELECT c.birth_country, c.preferred_client_flag, cd.year, COUNT(DISTINCT c.client_record) AS customers
+        FROM clients c
+        JOIN calendar_days cd ON c.first_sale_calendar_day_ref = cd.calendar_day_record
+        WHERE c.birth_country = 'VANUATU' AND c.preferred_client_flag = 'N'
+        GROUP BY c.birth_country, c.preferred_client_flag, cd.year
+        ORDER BY cd.year
+        ",calendar_days;clients,calendar_days.calendar_day_record;calendar_days.year;clients.birth_country;clients.client_record;clients.first_sale_calendar_day_ref;clients.preferred_client_flag,calendar_days.calendar_day_record = clients.first_sale_calendar_day_ref,,current_customer_lifecycle,3,Customer lifecycle and preferred flag.
+gold_008,customer,medium,Show preferred-customer counts by first sale year for customers born in VANUATU with preferred flag N.,"
+        SELECT c.birth_country, c.preferred_client_flag, cd.year, COUNT(DISTINCT c.client_record) AS customers
+        FROM clients c
+        JOIN calendar_days cd ON c.first_sale_calendar_day_ref = cd.calendar_day_record
+        WHERE c.birth_country = 'VANUATU' AND c.preferred_client_flag = 'N'
+        GROUP BY c.birth_country, c.preferred_client_flag, cd.year
+        ORDER BY cd.year
+        ",calendar_days;clients,calendar_days.calendar_day_record;calendar_days.year;clients.birth_country;clients.client_record;clients.first_sale_calendar_day_ref;clients.preferred_client_flag,calendar_days.calendar_day_record = clients.first_sale_calendar_day_ref,,current_customer_lifecycle,4,Customer lifecycle and preferred flag.
+gold_009,customer,medium,Profile current customers with 2 yr Degree education and Good credit rating by income band and buy potential 0-500.,"
+        SELECT cp.education_status, cp.credit_rating, hp.buy_potential, ir.lower_bound, ir.upper_bound, COUNT(DISTINCT c.client_record) AS customers
+        FROM clients c
+        JOIN client_profiles cp ON c.current_client_profile_ref = cp.client_profile_record
+        JOIN household_profiles hp ON c.current_household_profile_ref = hp.household_profile_record
+        JOIN income_ranges ir ON hp.income_range_ref = ir.income_range_record
+        WHERE cp.education_status = '2 yr Degree' AND cp.credit_rating = 'Good' AND hp.buy_potential = '0-500'
+        GROUP BY cp.education_status, cp.credit_rating, hp.buy_potential, ir.lower_bound, ir.upper_bound
+        ",client_profiles;clients;household_profiles;income_ranges,client_profiles.client_profile_record;client_profiles.credit_rating;client_profiles.education_status;clients.client_record;clients.current_client_profile_ref;clients.current_household_profile_ref;household_profiles.buy_potential;household_profiles.household_profile_record;household_profiles.income_range_ref;income_ranges.income_range_record;income_ranges.lower_bound;income_ranges.upper_bound,client_profiles.client_profile_record = clients.current_client_profile_ref;clients.current_household_profile_ref = household_profiles.household_profile_record;household_profiles.income_range_ref = income_ranges.income_range_record,,customer_income_profile,1,Current profile plus household income.
+gold_010,customer,medium,Profile current customers with 2 yr Degree education and Good credit rating by income band and buy potential 1001-5000.,"
+        SELECT cp.education_status, cp.credit_rating, hp.buy_potential, ir.lower_bound, ir.upper_bound, COUNT(DISTINCT c.client_record) AS customers
+        FROM clients c
+        JOIN client_profiles cp ON c.current_client_profile_ref = cp.client_profile_record
+        JOIN household_profiles hp ON c.current_household_profile_ref = hp.household_profile_record
+        JOIN income_ranges ir ON hp.income_range_ref = ir.income_range_record
+        WHERE cp.education_status = '2 yr Degree' AND cp.credit_rating = 'Good' AND hp.buy_potential = '1001-5000'
+        GROUP BY cp.education_status, cp.credit_rating, hp.buy_potential, ir.lower_bound, ir.upper_bound
+        ",client_profiles;clients;household_profiles;income_ranges,client_profiles.client_profile_record;client_profiles.credit_rating;client_profiles.education_status;clients.client_record;clients.current_client_profile_ref;clients.current_household_profile_ref;household_profiles.buy_potential;household_profiles.household_profile_record;household_profiles.income_range_ref;income_ranges.income_range_record;income_ranges.lower_bound;income_ranges.upper_bound,client_profiles.client_profile_record = clients.current_client_profile_ref;clients.current_household_profile_ref = household_profiles.household_profile_record;household_profiles.income_range_ref = income_ranges.income_range_record,,customer_income_profile,2,Current profile plus household income.
+gold_011,customer,medium,Profile current customers with 2 yr Degree education and Good credit rating by income band and buy potential 5001-10000.,"
+        SELECT cp.education_status, cp.credit_rating, hp.buy_potential, ir.lower_bound, ir.upper_bound, COUNT(DISTINCT c.client_record) AS customers
+        FROM clients c
+        JOIN client_profiles cp ON c.current_client_profile_ref = cp.client_profile_record
+        JOIN household_profiles hp ON c.current_household_profile_ref = hp.household_profile_record
+        JOIN income_ranges ir ON hp.income_range_ref = ir.income_range_record
+        WHERE cp.education_status = '2 yr Degree' AND cp.credit_rating = 'Good' AND hp.buy_potential = '5001-10000'
+        GROUP BY cp.education_status, cp.credit_rating, hp.buy_potential, ir.lower_bound, ir.upper_bound
+        ",client_profiles;clients;household_profiles;income_ranges,client_profiles.client_profile_record;client_profiles.credit_rating;client_profiles.education_status;clients.client_record;clients.current_client_profile_ref;clients.current_household_profile_ref;household_profiles.buy_potential;household_profiles.household_profile_record;household_profiles.income_range_ref;income_ranges.income_range_record;income_ranges.lower_bound;income_ranges.upper_bound,client_profiles.client_profile_record = clients.current_client_profile_ref;clients.current_household_profile_ref = household_profiles.household_profile_record;household_profiles.income_range_ref = income_ranges.income_range_record,,customer_income_profile,3,Current profile plus household income.
+gold_012,customer,medium,Profile current customers with 2 yr Degree education and Good credit rating by income band and buy potential 501-1000.,"
+        SELECT cp.education_status, cp.credit_rating, hp.buy_potential, ir.lower_bound, ir.upper_bound, COUNT(DISTINCT c.client_record) AS customers
+        FROM clients c
+        JOIN client_profiles cp ON c.current_client_profile_ref = cp.client_profile_record
+        JOIN household_profiles hp ON c.current_household_profile_ref = hp.household_profile_record
+        JOIN income_ranges ir ON hp.income_range_ref = ir.income_range_record
+        WHERE cp.education_status = '2 yr Degree' AND cp.credit_rating = 'Good' AND hp.buy_potential = '501-1000'
+        GROUP BY cp.education_status, cp.credit_rating, hp.buy_potential, ir.lower_bound, ir.upper_bound
+        ",client_profiles;clients;household_profiles;income_ranges,client_profiles.client_profile_record;client_profiles.credit_rating;client_profiles.education_status;clients.client_record;clients.current_client_profile_ref;clients.current_household_profile_ref;household_profiles.buy_potential;household_profiles.household_profile_record;household_profiles.income_range_ref;income_ranges.income_range_record;income_ranges.lower_bound;income_ranges.upper_bound,client_profiles.client_profile_record = clients.current_client_profile_ref;clients.current_household_profile_ref = household_profiles.household_profile_record;household_profiles.income_range_ref = income_ranges.income_range_record,,customer_income_profile,4,Current profile plus household income.
+gold_013,online_sales,medium,How many F online shoppers from TX bought Music in 2001?,"
+        SELECT a.state, cp.gender, m.category, cd.year, COUNT(DISTINCT op.billing_client_ref) AS customers
+        FROM online_purchases op
+        JOIN calendar_days cd ON op.sale_calendar_day_ref = cd.calendar_day_record
+        JOIN merchandise m ON op.merchandise_ref = m.merchandise_record
+        JOIN addresses a ON op.billing_address_ref = a.address_record
+        JOIN client_profiles cp ON op.billing_client_profile_ref = cp.client_profile_record
+        WHERE a.state = 'TX' AND cp.gender = 'F' AND m.category = 'Music' AND cd.year = 2001
+        GROUP BY a.state, cp.gender, m.category, cd.year
+        ",addresses;calendar_days;client_profiles;merchandise;online_purchases,addresses.address_record;addresses.state;calendar_days.calendar_day_record;calendar_days.year;client_profiles.client_profile_record;client_profiles.gender;merchandise.category;merchandise.merchandise_record;online_purchases.billing_address_ref;online_purchases.billing_client_profile_ref;online_purchases.billing_client_ref;online_purchases.merchandise_ref;online_purchases.sale_calendar_day_ref,addresses.address_record = online_purchases.billing_address_ref;calendar_days.calendar_day_record = online_purchases.sale_calendar_day_ref;client_profiles.client_profile_record = online_purchases.billing_client_profile_ref;merchandise.merchandise_record = online_purchases.merchandise_ref,,online_customer_slice,1,Transaction-time online customer geography and profile.
+gold_014,online_sales,medium,How many F online shoppers from TX bought Music in 2002?,"
+        SELECT a.state, cp.gender, m.category, cd.year, COUNT(DISTINCT op.billing_client_ref) AS customers
+        FROM online_purchases op
+        JOIN calendar_days cd ON op.sale_calendar_day_ref = cd.calendar_day_record
+        JOIN merchandise m ON op.merchandise_ref = m.merchandise_record
+        JOIN addresses a ON op.billing_address_ref = a.address_record
+        JOIN client_profiles cp ON op.billing_client_profile_ref = cp.client_profile_record
+        WHERE a.state = 'TX' AND cp.gender = 'F' AND m.category = 'Music' AND cd.year = 2002
+        GROUP BY a.state, cp.gender, m.category, cd.year
+        ",addresses;calendar_days;client_profiles;merchandise;online_purchases,addresses.address_record;addresses.state;calendar_days.calendar_day_record;calendar_days.year;client_profiles.client_profile_record;client_profiles.gender;merchandise.category;merchandise.merchandise_record;online_purchases.billing_address_ref;online_purchases.billing_client_profile_ref;online_purchases.billing_client_ref;online_purchases.merchandise_ref;online_purchases.sale_calendar_day_ref,addresses.address_record = online_purchases.billing_address_ref;calendar_days.calendar_day_record = online_purchases.sale_calendar_day_ref;client_profiles.client_profile_record = online_purchases.billing_client_profile_ref;merchandise.merchandise_record = online_purchases.merchandise_ref,,online_customer_slice,2,Transaction-time online customer geography and profile.
+gold_015,online_sales,medium,How many F online shoppers from TX bought Music in 2003?,"
+        SELECT a.state, cp.gender, m.category, cd.year, COUNT(DISTINCT op.billing_client_ref) AS customers
+        FROM online_purchases op
+        JOIN calendar_days cd ON op.sale_calendar_day_ref = cd.calendar_day_record
+        JOIN merchandise m ON op.merchandise_ref = m.merchandise_record
+        JOIN addresses a ON op.billing_address_ref = a.address_record
+        JOIN client_profiles cp ON op.billing_client_profile_ref = cp.client_profile_record
+        WHERE a.state = 'TX' AND cp.gender = 'F' AND m.category = 'Music' AND cd.year = 2003
+        GROUP BY a.state, cp.gender, m.category, cd.year
+        ",addresses;calendar_days;client_profiles;merchandise;online_purchases,addresses.address_record;addresses.state;calendar_days.calendar_day_record;calendar_days.year;client_profiles.client_profile_record;client_profiles.gender;merchandise.category;merchandise.merchandise_record;online_purchases.billing_address_ref;online_purchases.billing_client_profile_ref;online_purchases.billing_client_ref;online_purchases.merchandise_ref;online_purchases.sale_calendar_day_ref,addresses.address_record = online_purchases.billing_address_ref;calendar_days.calendar_day_record = online_purchases.sale_calendar_day_ref;client_profiles.client_profile_record = online_purchases.billing_client_profile_ref;merchandise.merchandise_record = online_purchases.merchandise_ref,,online_customer_slice,3,Transaction-time online customer geography and profile.
+gold_016,online_sales,medium,How many F online shoppers from TX bought Music in 2004?,"
+        SELECT a.state, cp.gender, m.category, cd.year, COUNT(DISTINCT op.billing_client_ref) AS customers
+        FROM online_purchases op
+        JOIN calendar_days cd ON op.sale_calendar_day_ref = cd.calendar_day_record
+        JOIN merchandise m ON op.merchandise_ref = m.merchandise_record
+        JOIN addresses a ON op.billing_address_ref = a.address_record
+        JOIN client_profiles cp ON op.billing_client_profile_ref = cp.client_profile_record
+        WHERE a.state = 'TX' AND cp.gender = 'F' AND m.category = 'Music' AND cd.year = 2004
+        GROUP BY a.state, cp.gender, m.category, cd.year
+        ",addresses;calendar_days;client_profiles;merchandise;online_purchases,addresses.address_record;addresses.state;calendar_days.calendar_day_record;calendar_days.year;client_profiles.client_profile_record;client_profiles.gender;merchandise.category;merchandise.merchandise_record;online_purchases.billing_address_ref;online_purchases.billing_client_profile_ref;online_purchases.billing_client_ref;online_purchases.merchandise_ref;online_purchases.sale_calendar_day_ref,addresses.address_record = online_purchases.billing_address_ref;calendar_days.calendar_day_record = online_purchases.sale_calendar_day_ref;client_profiles.client_profile_record = online_purchases.billing_client_profile_ref;merchandise.merchandise_record = online_purchases.merchandise_ref,,online_customer_slice,4,Transaction-time online customer geography and profile.
+gold_017,online_sales,hard,Online Music customers from TX in 2001 by household income band.,"
+        SELECT a.state, m.category, ir.lower_bound, ir.upper_bound, COUNT(DISTINCT op.billing_client_ref) AS customers
+        FROM online_purchases op
+        JOIN calendar_days cd ON op.sale_calendar_day_ref = cd.calendar_day_record
+        JOIN merchandise m ON op.merchandise_ref = m.merchandise_record
+        JOIN addresses a ON op.billing_address_ref = a.address_record
+        JOIN household_profiles hp ON op.billing_household_profile_ref = hp.household_profile_record
+        JOIN income_ranges ir ON hp.income_range_ref = ir.income_range_record
+        WHERE a.state = 'TX' AND m.category = 'Music' AND cd.year = 2001
+        GROUP BY a.state, m.category, ir.lower_bound, ir.upper_bound
+        ",addresses;calendar_days;household_profiles;income_ranges;merchandise;online_purchases,addresses.address_record;addresses.state;calendar_days.calendar_day_record;calendar_days.year;household_profiles.household_profile_record;household_profiles.income_range_ref;income_ranges.income_range_record;income_ranges.lower_bound;income_ranges.upper_bound;merchandise.category;merchandise.merchandise_record;online_purchases.billing_address_ref;online_purchases.billing_client_ref;online_purchases.billing_household_profile_ref;online_purchases.merchandise_ref;online_purchases.sale_calendar_day_ref,addresses.address_record = online_purchases.billing_address_ref;calendar_days.calendar_day_record = online_purchases.sale_calendar_day_ref;household_profiles.household_profile_record = online_purchases.billing_household_profile_ref;household_profiles.income_range_ref = income_ranges.income_range_record;merchandise.merchandise_record = online_purchases.merchandise_ref,,online_income_slice,1,Online transaction-time household profile.
+gold_018,online_sales,hard,Online Music customers from TX in 2002 by household income band.,"
+        SELECT a.state, m.category, ir.lower_bound, ir.upper_bound, COUNT(DISTINCT op.billing_client_ref) AS customers
+        FROM online_purchases op
+        JOIN calendar_days cd ON op.sale_calendar_day_ref = cd.calendar_day_record
+        JOIN merchandise m ON op.merchandise_ref = m.merchandise_record
+        JOIN addresses a ON op.billing_address_ref = a.address_record
+        JOIN household_profiles hp ON op.billing_household_profile_ref = hp.household_profile_record
+        JOIN income_ranges ir ON hp.income_range_ref = ir.income_range_record
+        WHERE a.state = 'TX' AND m.category = 'Music' AND cd.year = 2002
+        GROUP BY a.state, m.category, ir.lower_bound, ir.upper_bound
+        ",addresses;calendar_days;household_profiles;income_ranges;merchandise;online_purchases,addresses.address_record;addresses.state;calendar_days.calendar_day_record;calendar_days.year;household_profiles.household_profile_record;household_profiles.income_range_ref;income_ranges.income_range_record;income_ranges.lower_bound;income_ranges.upper_bound;merchandise.category;merchandise.merchandise_record;online_purchases.billing_address_ref;online_purchases.billing_client_ref;online_purchases.billing_household_profile_ref;online_purchases.merchandise_ref;online_purchases.sale_calendar_day_ref,addresses.address_record = online_purchases.billing_address_ref;calendar_days.calendar_day_record = online_purchases.sale_calendar_day_ref;household_profiles.household_profile_record = online_purchases.billing_household_profile_ref;household_profiles.income_range_ref = income_ranges.income_range_record;merchandise.merchandise_record = online_purchases.merchandise_ref,,online_income_slice,2,Online transaction-time household profile.
+gold_019,online_sales,hard,Online Music customers from TX in 2003 by household income band.,"
+        SELECT a.state, m.category, ir.lower_bound, ir.upper_bound, COUNT(DISTINCT op.billing_client_ref) AS customers
+        FROM online_purchases op
+        JOIN calendar_days cd ON op.sale_calendar_day_ref = cd.calendar_day_record
+        JOIN merchandise m ON op.merchandise_ref = m.merchandise_record
+        JOIN addresses a ON op.billing_address_ref = a.address_record
+        JOIN household_profiles hp ON op.billing_household_profile_ref = hp.household_profile_record
+        JOIN income_ranges ir ON hp.income_range_ref = ir.income_range_record
+        WHERE a.state = 'TX' AND m.category = 'Music' AND cd.year = 2003
+        GROUP BY a.state, m.category, ir.lower_bound, ir.upper_bound
+        ",addresses;calendar_days;household_profiles;income_ranges;merchandise;online_purchases,addresses.address_record;addresses.state;calendar_days.calendar_day_record;calendar_days.year;household_profiles.household_profile_record;household_profiles.income_range_ref;income_ranges.income_range_record;income_ranges.lower_bound;income_ranges.upper_bound;merchandise.category;merchandise.merchandise_record;online_purchases.billing_address_ref;online_purchases.billing_client_ref;online_purchases.billing_household_profile_ref;online_purchases.merchandise_ref;online_purchases.sale_calendar_day_ref,addresses.address_record = online_purchases.billing_address_ref;calendar_days.calendar_day_record = online_purchases.sale_calendar_day_ref;household_profiles.household_profile_record = online_purchases.billing_household_profile_ref;household_profiles.income_range_ref = income_ranges.income_range_record;merchandise.merchandise_record = online_purchases.merchandise_ref,,online_income_slice,3,Online transaction-time household profile.
+gold_020,online_sales,hard,Online Music customers from TX in 2004 by household income band.,"
+        SELECT a.state, m.category, ir.lower_bound, ir.upper_bound, COUNT(DISTINCT op.billing_client_ref) AS customers
+        FROM online_purchases op
+        JOIN calendar_days cd ON op.sale_calendar_day_ref = cd.calendar_day_record
+        JOIN merchandise m ON op.merchandise_ref = m.merchandise_record
+        JOIN addresses a ON op.billing_address_ref = a.address_record
+        JOIN household_profiles hp ON op.billing_household_profile_ref = hp.household_profile_record
+        JOIN income_ranges ir ON hp.income_range_ref = ir.income_range_record
+        WHERE a.state = 'TX' AND m.category = 'Music' AND cd.year = 2004
+        GROUP BY a.state, m.category, ir.lower_bound, ir.upper_bound
+        ",addresses;calendar_days;household_profiles;income_ranges;merchandise;online_purchases,addresses.address_record;addresses.state;calendar_days.calendar_day_record;calendar_days.year;household_profiles.household_profile_record;household_profiles.income_range_ref;income_ranges.income_range_record;income_ranges.lower_bound;income_ranges.upper_bound;merchandise.category;merchandise.merchandise_record;online_purchases.billing_address_ref;online_purchases.billing_client_ref;online_purchases.billing_household_profile_ref;online_purchases.merchandise_ref;online_purchases.sale_calendar_day_ref,addresses.address_record = online_purchases.billing_address_ref;calendar_days.calendar_day_record = online_purchases.sale_calendar_day_ref;household_profiles.household_profile_record = online_purchases.billing_household_profile_ref;household_profiles.income_range_ref = income_ranges.income_range_record;merchandise.merchandise_record = online_purchases.merchandise_ref,,online_income_slice,4,Online transaction-time household profile.
+gold_021,online_sales,hard,Compare billing and shipping states for online Music purchases in 2001.,"
+        SELECT ba.state AS billing_state, sa.state AS shipping_state, COUNT(*) AS purchase_rows, SUM(op.net_paid) AS net_paid
+        FROM online_purchases op
+        JOIN calendar_days cd ON op.sale_calendar_day_ref = cd.calendar_day_record
+        JOIN merchandise m ON op.merchandise_ref = m.merchandise_record
+        JOIN addresses ba ON op.billing_address_ref = ba.address_record
+        JOIN addresses sa ON op.shipping_address_ref = sa.address_record
+        WHERE m.category = 'Music' AND cd.year = 2001
+        GROUP BY ba.state, sa.state
+        ",addresses;calendar_days;merchandise;online_purchases,addresses.address_record;addresses.state;calendar_days.calendar_day_record;calendar_days.year;merchandise.category;merchandise.merchandise_record;online_purchases.billing_address_ref;online_purchases.merchandise_ref;online_purchases.net_paid;online_purchases.sale_calendar_day_ref;online_purchases.shipping_address_ref,addresses.address_record = online_purchases.billing_address_ref;addresses.address_record = online_purchases.shipping_address_ref;calendar_days.calendar_day_record = online_purchases.sale_calendar_day_ref;merchandise.merchandise_record = online_purchases.merchandise_ref,,online_billing_shipping,1,Same dimension table joined twice with billing and shipping roles.
+gold_022,online_sales,hard,Compare billing and shipping states for online Music purchases in 2002.,"
+        SELECT ba.state AS billing_state, sa.state AS shipping_state, COUNT(*) AS purchase_rows, SUM(op.net_paid) AS net_paid
+        FROM online_purchases op
+        JOIN calendar_days cd ON op.sale_calendar_day_ref = cd.calendar_day_record
+        JOIN merchandise m ON op.merchandise_ref = m.merchandise_record
+        JOIN addresses ba ON op.billing_address_ref = ba.address_record
+        JOIN addresses sa ON op.shipping_address_ref = sa.address_record
+        WHERE m.category = 'Music' AND cd.year = 2002
+        GROUP BY ba.state, sa.state
+        ",addresses;calendar_days;merchandise;online_purchases,addresses.address_record;addresses.state;calendar_days.calendar_day_record;calendar_days.year;merchandise.category;merchandise.merchandise_record;online_purchases.billing_address_ref;online_purchases.merchandise_ref;online_purchases.net_paid;online_purchases.sale_calendar_day_ref;online_purchases.shipping_address_ref,addresses.address_record = online_purchases.billing_address_ref;addresses.address_record = online_purchases.shipping_address_ref;calendar_days.calendar_day_record = online_purchases.sale_calendar_day_ref;merchandise.merchandise_record = online_purchases.merchandise_ref,,online_billing_shipping,2,Same dimension table joined twice with billing and shipping roles.
+gold_023,online_sales,hard,Compare billing and shipping states for online Music purchases in 2003.,"
+        SELECT ba.state AS billing_state, sa.state AS shipping_state, COUNT(*) AS purchase_rows, SUM(op.net_paid) AS net_paid
+        FROM online_purchases op
+        JOIN calendar_days cd ON op.sale_calendar_day_ref = cd.calendar_day_record
+        JOIN merchandise m ON op.merchandise_ref = m.merchandise_record
+        JOIN addresses ba ON op.billing_address_ref = ba.address_record
+        JOIN addresses sa ON op.shipping_address_ref = sa.address_record
+        WHERE m.category = 'Music' AND cd.year = 2003
+        GROUP BY ba.state, sa.state
+        ",addresses;calendar_days;merchandise;online_purchases,addresses.address_record;addresses.state;calendar_days.calendar_day_record;calendar_days.year;merchandise.category;merchandise.merchandise_record;online_purchases.billing_address_ref;online_purchases.merchandise_ref;online_purchases.net_paid;online_purchases.sale_calendar_day_ref;online_purchases.shipping_address_ref,addresses.address_record = online_purchases.billing_address_ref;addresses.address_record = online_purchases.shipping_address_ref;calendar_days.calendar_day_record = online_purchases.sale_calendar_day_ref;merchandise.merchandise_record = online_purchases.merchandise_ref,,online_billing_shipping,3,Same dimension table joined twice with billing and shipping roles.
+gold_024,online_sales,hard,Compare billing and shipping states for online Music purchases in 2004.,"
+        SELECT ba.state AS billing_state, sa.state AS shipping_state, COUNT(*) AS purchase_rows, SUM(op.net_paid) AS net_paid
+        FROM online_purchases op
+        JOIN calendar_days cd ON op.sale_calendar_day_ref = cd.calendar_day_record
+        JOIN merchandise m ON op.merchandise_ref = m.merchandise_record
+        JOIN addresses ba ON op.billing_address_ref = ba.address_record
+        JOIN addresses sa ON op.shipping_address_ref = sa.address_record
+        WHERE m.category = 'Music' AND cd.year = 2004
+        GROUP BY ba.state, sa.state
+        ",addresses;calendar_days;merchandise;online_purchases,addresses.address_record;addresses.state;calendar_days.calendar_day_record;calendar_days.year;merchandise.category;merchandise.merchandise_record;online_purchases.billing_address_ref;online_purchases.merchandise_ref;online_purchases.net_paid;online_purchases.sale_calendar_day_ref;online_purchases.shipping_address_ref,addresses.address_record = online_purchases.billing_address_ref;addresses.address_record = online_purchases.shipping_address_ref;calendar_days.calendar_day_record = online_purchases.sale_calendar_day_ref;merchandise.merchandise_record = online_purchases.merchandise_ref,,online_billing_shipping,4,Same dimension table joined twice with billing and shipping roles.
+gold_025,online_sales,hard,How many online purchases in 2001 shipped to a different customer than billed for billing state TX?,"
+        SELECT a.state, cd.year, COUNT(*) AS purchase_rows
+        FROM online_purchases op
+        JOIN calendar_days cd ON op.sale_calendar_day_ref = cd.calendar_day_record
+        JOIN addresses a ON op.billing_address_ref = a.address_record
+        JOIN clients bill_c ON op.billing_client_ref = bill_c.client_record
+        JOIN clients ship_c ON op.shipping_client_ref = ship_c.client_record
+        WHERE cd.year = 2001 AND a.state = 'TX' AND bill_c.client_record <> ship_c.client_record
+        GROUP BY a.state, cd.year
+        ",addresses;calendar_days;clients;online_purchases,addresses.address_record;addresses.state;calendar_days.calendar_day_record;calendar_days.year;clients.client_record;online_purchases.billing_address_ref;online_purchases.billing_client_ref;online_purchases.sale_calendar_day_ref;online_purchases.shipping_client_ref,addresses.address_record = online_purchases.billing_address_ref;calendar_days.calendar_day_record = online_purchases.sale_calendar_day_ref;clients.client_record = online_purchases.billing_client_ref;clients.client_record = online_purchases.shipping_client_ref,,online_shipping_customer,1,Same client table joined for billing and shipping roles.
+gold_026,online_sales,hard,How many online purchases in 2002 shipped to a different customer than billed for billing state TX?,"
+        SELECT a.state, cd.year, COUNT(*) AS purchase_rows
+        FROM online_purchases op
+        JOIN calendar_days cd ON op.sale_calendar_day_ref = cd.calendar_day_record
+        JOIN addresses a ON op.billing_address_ref = a.address_record
+        JOIN clients bill_c ON op.billing_client_ref = bill_c.client_record
+        JOIN clients ship_c ON op.shipping_client_ref = ship_c.client_record
+        WHERE cd.year = 2002 AND a.state = 'TX' AND bill_c.client_record <> ship_c.client_record
+        GROUP BY a.state, cd.year
+        ",addresses;calendar_days;clients;online_purchases,addresses.address_record;addresses.state;calendar_days.calendar_day_record;calendar_days.year;clients.client_record;online_purchases.billing_address_ref;online_purchases.billing_client_ref;online_purchases.sale_calendar_day_ref;online_purchases.shipping_client_ref,addresses.address_record = online_purchases.billing_address_ref;calendar_days.calendar_day_record = online_purchases.sale_calendar_day_ref;clients.client_record = online_purchases.billing_client_ref;clients.client_record = online_purchases.shipping_client_ref,,online_shipping_customer,2,Same client table joined for billing and shipping roles.
+gold_027,online_sales,hard,How many online purchases in 2003 shipped to a different customer than billed for billing state TX?,"
+        SELECT a.state, cd.year, COUNT(*) AS purchase_rows
+        FROM online_purchases op
+        JOIN calendar_days cd ON op.sale_calendar_day_ref = cd.calendar_day_record
+        JOIN addresses a ON op.billing_address_ref = a.address_record
+        JOIN clients bill_c ON op.billing_client_ref = bill_c.client_record
+        JOIN clients ship_c ON op.shipping_client_ref = ship_c.client_record
+        WHERE cd.year = 2003 AND a.state = 'TX' AND bill_c.client_record <> ship_c.client_record
+        GROUP BY a.state, cd.year
+        ",addresses;calendar_days;clients;online_purchases,addresses.address_record;addresses.state;calendar_days.calendar_day_record;calendar_days.year;clients.client_record;online_purchases.billing_address_ref;online_purchases.billing_client_ref;online_purchases.sale_calendar_day_ref;online_purchases.shipping_client_ref,addresses.address_record = online_purchases.billing_address_ref;calendar_days.calendar_day_record = online_purchases.sale_calendar_day_ref;clients.client_record = online_purchases.billing_client_ref;clients.client_record = online_purchases.shipping_client_ref,,online_shipping_customer,3,Same client table joined for billing and shipping roles.
+gold_028,online_sales,hard,How many online purchases in 2004 shipped to a different customer than billed for billing state TX?,"
+        SELECT a.state, cd.year, COUNT(*) AS purchase_rows
+        FROM online_purchases op
+        JOIN calendar_days cd ON op.sale_calendar_day_ref = cd.calendar_day_record
+        JOIN addresses a ON op.billing_address_ref = a.address_record
+        JOIN clients bill_c ON op.billing_client_ref = bill_c.client_record
+        JOIN clients ship_c ON op.shipping_client_ref = ship_c.client_record
+        WHERE cd.year = 2004 AND a.state = 'TX' AND bill_c.client_record <> ship_c.client_record
+        GROUP BY a.state, cd.year
+        ",addresses;calendar_days;clients;online_purchases,addresses.address_record;addresses.state;calendar_days.calendar_day_record;calendar_days.year;clients.client_record;online_purchases.billing_address_ref;online_purchases.billing_client_ref;online_purchases.sale_calendar_day_ref;online_purchases.shipping_client_ref,addresses.address_record = online_purchases.billing_address_ref;calendar_days.calendar_day_record = online_purchases.sale_calendar_day_ref;clients.client_record = online_purchases.billing_client_ref;clients.client_record = online_purchases.shipping_client_ref,,online_shipping_customer,4,Same client table joined for billing and shipping roles.
+gold_029,web_site,medium,Online net paid in 2001 for property site_0 by site page type general.,"
+        SELECT web.name, sp.type, cd.year, SUM(op.net_paid) AS net_paid, COUNT(DISTINCT op.billing_client_ref) AS customers
+        FROM online_purchases op
+        JOIN calendar_days cd ON op.sale_calendar_day_ref = cd.calendar_day_record
+        JOIN online_properties web ON op.online_property_ref = web.online_property_record
+        JOIN site_pages sp ON op.site_page_ref = sp.site_page_record
+        WHERE web.name = 'site_0' AND sp.type = 'general' AND cd.year = 2001
+        GROUP BY web.name, sp.type, cd.year
+        ",calendar_days;online_properties;online_purchases;site_pages,calendar_days.calendar_day_record;calendar_days.year;online_properties.name;online_properties.online_property_record;online_purchases.billing_client_ref;online_purchases.net_paid;online_purchases.online_property_ref;online_purchases.sale_calendar_day_ref;online_purchases.site_page_ref;site_pages.site_page_record;site_pages.type,calendar_days.calendar_day_record = online_purchases.sale_calendar_day_ref;online_properties.online_property_record = online_purchases.online_property_ref;online_purchases.site_page_ref = site_pages.site_page_record,,online_property_page,1,Web site and page performance.
+gold_030,web_site,medium,Online net paid in 2002 for property site_0 by site page type general.,"
+        SELECT web.name, sp.type, cd.year, SUM(op.net_paid) AS net_paid, COUNT(DISTINCT op.billing_client_ref) AS customers
+        FROM online_purchases op
+        JOIN calendar_days cd ON op.sale_calendar_day_ref = cd.calendar_day_record
+        JOIN online_properties web ON op.online_property_ref = web.online_property_record
+        JOIN site_pages sp ON op.site_page_ref = sp.site_page_record
+        WHERE web.name = 'site_0' AND sp.type = 'general' AND cd.year = 2002
+        GROUP BY web.name, sp.type, cd.year
+        ",calendar_days;online_properties;online_purchases;site_pages,calendar_days.calendar_day_record;calendar_days.year;online_properties.name;online_properties.online_property_record;online_purchases.billing_client_ref;online_purchases.net_paid;online_purchases.online_property_ref;online_purchases.sale_calendar_day_ref;online_purchases.site_page_ref;site_pages.site_page_record;site_pages.type,calendar_days.calendar_day_record = online_purchases.sale_calendar_day_ref;online_properties.online_property_record = online_purchases.online_property_ref;online_purchases.site_page_ref = site_pages.site_page_record,,online_property_page,2,Web site and page performance.
+gold_031,web_site,medium,Online net paid in 2003 for property site_0 by site page type general.,"
+        SELECT web.name, sp.type, cd.year, SUM(op.net_paid) AS net_paid, COUNT(DISTINCT op.billing_client_ref) AS customers
+        FROM online_purchases op
+        JOIN calendar_days cd ON op.sale_calendar_day_ref = cd.calendar_day_record
+        JOIN online_properties web ON op.online_property_ref = web.online_property_record
+        JOIN site_pages sp ON op.site_page_ref = sp.site_page_record
+        WHERE web.name = 'site_0' AND sp.type = 'general' AND cd.year = 2003
+        GROUP BY web.name, sp.type, cd.year
+        ",calendar_days;online_properties;online_purchases;site_pages,calendar_days.calendar_day_record;calendar_days.year;online_properties.name;online_properties.online_property_record;online_purchases.billing_client_ref;online_purchases.net_paid;online_purchases.online_property_ref;online_purchases.sale_calendar_day_ref;online_purchases.site_page_ref;site_pages.site_page_record;site_pages.type,calendar_days.calendar_day_record = online_purchases.sale_calendar_day_ref;online_properties.online_property_record = online_purchases.online_property_ref;online_purchases.site_page_ref = site_pages.site_page_record,,online_property_page,3,Web site and page performance.
+gold_032,web_site,medium,Online net paid in 2004 for property site_0 by site page type general.,"
+        SELECT web.name, sp.type, cd.year, SUM(op.net_paid) AS net_paid, COUNT(DISTINCT op.billing_client_ref) AS customers
+        FROM online_purchases op
+        JOIN calendar_days cd ON op.sale_calendar_day_ref = cd.calendar_day_record
+        JOIN online_properties web ON op.online_property_ref = web.online_property_record
+        JOIN site_pages sp ON op.site_page_ref = sp.site_page_record
+        WHERE web.name = 'site_0' AND sp.type = 'general' AND cd.year = 2004
+        GROUP BY web.name, sp.type, cd.year
+        ",calendar_days;online_properties;online_purchases;site_pages,calendar_days.calendar_day_record;calendar_days.year;online_properties.name;online_properties.online_property_record;online_purchases.billing_client_ref;online_purchases.net_paid;online_purchases.online_property_ref;online_purchases.sale_calendar_day_ref;online_purchases.site_page_ref;site_pages.site_page_record;site_pages.type,calendar_days.calendar_day_record = online_purchases.sale_calendar_day_ref;online_properties.online_property_record = online_purchases.online_property_ref;online_purchases.site_page_ref = site_pages.site_page_record,,online_property_page,4,Web site and page performance.
+gold_033,web_site,medium,Online property performance for market class Open arms shall make sports. Dates  in property state TN during 2001.,"
+        SELECT web.market_class, web.state, cd.year, SUM(op.net_profit) AS net_profit, COUNT(*) AS purchase_rows
+        FROM online_purchases op
+        JOIN calendar_days cd ON op.sale_calendar_day_ref = cd.calendar_day_record
+        JOIN online_properties web ON op.online_property_ref = web.online_property_record
+        WHERE web.market_class = 'Open arms shall make sports. Dates ' AND web.state = 'TN' AND cd.year = 2001
+        GROUP BY web.market_class, web.state, cd.year
+        ",calendar_days;online_properties;online_purchases,calendar_days.calendar_day_record;calendar_days.year;online_properties.market_class;online_properties.online_property_record;online_properties.state;online_purchases.net_profit;online_purchases.online_property_ref;online_purchases.sale_calendar_day_ref,calendar_days.calendar_day_record = online_purchases.sale_calendar_day_ref;online_properties.online_property_record = online_purchases.online_property_ref,,online_property_market,1,"Online property geography, not customer geography."
+gold_034,web_site,medium,Online property performance for market class Open arms shall make sports. Dates  in property state TN during 2002.,"
+        SELECT web.market_class, web.state, cd.year, SUM(op.net_profit) AS net_profit, COUNT(*) AS purchase_rows
+        FROM online_purchases op
+        JOIN calendar_days cd ON op.sale_calendar_day_ref = cd.calendar_day_record
+        JOIN online_properties web ON op.online_property_ref = web.online_property_record
+        WHERE web.market_class = 'Open arms shall make sports. Dates ' AND web.state = 'TN' AND cd.year = 2002
+        GROUP BY web.market_class, web.state, cd.year
+        ",calendar_days;online_properties;online_purchases,calendar_days.calendar_day_record;calendar_days.year;online_properties.market_class;online_properties.online_property_record;online_properties.state;online_purchases.net_profit;online_purchases.online_property_ref;online_purchases.sale_calendar_day_ref,calendar_days.calendar_day_record = online_purchases.sale_calendar_day_ref;online_properties.online_property_record = online_purchases.online_property_ref,,online_property_market,2,"Online property geography, not customer geography."
+gold_035,web_site,medium,Online property performance for market class Open arms shall make sports. Dates  in property state TN during 2003.,"
+        SELECT web.market_class, web.state, cd.year, SUM(op.net_profit) AS net_profit, COUNT(*) AS purchase_rows
+        FROM online_purchases op
+        JOIN calendar_days cd ON op.sale_calendar_day_ref = cd.calendar_day_record
+        JOIN online_properties web ON op.online_property_ref = web.online_property_record
+        WHERE web.market_class = 'Open arms shall make sports. Dates ' AND web.state = 'TN' AND cd.year = 2003
+        GROUP BY web.market_class, web.state, cd.year
+        ",calendar_days;online_properties;online_purchases,calendar_days.calendar_day_record;calendar_days.year;online_properties.market_class;online_properties.online_property_record;online_properties.state;online_purchases.net_profit;online_purchases.online_property_ref;online_purchases.sale_calendar_day_ref,calendar_days.calendar_day_record = online_purchases.sale_calendar_day_ref;online_properties.online_property_record = online_purchases.online_property_ref,,online_property_market,3,"Online property geography, not customer geography."
+gold_036,web_site,medium,Online property performance for market class Open arms shall make sports. Dates  in property state TN during 2004.,"
+        SELECT web.market_class, web.state, cd.year, SUM(op.net_profit) AS net_profit, COUNT(*) AS purchase_rows
+        FROM online_purchases op
+        JOIN calendar_days cd ON op.sale_calendar_day_ref = cd.calendar_day_record
+        JOIN online_properties web ON op.online_property_ref = web.online_property_record
+        WHERE web.market_class = 'Open arms shall make sports. Dates ' AND web.state = 'TN' AND cd.year = 2004
+        GROUP BY web.market_class, web.state, cd.year
+        ",calendar_days;online_properties;online_purchases,calendar_days.calendar_day_record;calendar_days.year;online_properties.market_class;online_properties.online_property_record;online_properties.state;online_purchases.net_profit;online_purchases.online_property_ref;online_purchases.sale_calendar_day_ref,calendar_days.calendar_day_record = online_purchases.sale_calendar_day_ref;online_properties.online_property_record = online_purchases.online_property_ref,,online_property_market,4,"Online property geography, not customer geography."
+gold_037,web_site,easy,Summarize site pages of type general with auto-generated flag N by content counts.,"
+        SELECT sp.type, sp.auto_generated_flag, AVG(sp.char_count) AS avg_chars, AVG(sp.link_count) AS avg_links, AVG(sp.image_count) AS avg_images, AVG(sp.max_ad_count) AS avg_ads
+        FROM site_pages sp
+        WHERE sp.type = 'general' AND sp.auto_generated_flag = 'N'
+        GROUP BY sp.type, sp.auto_generated_flag
+        ",site_pages,site_pages.auto_generated_flag;site_pages.char_count;site_pages.image_count;site_pages.link_count;site_pages.max_ad_count;site_pages.type,,,site_page_content,1,Site page dimension content fields.
+gold_038,web_site,easy,Summarize site pages of type general with auto-generated flag Y by content counts.,"
+        SELECT sp.type, sp.auto_generated_flag, AVG(sp.char_count) AS avg_chars, AVG(sp.link_count) AS avg_links, AVG(sp.image_count) AS avg_images, AVG(sp.max_ad_count) AS avg_ads
+        FROM site_pages sp
+        WHERE sp.type = 'general' AND sp.auto_generated_flag = 'Y'
+        GROUP BY sp.type, sp.auto_generated_flag
+        ",site_pages,site_pages.auto_generated_flag;site_pages.char_count;site_pages.image_count;site_pages.link_count;site_pages.max_ad_count;site_pages.type,,,site_page_content,2,Site page dimension content fields.
+gold_039,web_site,easy,Summarize site pages of type protected with auto-generated flag N by content counts.,"
+        SELECT sp.type, sp.auto_generated_flag, AVG(sp.char_count) AS avg_chars, AVG(sp.link_count) AS avg_links, AVG(sp.image_count) AS avg_images, AVG(sp.max_ad_count) AS avg_ads
+        FROM site_pages sp
+        WHERE sp.type = 'protected' AND sp.auto_generated_flag = 'N'
+        GROUP BY sp.type, sp.auto_generated_flag
+        ",site_pages,site_pages.auto_generated_flag;site_pages.char_count;site_pages.image_count;site_pages.link_count;site_pages.max_ad_count;site_pages.type,,,site_page_content,3,Site page dimension content fields.
+gold_040,web_site,easy,Summarize site pages of type protected with auto-generated flag Y by content counts.,"
+        SELECT sp.type, sp.auto_generated_flag, AVG(sp.char_count) AS avg_chars, AVG(sp.link_count) AS avg_links, AVG(sp.image_count) AS avg_images, AVG(sp.max_ad_count) AS avg_ads
+        FROM site_pages sp
+        WHERE sp.type = 'protected' AND sp.auto_generated_flag = 'Y'
+        GROUP BY sp.type, sp.auto_generated_flag
+        ",site_pages,site_pages.auto_generated_flag;site_pages.char_count;site_pages.image_count;site_pages.link_count;site_pages.max_ad_count;site_pages.type,,,site_page_content,4,Site page dimension content fields.
+gold_041,marketing,medium,Which Unknown campaigns drove online Music net paid sales in 2001?,"
+        SELECT mc.purpose, mc.campaign_name, m.category, cd.year, SUM(op.net_paid) AS net_paid
+        FROM online_purchases op
+        JOIN calendar_days cd ON op.sale_calendar_day_ref = cd.calendar_day_record
+        JOIN marketing_campaigns mc ON op.campaign_ref = mc.campaign_record
+        JOIN merchandise m ON op.merchandise_ref = m.merchandise_record
+        WHERE mc.purpose = 'Unknown' AND m.category = 'Music' AND cd.year = 2001
+        GROUP BY mc.purpose, mc.campaign_name, m.category, cd.year
+        ",calendar_days;marketing_campaigns;merchandise;online_purchases,calendar_days.calendar_day_record;calendar_days.year;marketing_campaigns.campaign_name;marketing_campaigns.campaign_record;marketing_campaigns.purpose;merchandise.category;merchandise.merchandise_record;online_purchases.campaign_ref;online_purchases.merchandise_ref;online_purchases.net_paid;online_purchases.sale_calendar_day_ref,calendar_days.calendar_day_record = online_purchases.sale_calendar_day_ref;marketing_campaigns.campaign_record = online_purchases.campaign_ref;merchandise.merchandise_record = online_purchases.merchandise_ref,,online_campaign_sales,1,Online campaign attribution.
+gold_042,marketing,medium,Which Unknown campaigns drove online Music net paid sales in 2002?,"
+        SELECT mc.purpose, mc.campaign_name, m.category, cd.year, SUM(op.net_paid) AS net_paid
+        FROM online_purchases op
+        JOIN calendar_days cd ON op.sale_calendar_day_ref = cd.calendar_day_record
+        JOIN marketing_campaigns mc ON op.campaign_ref = mc.campaign_record
+        JOIN merchandise m ON op.merchandise_ref = m.merchandise_record
+        WHERE mc.purpose = 'Unknown' AND m.category = 'Music' AND cd.year = 2002
+        GROUP BY mc.purpose, mc.campaign_name, m.category, cd.year
+        ",calendar_days;marketing_campaigns;merchandise;online_purchases,calendar_days.calendar_day_record;calendar_days.year;marketing_campaigns.campaign_name;marketing_campaigns.campaign_record;marketing_campaigns.purpose;merchandise.category;merchandise.merchandise_record;online_purchases.campaign_ref;online_purchases.merchandise_ref;online_purchases.net_paid;online_purchases.sale_calendar_day_ref,calendar_days.calendar_day_record = online_purchases.sale_calendar_day_ref;marketing_campaigns.campaign_record = online_purchases.campaign_ref;merchandise.merchandise_record = online_purchases.merchandise_ref,,online_campaign_sales,2,Online campaign attribution.
+gold_043,marketing,medium,Which Unknown campaigns drove online Music net paid sales in 2003?,"
+        SELECT mc.purpose, mc.campaign_name, m.category, cd.year, SUM(op.net_paid) AS net_paid
+        FROM online_purchases op
+        JOIN calendar_days cd ON op.sale_calendar_day_ref = cd.calendar_day_record
+        JOIN marketing_campaigns mc ON op.campaign_ref = mc.campaign_record
+        JOIN merchandise m ON op.merchandise_ref = m.merchandise_record
+        WHERE mc.purpose = 'Unknown' AND m.category = 'Music' AND cd.year = 2003
+        GROUP BY mc.purpose, mc.campaign_name, m.category, cd.year
+        ",calendar_days;marketing_campaigns;merchandise;online_purchases,calendar_days.calendar_day_record;calendar_days.year;marketing_campaigns.campaign_name;marketing_campaigns.campaign_record;marketing_campaigns.purpose;merchandise.category;merchandise.merchandise_record;online_purchases.campaign_ref;online_purchases.merchandise_ref;online_purchases.net_paid;online_purchases.sale_calendar_day_ref,calendar_days.calendar_day_record = online_purchases.sale_calendar_day_ref;marketing_campaigns.campaign_record = online_purchases.campaign_ref;merchandise.merchandise_record = online_purchases.merchandise_ref,,online_campaign_sales,3,Online campaign attribution.
+gold_044,marketing,medium,Which Unknown campaigns drove online Music net paid sales in 2004?,"
+        SELECT mc.purpose, mc.campaign_name, m.category, cd.year, SUM(op.net_paid) AS net_paid
+        FROM online_purchases op
+        JOIN calendar_days cd ON op.sale_calendar_day_ref = cd.calendar_day_record
+        JOIN marketing_campaigns mc ON op.campaign_ref = mc.campaign_record
+        JOIN merchandise m ON op.merchandise_ref = m.merchandise_record
+        WHERE mc.purpose = 'Unknown' AND m.category = 'Music' AND cd.year = 2004
+        GROUP BY mc.purpose, mc.campaign_name, m.category, cd.year
+        ",calendar_days;marketing_campaigns;merchandise;online_purchases,calendar_days.calendar_day_record;calendar_days.year;marketing_campaigns.campaign_name;marketing_campaigns.campaign_record;marketing_campaigns.purpose;merchandise.category;merchandise.merchandise_record;online_purchases.campaign_ref;online_purchases.merchandise_ref;online_purchases.net_paid;online_purchases.sale_calendar_day_ref,calendar_days.calendar_day_record = online_purchases.sale_calendar_day_ref;marketing_campaigns.campaign_record = online_purchases.campaign_ref;merchandise.merchandise_record = online_purchases.merchandise_ref,,online_campaign_sales,4,Online campaign attribution.
+gold_045,marketing,easy,Show marketing campaign channel mix for Unknown campaigns with discount flag N.,"
+        SELECT mc.purpose, mc.discount_active, COUNT(*) AS campaigns, SUM(mc.cost) AS total_cost, SUM(mc.response_target) AS response_target,
+               SUM(CASE WHEN mc.channel_email = 'Y' THEN 1 ELSE 0 END) AS email_campaigns,
+               SUM(CASE WHEN mc.channel_tv = 'Y' THEN 1 ELSE 0 END) AS tv_campaigns,
+               SUM(CASE WHEN mc.channel_radio = 'Y' THEN 1 ELSE 0 END) AS radio_campaigns
+        FROM marketing_campaigns mc
+        WHERE mc.purpose = 'Unknown' AND mc.discount_active = 'N'
+        GROUP BY mc.purpose, mc.discount_active
+        ",marketing_campaigns,marketing_campaigns.channel_email;marketing_campaigns.channel_radio;marketing_campaigns.channel_tv;marketing_campaigns.cost;marketing_campaigns.discount_active;marketing_campaigns.purpose;marketing_campaigns.response_target,,,campaign_channel_mix,1,Campaign dimension channel flags.
+gold_046,marketing,easy,Show marketing campaign channel mix for Unknown campaigns with discount flag N.,"
+        SELECT mc.purpose, mc.discount_active, COUNT(*) AS campaigns, SUM(mc.cost) AS total_cost, SUM(mc.response_target) AS response_target,
+               SUM(CASE WHEN mc.channel_email = 'Y' THEN 1 ELSE 0 END) AS email_campaigns,
+               SUM(CASE WHEN mc.channel_tv = 'Y' THEN 1 ELSE 0 END) AS tv_campaigns,
+               SUM(CASE WHEN mc.channel_radio = 'Y' THEN 1 ELSE 0 END) AS radio_campaigns
+        FROM marketing_campaigns mc
+        WHERE mc.purpose = 'Unknown' AND mc.discount_active = 'N'
+        GROUP BY mc.purpose, mc.discount_active
+        ",marketing_campaigns,marketing_campaigns.channel_email;marketing_campaigns.channel_radio;marketing_campaigns.channel_tv;marketing_campaigns.cost;marketing_campaigns.discount_active;marketing_campaigns.purpose;marketing_campaigns.response_target,,,campaign_channel_mix,2,Campaign dimension channel flags.
+gold_047,marketing,easy,Show marketing campaign channel mix for Unknown campaigns with discount flag N.,"
+        SELECT mc.purpose, mc.discount_active, COUNT(*) AS campaigns, SUM(mc.cost) AS total_cost, SUM(mc.response_target) AS response_target,
+               SUM(CASE WHEN mc.channel_email = 'Y' THEN 1 ELSE 0 END) AS email_campaigns,
+               SUM(CASE WHEN mc.channel_tv = 'Y' THEN 1 ELSE 0 END) AS tv_campaigns,
+               SUM(CASE WHEN mc.channel_radio = 'Y' THEN 1 ELSE 0 END) AS radio_campaigns
+        FROM marketing_campaigns mc
+        WHERE mc.purpose = 'Unknown' AND mc.discount_active = 'N'
+        GROUP BY mc.purpose, mc.discount_active
+        ",marketing_campaigns,marketing_campaigns.channel_email;marketing_campaigns.channel_radio;marketing_campaigns.channel_tv;marketing_campaigns.cost;marketing_campaigns.discount_active;marketing_campaigns.purpose;marketing_campaigns.response_target,,,campaign_channel_mix,3,Campaign dimension channel flags.
+gold_048,marketing,easy,Show marketing campaign channel mix for Unknown campaigns with discount flag N.,"
+        SELECT mc.purpose, mc.discount_active, COUNT(*) AS campaigns, SUM(mc.cost) AS total_cost, SUM(mc.response_target) AS response_target,
+               SUM(CASE WHEN mc.channel_email = 'Y' THEN 1 ELSE 0 END) AS email_campaigns,
+               SUM(CASE WHEN mc.channel_tv = 'Y' THEN 1 ELSE 0 END) AS tv_campaigns,
+               SUM(CASE WHEN mc.channel_radio = 'Y' THEN 1 ELSE 0 END) AS radio_campaigns
+        FROM marketing_campaigns mc
+        WHERE mc.purpose = 'Unknown' AND mc.discount_active = 'N'
+        GROUP BY mc.purpose, mc.discount_active
+        ",marketing_campaigns,marketing_campaigns.channel_email;marketing_campaigns.channel_radio;marketing_campaigns.channel_tv;marketing_campaigns.cost;marketing_campaigns.discount_active;marketing_campaigns.purpose;marketing_campaigns.response_target,,,campaign_channel_mix,4,Campaign dimension channel flags.
+gold_049,marketing,medium,Campaign duration and target response for Unknown campaigns starting in 2001.,"
+        SELECT mc.purpose, start_day.year, AVG(end_day.calendar_day_record - start_day.calendar_day_record) AS avg_duration_days, SUM(mc.response_target) AS response_target
+        FROM marketing_campaigns mc
+        JOIN calendar_days start_day ON mc.start_calendar_day_ref = start_day.calendar_day_record
+        JOIN calendar_days end_day ON mc.end_calendar_day_ref = end_day.calendar_day_record
+        WHERE mc.purpose = 'Unknown' AND start_day.year = 2001
+        GROUP BY mc.purpose, start_day.year
+        ",calendar_days;marketing_campaigns,calendar_days.calendar_day_record;calendar_days.year;marketing_campaigns.end_calendar_day_ref;marketing_campaigns.purpose;marketing_campaigns.response_target;marketing_campaigns.start_calendar_day_ref,calendar_days.calendar_day_record = marketing_campaigns.end_calendar_day_ref;calendar_days.calendar_day_record = marketing_campaigns.start_calendar_day_ref,,campaign_duration,1,Campaign start and end date roles.
+gold_050,marketing,medium,Campaign duration and target response for Unknown campaigns starting in 2002.,"
+        SELECT mc.purpose, start_day.year, AVG(end_day.calendar_day_record - start_day.calendar_day_record) AS avg_duration_days, SUM(mc.response_target) AS response_target
+        FROM marketing_campaigns mc
+        JOIN calendar_days start_day ON mc.start_calendar_day_ref = start_day.calendar_day_record
+        JOIN calendar_days end_day ON mc.end_calendar_day_ref = end_day.calendar_day_record
+        WHERE mc.purpose = 'Unknown' AND start_day.year = 2002
+        GROUP BY mc.purpose, start_day.year
+        ",calendar_days;marketing_campaigns,calendar_days.calendar_day_record;calendar_days.year;marketing_campaigns.end_calendar_day_ref;marketing_campaigns.purpose;marketing_campaigns.response_target;marketing_campaigns.start_calendar_day_ref,calendar_days.calendar_day_record = marketing_campaigns.end_calendar_day_ref;calendar_days.calendar_day_record = marketing_campaigns.start_calendar_day_ref,,campaign_duration,2,Campaign start and end date roles.
+gold_051,marketing,medium,Campaign duration and target response for Unknown campaigns starting in 2003.,"
+        SELECT mc.purpose, start_day.year, AVG(end_day.calendar_day_record - start_day.calendar_day_record) AS avg_duration_days, SUM(mc.response_target) AS response_target
+        FROM marketing_campaigns mc
+        JOIN calendar_days start_day ON mc.start_calendar_day_ref = start_day.calendar_day_record
+        JOIN calendar_days end_day ON mc.end_calendar_day_ref = end_day.calendar_day_record
+        WHERE mc.purpose = 'Unknown' AND start_day.year = 2003
+        GROUP BY mc.purpose, start_day.year
+        ",calendar_days;marketing_campaigns,calendar_days.calendar_day_record;calendar_days.year;marketing_campaigns.end_calendar_day_ref;marketing_campaigns.purpose;marketing_campaigns.response_target;marketing_campaigns.start_calendar_day_ref,calendar_days.calendar_day_record = marketing_campaigns.end_calendar_day_ref;calendar_days.calendar_day_record = marketing_campaigns.start_calendar_day_ref,,campaign_duration,3,Campaign start and end date roles.
+gold_052,marketing,medium,Campaign duration and target response for Unknown campaigns starting in 2004.,"
+        SELECT mc.purpose, start_day.year, AVG(end_day.calendar_day_record - start_day.calendar_day_record) AS avg_duration_days, SUM(mc.response_target) AS response_target
+        FROM marketing_campaigns mc
+        JOIN calendar_days start_day ON mc.start_calendar_day_ref = start_day.calendar_day_record
+        JOIN calendar_days end_day ON mc.end_calendar_day_ref = end_day.calendar_day_record
+        WHERE mc.purpose = 'Unknown' AND start_day.year = 2004
+        GROUP BY mc.purpose, start_day.year
+        ",calendar_days;marketing_campaigns,calendar_days.calendar_day_record;calendar_days.year;marketing_campaigns.end_calendar_day_ref;marketing_campaigns.purpose;marketing_campaigns.response_target;marketing_campaigns.start_calendar_day_ref,calendar_days.calendar_day_record = marketing_campaigns.end_calendar_day_ref;calendar_days.calendar_day_record = marketing_campaigns.start_calendar_day_ref,,campaign_duration,4,Campaign start and end date roles.
+gold_053,store_sales,medium,Store net sales in TN for Music during month 1 of 2001.,"
+        SELECT rl.state, m.category, cd.year, cd.month_of_year, SUM(sp.net_paid) AS net_paid
+        FROM store_purchases sp
+        JOIN calendar_days cd ON sp.sale_calendar_day_ref = cd.calendar_day_record
+        JOIN retail_locations rl ON sp.retail_location_ref = rl.retail_location_record
+        JOIN merchandise m ON sp.merchandise_ref = m.merchandise_record
+        WHERE rl.state = 'TN' AND m.category = 'Music' AND cd.year = 2001 AND cd.month_of_year = 1
+        GROUP BY rl.state, m.category, cd.year, cd.month_of_year
+        ",calendar_days;merchandise;retail_locations;store_purchases,calendar_days.calendar_day_record;calendar_days.month_of_year;calendar_days.year;merchandise.category;merchandise.merchandise_record;retail_locations.retail_location_record;retail_locations.state;store_purchases.merchandise_ref;store_purchases.net_paid;store_purchases.retail_location_ref;store_purchases.sale_calendar_day_ref,calendar_days.calendar_day_record = store_purchases.sale_calendar_day_ref;merchandise.merchandise_record = store_purchases.merchandise_ref;retail_locations.retail_location_record = store_purchases.retail_location_ref,,store_sales_location,1,Store geography and product.
+gold_054,store_sales,medium,Store net sales in TN for Music during month 2 of 2001.,"
+        SELECT rl.state, m.category, cd.year, cd.month_of_year, SUM(sp.net_paid) AS net_paid
+        FROM store_purchases sp
+        JOIN calendar_days cd ON sp.sale_calendar_day_ref = cd.calendar_day_record
+        JOIN retail_locations rl ON sp.retail_location_ref = rl.retail_location_record
+        JOIN merchandise m ON sp.merchandise_ref = m.merchandise_record
+        WHERE rl.state = 'TN' AND m.category = 'Music' AND cd.year = 2001 AND cd.month_of_year = 2
+        GROUP BY rl.state, m.category, cd.year, cd.month_of_year
+        ",calendar_days;merchandise;retail_locations;store_purchases,calendar_days.calendar_day_record;calendar_days.month_of_year;calendar_days.year;merchandise.category;merchandise.merchandise_record;retail_locations.retail_location_record;retail_locations.state;store_purchases.merchandise_ref;store_purchases.net_paid;store_purchases.retail_location_ref;store_purchases.sale_calendar_day_ref,calendar_days.calendar_day_record = store_purchases.sale_calendar_day_ref;merchandise.merchandise_record = store_purchases.merchandise_ref;retail_locations.retail_location_record = store_purchases.retail_location_ref,,store_sales_location,2,Store geography and product.
+gold_055,store_sales,medium,Store net sales in TN for Music during month 3 of 2001.,"
+        SELECT rl.state, m.category, cd.year, cd.month_of_year, SUM(sp.net_paid) AS net_paid
+        FROM store_purchases sp
+        JOIN calendar_days cd ON sp.sale_calendar_day_ref = cd.calendar_day_record
+        JOIN retail_locations rl ON sp.retail_location_ref = rl.retail_location_record
+        JOIN merchandise m ON sp.merchandise_ref = m.merchandise_record
+        WHERE rl.state = 'TN' AND m.category = 'Music' AND cd.year = 2001 AND cd.month_of_year = 3
+        GROUP BY rl.state, m.category, cd.year, cd.month_of_year
+        ",calendar_days;merchandise;retail_locations;store_purchases,calendar_days.calendar_day_record;calendar_days.month_of_year;calendar_days.year;merchandise.category;merchandise.merchandise_record;retail_locations.retail_location_record;retail_locations.state;store_purchases.merchandise_ref;store_purchases.net_paid;store_purchases.retail_location_ref;store_purchases.sale_calendar_day_ref,calendar_days.calendar_day_record = store_purchases.sale_calendar_day_ref;merchandise.merchandise_record = store_purchases.merchandise_ref;retail_locations.retail_location_record = store_purchases.retail_location_ref,,store_sales_location,3,Store geography and product.
+gold_056,store_sales,medium,Store net sales in TN for Music during month 4 of 2001.,"
+        SELECT rl.state, m.category, cd.year, cd.month_of_year, SUM(sp.net_paid) AS net_paid
+        FROM store_purchases sp
+        JOIN calendar_days cd ON sp.sale_calendar_day_ref = cd.calendar_day_record
+        JOIN retail_locations rl ON sp.retail_location_ref = rl.retail_location_record
+        JOIN merchandise m ON sp.merchandise_ref = m.merchandise_record
+        WHERE rl.state = 'TN' AND m.category = 'Music' AND cd.year = 2001 AND cd.month_of_year = 4
+        GROUP BY rl.state, m.category, cd.year, cd.month_of_year
+        ",calendar_days;merchandise;retail_locations;store_purchases,calendar_days.calendar_day_record;calendar_days.month_of_year;calendar_days.year;merchandise.category;merchandise.merchandise_record;retail_locations.retail_location_record;retail_locations.state;store_purchases.merchandise_ref;store_purchases.net_paid;store_purchases.retail_location_ref;store_purchases.sale_calendar_day_ref,calendar_days.calendar_day_record = store_purchases.sale_calendar_day_ref;merchandise.merchandise_record = store_purchases.merchandise_ref;retail_locations.retail_location_record = store_purchases.retail_location_ref,,store_sales_location,4,Store geography and product.
+gold_057,store_sales,hard,Store Music customers in 2001 by F purchase-time profile and income band.,"
+        SELECT cp.gender, ir.lower_bound, ir.upper_bound, m.category, cd.year, COUNT(DISTINCT sp.client_ref) AS customers
+        FROM store_purchases sp
+        JOIN calendar_days cd ON sp.sale_calendar_day_ref = cd.calendar_day_record
+        JOIN client_profiles cp ON sp.client_profile_ref = cp.client_profile_record
+        JOIN household_profiles hp ON sp.household_profile_ref = hp.household_profile_record
+        JOIN income_ranges ir ON hp.income_range_ref = ir.income_range_record
+        JOIN merchandise m ON sp.merchandise_ref = m.merchandise_record
+        WHERE cp.gender = 'F' AND m.category = 'Music' AND cd.year = 2001
+        GROUP BY cp.gender, ir.lower_bound, ir.upper_bound, m.category, cd.year
+        ",calendar_days;client_profiles;household_profiles;income_ranges;merchandise;store_purchases,calendar_days.calendar_day_record;calendar_days.year;client_profiles.client_profile_record;client_profiles.gender;household_profiles.household_profile_record;household_profiles.income_range_ref;income_ranges.income_range_record;income_ranges.lower_bound;income_ranges.upper_bound;merchandise.category;merchandise.merchandise_record;store_purchases.client_profile_ref;store_purchases.client_ref;store_purchases.household_profile_ref;store_purchases.merchandise_ref;store_purchases.sale_calendar_day_ref,calendar_days.calendar_day_record = store_purchases.sale_calendar_day_ref;client_profiles.client_profile_record = store_purchases.client_profile_ref;household_profiles.household_profile_record = store_purchases.household_profile_ref;household_profiles.income_range_ref = income_ranges.income_range_record;merchandise.merchandise_record = store_purchases.merchandise_ref,,store_customer_demographics,1,Store transaction-time demographics.
+gold_058,store_sales,hard,Store Music customers in 2002 by F purchase-time profile and income band.,"
+        SELECT cp.gender, ir.lower_bound, ir.upper_bound, m.category, cd.year, COUNT(DISTINCT sp.client_ref) AS customers
+        FROM store_purchases sp
+        JOIN calendar_days cd ON sp.sale_calendar_day_ref = cd.calendar_day_record
+        JOIN client_profiles cp ON sp.client_profile_ref = cp.client_profile_record
+        JOIN household_profiles hp ON sp.household_profile_ref = hp.household_profile_record
+        JOIN income_ranges ir ON hp.income_range_ref = ir.income_range_record
+        JOIN merchandise m ON sp.merchandise_ref = m.merchandise_record
+        WHERE cp.gender = 'F' AND m.category = 'Music' AND cd.year = 2002
+        GROUP BY cp.gender, ir.lower_bound, ir.upper_bound, m.category, cd.year
+        ",calendar_days;client_profiles;household_profiles;income_ranges;merchandise;store_purchases,calendar_days.calendar_day_record;calendar_days.year;client_profiles.client_profile_record;client_profiles.gender;household_profiles.household_profile_record;household_profiles.income_range_ref;income_ranges.income_range_record;income_ranges.lower_bound;income_ranges.upper_bound;merchandise.category;merchandise.merchandise_record;store_purchases.client_profile_ref;store_purchases.client_ref;store_purchases.household_profile_ref;store_purchases.merchandise_ref;store_purchases.sale_calendar_day_ref,calendar_days.calendar_day_record = store_purchases.sale_calendar_day_ref;client_profiles.client_profile_record = store_purchases.client_profile_ref;household_profiles.household_profile_record = store_purchases.household_profile_ref;household_profiles.income_range_ref = income_ranges.income_range_record;merchandise.merchandise_record = store_purchases.merchandise_ref,,store_customer_demographics,2,Store transaction-time demographics.
+gold_059,store_sales,hard,Store Music customers in 2003 by F purchase-time profile and income band.,"
+        SELECT cp.gender, ir.lower_bound, ir.upper_bound, m.category, cd.year, COUNT(DISTINCT sp.client_ref) AS customers
+        FROM store_purchases sp
+        JOIN calendar_days cd ON sp.sale_calendar_day_ref = cd.calendar_day_record
+        JOIN client_profiles cp ON sp.client_profile_ref = cp.client_profile_record
+        JOIN household_profiles hp ON sp.household_profile_ref = hp.household_profile_record
+        JOIN income_ranges ir ON hp.income_range_ref = ir.income_range_record
+        JOIN merchandise m ON sp.merchandise_ref = m.merchandise_record
+        WHERE cp.gender = 'F' AND m.category = 'Music' AND cd.year = 2003
+        GROUP BY cp.gender, ir.lower_bound, ir.upper_bound, m.category, cd.year
+        ",calendar_days;client_profiles;household_profiles;income_ranges;merchandise;store_purchases,calendar_days.calendar_day_record;calendar_days.year;client_profiles.client_profile_record;client_profiles.gender;household_profiles.household_profile_record;household_profiles.income_range_ref;income_ranges.income_range_record;income_ranges.lower_bound;income_ranges.upper_bound;merchandise.category;merchandise.merchandise_record;store_purchases.client_profile_ref;store_purchases.client_ref;store_purchases.household_profile_ref;store_purchases.merchandise_ref;store_purchases.sale_calendar_day_ref,calendar_days.calendar_day_record = store_purchases.sale_calendar_day_ref;client_profiles.client_profile_record = store_purchases.client_profile_ref;household_profiles.household_profile_record = store_purchases.household_profile_ref;household_profiles.income_range_ref = income_ranges.income_range_record;merchandise.merchandise_record = store_purchases.merchandise_ref,,store_customer_demographics,3,Store transaction-time demographics.
+gold_060,store_sales,hard,Store Music customers in 2004 by F purchase-time profile and income band.,"
+        SELECT cp.gender, ir.lower_bound, ir.upper_bound, m.category, cd.year, COUNT(DISTINCT sp.client_ref) AS customers
+        FROM store_purchases sp
+        JOIN calendar_days cd ON sp.sale_calendar_day_ref = cd.calendar_day_record
+        JOIN client_profiles cp ON sp.client_profile_ref = cp.client_profile_record
+        JOIN household_profiles hp ON sp.household_profile_ref = hp.household_profile_record
+        JOIN income_ranges ir ON hp.income_range_ref = ir.income_range_record
+        JOIN merchandise m ON sp.merchandise_ref = m.merchandise_record
+        WHERE cp.gender = 'F' AND m.category = 'Music' AND cd.year = 2004
+        GROUP BY cp.gender, ir.lower_bound, ir.upper_bound, m.category, cd.year
+        ",calendar_days;client_profiles;household_profiles;income_ranges;merchandise;store_purchases,calendar_days.calendar_day_record;calendar_days.year;client_profiles.client_profile_record;client_profiles.gender;household_profiles.household_profile_record;household_profiles.income_range_ref;income_ranges.income_range_record;income_ranges.lower_bound;income_ranges.upper_bound;merchandise.category;merchandise.merchandise_record;store_purchases.client_profile_ref;store_purchases.client_ref;store_purchases.household_profile_ref;store_purchases.merchandise_ref;store_purchases.sale_calendar_day_ref,calendar_days.calendar_day_record = store_purchases.sale_calendar_day_ref;client_profiles.client_profile_record = store_purchases.client_profile_ref;household_profiles.household_profile_record = store_purchases.household_profile_ref;household_profiles.income_range_ref = income_ranges.income_range_record;merchandise.merchandise_record = store_purchases.merchandise_ref,,store_customer_demographics,4,Store transaction-time demographics.
+gold_061,store_sales,hard,Store campaign sales for Unknown campaigns by household income band in 2001.,"
+        SELECT mc.purpose, ir.lower_bound, ir.upper_bound, cd.year, SUM(sp.net_paid) AS net_paid, COUNT(DISTINCT sp.client_ref) AS customers
+        FROM store_purchases sp
+        JOIN calendar_days cd ON sp.sale_calendar_day_ref = cd.calendar_day_record
+        JOIN marketing_campaigns mc ON sp.campaign_ref = mc.campaign_record
+        JOIN household_profiles hp ON sp.household_profile_ref = hp.household_profile_record
+        JOIN income_ranges ir ON hp.income_range_ref = ir.income_range_record
+        WHERE mc.purpose = 'Unknown' AND cd.year = 2001
+        GROUP BY mc.purpose, ir.lower_bound, ir.upper_bound, cd.year
+        ",calendar_days;household_profiles;income_ranges;marketing_campaigns;store_purchases,calendar_days.calendar_day_record;calendar_days.year;household_profiles.household_profile_record;household_profiles.income_range_ref;income_ranges.income_range_record;income_ranges.lower_bound;income_ranges.upper_bound;marketing_campaigns.campaign_record;marketing_campaigns.purpose;store_purchases.campaign_ref;store_purchases.client_ref;store_purchases.household_profile_ref;store_purchases.net_paid;store_purchases.sale_calendar_day_ref,calendar_days.calendar_day_record = store_purchases.sale_calendar_day_ref;household_profiles.household_profile_record = store_purchases.household_profile_ref;household_profiles.income_range_ref = income_ranges.income_range_record;marketing_campaigns.campaign_record = store_purchases.campaign_ref,,store_campaign_income,1,Store campaign and household income.
+gold_062,store_sales,hard,Store campaign sales for Unknown campaigns by household income band in 2002.,"
+        SELECT mc.purpose, ir.lower_bound, ir.upper_bound, cd.year, SUM(sp.net_paid) AS net_paid, COUNT(DISTINCT sp.client_ref) AS customers
+        FROM store_purchases sp
+        JOIN calendar_days cd ON sp.sale_calendar_day_ref = cd.calendar_day_record
+        JOIN marketing_campaigns mc ON sp.campaign_ref = mc.campaign_record
+        JOIN household_profiles hp ON sp.household_profile_ref = hp.household_profile_record
+        JOIN income_ranges ir ON hp.income_range_ref = ir.income_range_record
+        WHERE mc.purpose = 'Unknown' AND cd.year = 2002
+        GROUP BY mc.purpose, ir.lower_bound, ir.upper_bound, cd.year
+        ",calendar_days;household_profiles;income_ranges;marketing_campaigns;store_purchases,calendar_days.calendar_day_record;calendar_days.year;household_profiles.household_profile_record;household_profiles.income_range_ref;income_ranges.income_range_record;income_ranges.lower_bound;income_ranges.upper_bound;marketing_campaigns.campaign_record;marketing_campaigns.purpose;store_purchases.campaign_ref;store_purchases.client_ref;store_purchases.household_profile_ref;store_purchases.net_paid;store_purchases.sale_calendar_day_ref,calendar_days.calendar_day_record = store_purchases.sale_calendar_day_ref;household_profiles.household_profile_record = store_purchases.household_profile_ref;household_profiles.income_range_ref = income_ranges.income_range_record;marketing_campaigns.campaign_record = store_purchases.campaign_ref,,store_campaign_income,2,Store campaign and household income.
+gold_063,store_sales,hard,Store campaign sales for Unknown campaigns by household income band in 2003.,"
+        SELECT mc.purpose, ir.lower_bound, ir.upper_bound, cd.year, SUM(sp.net_paid) AS net_paid, COUNT(DISTINCT sp.client_ref) AS customers
+        FROM store_purchases sp
+        JOIN calendar_days cd ON sp.sale_calendar_day_ref = cd.calendar_day_record
+        JOIN marketing_campaigns mc ON sp.campaign_ref = mc.campaign_record
+        JOIN household_profiles hp ON sp.household_profile_ref = hp.household_profile_record
+        JOIN income_ranges ir ON hp.income_range_ref = ir.income_range_record
+        WHERE mc.purpose = 'Unknown' AND cd.year = 2003
+        GROUP BY mc.purpose, ir.lower_bound, ir.upper_bound, cd.year
+        ",calendar_days;household_profiles;income_ranges;marketing_campaigns;store_purchases,calendar_days.calendar_day_record;calendar_days.year;household_profiles.household_profile_record;household_profiles.income_range_ref;income_ranges.income_range_record;income_ranges.lower_bound;income_ranges.upper_bound;marketing_campaigns.campaign_record;marketing_campaigns.purpose;store_purchases.campaign_ref;store_purchases.client_ref;store_purchases.household_profile_ref;store_purchases.net_paid;store_purchases.sale_calendar_day_ref,calendar_days.calendar_day_record = store_purchases.sale_calendar_day_ref;household_profiles.household_profile_record = store_purchases.household_profile_ref;household_profiles.income_range_ref = income_ranges.income_range_record;marketing_campaigns.campaign_record = store_purchases.campaign_ref,,store_campaign_income,3,Store campaign and household income.
+gold_064,store_sales,hard,Store campaign sales for Unknown campaigns by household income band in 2004.,"
+        SELECT mc.purpose, ir.lower_bound, ir.upper_bound, cd.year, SUM(sp.net_paid) AS net_paid, COUNT(DISTINCT sp.client_ref) AS customers
+        FROM store_purchases sp
+        JOIN calendar_days cd ON sp.sale_calendar_day_ref = cd.calendar_day_record
+        JOIN marketing_campaigns mc ON sp.campaign_ref = mc.campaign_record
+        JOIN household_profiles hp ON sp.household_profile_ref = hp.household_profile_record
+        JOIN income_ranges ir ON hp.income_range_ref = ir.income_range_record
+        WHERE mc.purpose = 'Unknown' AND cd.year = 2004
+        GROUP BY mc.purpose, ir.lower_bound, ir.upper_bound, cd.year
+        ",calendar_days;household_profiles;income_ranges;marketing_campaigns;store_purchases,calendar_days.calendar_day_record;calendar_days.year;household_profiles.household_profile_record;household_profiles.income_range_ref;income_ranges.income_range_record;income_ranges.lower_bound;income_ranges.upper_bound;marketing_campaigns.campaign_record;marketing_campaigns.purpose;store_purchases.campaign_ref;store_purchases.client_ref;store_purchases.household_profile_ref;store_purchases.net_paid;store_purchases.sale_calendar_day_ref,calendar_days.calendar_day_record = store_purchases.sale_calendar_day_ref;household_profiles.household_profile_record = store_purchases.household_profile_ref;household_profiles.income_range_ref = income_ranges.income_range_record;marketing_campaigns.campaign_record = store_purchases.campaign_ref,,store_campaign_income,4,Store campaign and household income.
+gold_065,store_sales,medium,Store sales during first shift in TN stores for 2001.,"
+        SELECT ct.shift, rl.state, cd.year, SUM(sp.net_paid) AS net_paid, COUNT(*) AS rows
+        FROM store_purchases sp
+        JOIN clock_times ct ON sp.sale_clock_time_ref = ct.clock_time_record
+        JOIN calendar_days cd ON sp.sale_calendar_day_ref = cd.calendar_day_record
+        JOIN retail_locations rl ON sp.retail_location_ref = rl.retail_location_record
+        WHERE ct.shift = 'first' AND rl.state = 'TN' AND cd.year = 2001
+        GROUP BY ct.shift, rl.state, cd.year
+        ",calendar_days;clock_times;retail_locations;store_purchases,calendar_days.calendar_day_record;calendar_days.year;clock_times.clock_time_record;clock_times.shift;retail_locations.retail_location_record;retail_locations.state;store_purchases.net_paid;store_purchases.retail_location_ref;store_purchases.sale_calendar_day_ref;store_purchases.sale_clock_time_ref,calendar_days.calendar_day_record = store_purchases.sale_calendar_day_ref;clock_times.clock_time_record = store_purchases.sale_clock_time_ref;retail_locations.retail_location_record = store_purchases.retail_location_ref,,store_clock_sales,1,Clock time sales analysis.
+gold_066,store_sales,medium,Store sales during first shift in TN stores for 2002.,"
+        SELECT ct.shift, rl.state, cd.year, SUM(sp.net_paid) AS net_paid, COUNT(*) AS rows
+        FROM store_purchases sp
+        JOIN clock_times ct ON sp.sale_clock_time_ref = ct.clock_time_record
+        JOIN calendar_days cd ON sp.sale_calendar_day_ref = cd.calendar_day_record
+        JOIN retail_locations rl ON sp.retail_location_ref = rl.retail_location_record
+        WHERE ct.shift = 'first' AND rl.state = 'TN' AND cd.year = 2002
+        GROUP BY ct.shift, rl.state, cd.year
+        ",calendar_days;clock_times;retail_locations;store_purchases,calendar_days.calendar_day_record;calendar_days.year;clock_times.clock_time_record;clock_times.shift;retail_locations.retail_location_record;retail_locations.state;store_purchases.net_paid;store_purchases.retail_location_ref;store_purchases.sale_calendar_day_ref;store_purchases.sale_clock_time_ref,calendar_days.calendar_day_record = store_purchases.sale_calendar_day_ref;clock_times.clock_time_record = store_purchases.sale_clock_time_ref;retail_locations.retail_location_record = store_purchases.retail_location_ref,,store_clock_sales,2,Clock time sales analysis.
+gold_067,store_sales,medium,Store sales during first shift in TN stores for 2003.,"
+        SELECT ct.shift, rl.state, cd.year, SUM(sp.net_paid) AS net_paid, COUNT(*) AS rows
+        FROM store_purchases sp
+        JOIN clock_times ct ON sp.sale_clock_time_ref = ct.clock_time_record
+        JOIN calendar_days cd ON sp.sale_calendar_day_ref = cd.calendar_day_record
+        JOIN retail_locations rl ON sp.retail_location_ref = rl.retail_location_record
+        WHERE ct.shift = 'first' AND rl.state = 'TN' AND cd.year = 2003
+        GROUP BY ct.shift, rl.state, cd.year
+        ",calendar_days;clock_times;retail_locations;store_purchases,calendar_days.calendar_day_record;calendar_days.year;clock_times.clock_time_record;clock_times.shift;retail_locations.retail_location_record;retail_locations.state;store_purchases.net_paid;store_purchases.retail_location_ref;store_purchases.sale_calendar_day_ref;store_purchases.sale_clock_time_ref,calendar_days.calendar_day_record = store_purchases.sale_calendar_day_ref;clock_times.clock_time_record = store_purchases.sale_clock_time_ref;retail_locations.retail_location_record = store_purchases.retail_location_ref,,store_clock_sales,3,Clock time sales analysis.
+gold_068,store_sales,medium,Store sales during first shift in TN stores for 2004.,"
+        SELECT ct.shift, rl.state, cd.year, SUM(sp.net_paid) AS net_paid, COUNT(*) AS rows
+        FROM store_purchases sp
+        JOIN clock_times ct ON sp.sale_clock_time_ref = ct.clock_time_record
+        JOIN calendar_days cd ON sp.sale_calendar_day_ref = cd.calendar_day_record
+        JOIN retail_locations rl ON sp.retail_location_ref = rl.retail_location_record
+        WHERE ct.shift = 'first' AND rl.state = 'TN' AND cd.year = 2004
+        GROUP BY ct.shift, rl.state, cd.year
+        ",calendar_days;clock_times;retail_locations;store_purchases,calendar_days.calendar_day_record;calendar_days.year;clock_times.clock_time_record;clock_times.shift;retail_locations.retail_location_record;retail_locations.state;store_purchases.net_paid;store_purchases.retail_location_ref;store_purchases.sale_calendar_day_ref;store_purchases.sale_clock_time_ref,calendar_days.calendar_day_record = store_purchases.sale_calendar_day_ref;clock_times.clock_time_record = store_purchases.sale_clock_time_ref;retail_locations.retail_location_record = store_purchases.retail_location_ref,,store_clock_sales,4,Clock time sales analysis.
+gold_069,returns,medium,Store refund amount for Music products with return reason reason 31 in 2001.,"
+        SELECT rr.reason_description, m.category, cd.year, SUM(sr.return_amount) AS return_amount
+        FROM store_refunds sr
+        JOIN calendar_days cd ON sr.return_calendar_day_ref = cd.calendar_day_record
+        JOIN return_reasons rr ON sr.return_reason_ref = rr.return_reason_record
+        JOIN merchandise m ON sr.merchandise_ref = m.merchandise_record
+        WHERE rr.reason_description = 'reason 31' AND m.category = 'Music' AND cd.year = 2001
+        GROUP BY rr.reason_description, m.category, cd.year
+        ",calendar_days;merchandise;return_reasons;store_refunds,calendar_days.calendar_day_record;calendar_days.year;merchandise.category;merchandise.merchandise_record;return_reasons.reason_description;return_reasons.return_reason_record;store_refunds.merchandise_ref;store_refunds.return_amount;store_refunds.return_calendar_day_ref;store_refunds.return_reason_ref,calendar_days.calendar_day_record = store_refunds.return_calendar_day_ref;merchandise.merchandise_record = store_refunds.merchandise_ref;return_reasons.return_reason_record = store_refunds.return_reason_ref,,store_refunds_reason,1,Store returns by reason.
+gold_070,returns,medium,Store refund amount for Music products with return reason reason 31 in 2002.,"
+        SELECT rr.reason_description, m.category, cd.year, SUM(sr.return_amount) AS return_amount
+        FROM store_refunds sr
+        JOIN calendar_days cd ON sr.return_calendar_day_ref = cd.calendar_day_record
+        JOIN return_reasons rr ON sr.return_reason_ref = rr.return_reason_record
+        JOIN merchandise m ON sr.merchandise_ref = m.merchandise_record
+        WHERE rr.reason_description = 'reason 31' AND m.category = 'Music' AND cd.year = 2002
+        GROUP BY rr.reason_description, m.category, cd.year
+        ",calendar_days;merchandise;return_reasons;store_refunds,calendar_days.calendar_day_record;calendar_days.year;merchandise.category;merchandise.merchandise_record;return_reasons.reason_description;return_reasons.return_reason_record;store_refunds.merchandise_ref;store_refunds.return_amount;store_refunds.return_calendar_day_ref;store_refunds.return_reason_ref,calendar_days.calendar_day_record = store_refunds.return_calendar_day_ref;merchandise.merchandise_record = store_refunds.merchandise_ref;return_reasons.return_reason_record = store_refunds.return_reason_ref,,store_refunds_reason,2,Store returns by reason.
+gold_071,returns,medium,Store refund amount for Music products with return reason reason 31 in 2003.,"
+        SELECT rr.reason_description, m.category, cd.year, SUM(sr.return_amount) AS return_amount
+        FROM store_refunds sr
+        JOIN calendar_days cd ON sr.return_calendar_day_ref = cd.calendar_day_record
+        JOIN return_reasons rr ON sr.return_reason_ref = rr.return_reason_record
+        JOIN merchandise m ON sr.merchandise_ref = m.merchandise_record
+        WHERE rr.reason_description = 'reason 31' AND m.category = 'Music' AND cd.year = 2003
+        GROUP BY rr.reason_description, m.category, cd.year
+        ",calendar_days;merchandise;return_reasons;store_refunds,calendar_days.calendar_day_record;calendar_days.year;merchandise.category;merchandise.merchandise_record;return_reasons.reason_description;return_reasons.return_reason_record;store_refunds.merchandise_ref;store_refunds.return_amount;store_refunds.return_calendar_day_ref;store_refunds.return_reason_ref,calendar_days.calendar_day_record = store_refunds.return_calendar_day_ref;merchandise.merchandise_record = store_refunds.merchandise_ref;return_reasons.return_reason_record = store_refunds.return_reason_ref,,store_refunds_reason,3,Store returns by reason.
+gold_072,returns,medium,Store refund amount for Music products with return reason reason 31 in 2004.,"
+        SELECT rr.reason_description, m.category, cd.year, SUM(sr.return_amount) AS return_amount
+        FROM store_refunds sr
+        JOIN calendar_days cd ON sr.return_calendar_day_ref = cd.calendar_day_record
+        JOIN return_reasons rr ON sr.return_reason_ref = rr.return_reason_record
+        JOIN merchandise m ON sr.merchandise_ref = m.merchandise_record
+        WHERE rr.reason_description = 'reason 31' AND m.category = 'Music' AND cd.year = 2004
+        GROUP BY rr.reason_description, m.category, cd.year
+        ",calendar_days;merchandise;return_reasons;store_refunds,calendar_days.calendar_day_record;calendar_days.year;merchandise.category;merchandise.merchandise_record;return_reasons.reason_description;return_reasons.return_reason_record;store_refunds.merchandise_ref;store_refunds.return_amount;store_refunds.return_calendar_day_ref;store_refunds.return_reason_ref,calendar_days.calendar_day_record = store_refunds.return_calendar_day_ref;merchandise.merchandise_record = store_refunds.merchandise_ref;return_reasons.return_reason_record = store_refunds.return_reason_ref,,store_refunds_reason,4,Store returns by reason.
+gold_073,returns,hard,Store refunds by F customer profile and reason reason 31 in 2001.,"
+        SELECT cp.gender, rr.reason_description, cd.year, SUM(sr.return_amount) AS return_amount
+        FROM store_refunds sr
+        JOIN calendar_days cd ON sr.return_calendar_day_ref = cd.calendar_day_record
+        JOIN client_profiles cp ON sr.client_profile_ref = cp.client_profile_record
+        JOIN return_reasons rr ON sr.return_reason_ref = rr.return_reason_record
+        WHERE cp.gender = 'F' AND rr.reason_description = 'reason 31' AND cd.year = 2001
+        GROUP BY cp.gender, rr.reason_description, cd.year
+        ",calendar_days;client_profiles;return_reasons;store_refunds,calendar_days.calendar_day_record;calendar_days.year;client_profiles.client_profile_record;client_profiles.gender;return_reasons.reason_description;return_reasons.return_reason_record;store_refunds.client_profile_ref;store_refunds.return_amount;store_refunds.return_calendar_day_ref;store_refunds.return_reason_ref,calendar_days.calendar_day_record = store_refunds.return_calendar_day_ref;client_profiles.client_profile_record = store_refunds.client_profile_ref;return_reasons.return_reason_record = store_refunds.return_reason_ref,,store_refunds_profile,1,Store refund transaction-time customer profile.
+gold_074,returns,hard,Store refunds by F customer profile and reason reason 31 in 2002.,"
+        SELECT cp.gender, rr.reason_description, cd.year, SUM(sr.return_amount) AS return_amount
+        FROM store_refunds sr
+        JOIN calendar_days cd ON sr.return_calendar_day_ref = cd.calendar_day_record
+        JOIN client_profiles cp ON sr.client_profile_ref = cp.client_profile_record
+        JOIN return_reasons rr ON sr.return_reason_ref = rr.return_reason_record
+        WHERE cp.gender = 'F' AND rr.reason_description = 'reason 31' AND cd.year = 2002
+        GROUP BY cp.gender, rr.reason_description, cd.year
+        ",calendar_days;client_profiles;return_reasons;store_refunds,calendar_days.calendar_day_record;calendar_days.year;client_profiles.client_profile_record;client_profiles.gender;return_reasons.reason_description;return_reasons.return_reason_record;store_refunds.client_profile_ref;store_refunds.return_amount;store_refunds.return_calendar_day_ref;store_refunds.return_reason_ref,calendar_days.calendar_day_record = store_refunds.return_calendar_day_ref;client_profiles.client_profile_record = store_refunds.client_profile_ref;return_reasons.return_reason_record = store_refunds.return_reason_ref,,store_refunds_profile,2,Store refund transaction-time customer profile.
+gold_075,returns,hard,Store refunds by F customer profile and reason reason 31 in 2003.,"
+        SELECT cp.gender, rr.reason_description, cd.year, SUM(sr.return_amount) AS return_amount
+        FROM store_refunds sr
+        JOIN calendar_days cd ON sr.return_calendar_day_ref = cd.calendar_day_record
+        JOIN client_profiles cp ON sr.client_profile_ref = cp.client_profile_record
+        JOIN return_reasons rr ON sr.return_reason_ref = rr.return_reason_record
+        WHERE cp.gender = 'F' AND rr.reason_description = 'reason 31' AND cd.year = 2003
+        GROUP BY cp.gender, rr.reason_description, cd.year
+        ",calendar_days;client_profiles;return_reasons;store_refunds,calendar_days.calendar_day_record;calendar_days.year;client_profiles.client_profile_record;client_profiles.gender;return_reasons.reason_description;return_reasons.return_reason_record;store_refunds.client_profile_ref;store_refunds.return_amount;store_refunds.return_calendar_day_ref;store_refunds.return_reason_ref,calendar_days.calendar_day_record = store_refunds.return_calendar_day_ref;client_profiles.client_profile_record = store_refunds.client_profile_ref;return_reasons.return_reason_record = store_refunds.return_reason_ref,,store_refunds_profile,3,Store refund transaction-time customer profile.
+gold_076,returns,hard,Store refunds by F customer profile and reason reason 31 in 2004.,"
+        SELECT cp.gender, rr.reason_description, cd.year, SUM(sr.return_amount) AS return_amount
+        FROM store_refunds sr
+        JOIN calendar_days cd ON sr.return_calendar_day_ref = cd.calendar_day_record
+        JOIN client_profiles cp ON sr.client_profile_ref = cp.client_profile_record
+        JOIN return_reasons rr ON sr.return_reason_ref = rr.return_reason_record
+        WHERE cp.gender = 'F' AND rr.reason_description = 'reason 31' AND cd.year = 2004
+        GROUP BY cp.gender, rr.reason_description, cd.year
+        ",calendar_days;client_profiles;return_reasons;store_refunds,calendar_days.calendar_day_record;calendar_days.year;client_profiles.client_profile_record;client_profiles.gender;return_reasons.reason_description;return_reasons.return_reason_record;store_refunds.client_profile_ref;store_refunds.return_amount;store_refunds.return_calendar_day_ref;store_refunds.return_reason_ref,calendar_days.calendar_day_record = store_refunds.return_calendar_day_ref;client_profiles.client_profile_record = store_refunds.client_profile_ref;return_reasons.return_reason_record = store_refunds.return_reason_ref,,store_refunds_profile,4,Store refund transaction-time customer profile.
+gold_077,returns,medium,Online refund amount for Music products with reason reason 31 in 2001.,"
+        SELECT rr.reason_description, m.category, cd.year, SUM(orx.return_amount) AS return_amount
+        FROM online_refunds orx
+        JOIN calendar_days cd ON orx.return_calendar_day_ref = cd.calendar_day_record
+        JOIN return_reasons rr ON orx.return_reason_ref = rr.return_reason_record
+        JOIN merchandise m ON orx.merchandise_ref = m.merchandise_record
+        WHERE rr.reason_description = 'reason 31' AND m.category = 'Music' AND cd.year = 2001
+        GROUP BY rr.reason_description, m.category, cd.year
+        ",calendar_days;merchandise;online_refunds;return_reasons,calendar_days.calendar_day_record;calendar_days.year;merchandise.category;merchandise.merchandise_record;online_refunds.merchandise_ref;online_refunds.return_amount;online_refunds.return_calendar_day_ref;online_refunds.return_reason_ref;return_reasons.reason_description;return_reasons.return_reason_record,calendar_days.calendar_day_record = online_refunds.return_calendar_day_ref;merchandise.merchandise_record = online_refunds.merchandise_ref;online_refunds.return_reason_ref = return_reasons.return_reason_record,,online_refunds_reason,1,Online returns by reason.
+gold_078,returns,medium,Online refund amount for Music products with reason reason 31 in 2002.,"
+        SELECT rr.reason_description, m.category, cd.year, SUM(orx.return_amount) AS return_amount
+        FROM online_refunds orx
+        JOIN calendar_days cd ON orx.return_calendar_day_ref = cd.calendar_day_record
+        JOIN return_reasons rr ON orx.return_reason_ref = rr.return_reason_record
+        JOIN merchandise m ON orx.merchandise_ref = m.merchandise_record
+        WHERE rr.reason_description = 'reason 31' AND m.category = 'Music' AND cd.year = 2002
+        GROUP BY rr.reason_description, m.category, cd.year
+        ",calendar_days;merchandise;online_refunds;return_reasons,calendar_days.calendar_day_record;calendar_days.year;merchandise.category;merchandise.merchandise_record;online_refunds.merchandise_ref;online_refunds.return_amount;online_refunds.return_calendar_day_ref;online_refunds.return_reason_ref;return_reasons.reason_description;return_reasons.return_reason_record,calendar_days.calendar_day_record = online_refunds.return_calendar_day_ref;merchandise.merchandise_record = online_refunds.merchandise_ref;online_refunds.return_reason_ref = return_reasons.return_reason_record,,online_refunds_reason,2,Online returns by reason.
+gold_079,returns,medium,Online refund amount for Music products with reason reason 31 in 2003.,"
+        SELECT rr.reason_description, m.category, cd.year, SUM(orx.return_amount) AS return_amount
+        FROM online_refunds orx
+        JOIN calendar_days cd ON orx.return_calendar_day_ref = cd.calendar_day_record
+        JOIN return_reasons rr ON orx.return_reason_ref = rr.return_reason_record
+        JOIN merchandise m ON orx.merchandise_ref = m.merchandise_record
+        WHERE rr.reason_description = 'reason 31' AND m.category = 'Music' AND cd.year = 2003
+        GROUP BY rr.reason_description, m.category, cd.year
+        ",calendar_days;merchandise;online_refunds;return_reasons,calendar_days.calendar_day_record;calendar_days.year;merchandise.category;merchandise.merchandise_record;online_refunds.merchandise_ref;online_refunds.return_amount;online_refunds.return_calendar_day_ref;online_refunds.return_reason_ref;return_reasons.reason_description;return_reasons.return_reason_record,calendar_days.calendar_day_record = online_refunds.return_calendar_day_ref;merchandise.merchandise_record = online_refunds.merchandise_ref;online_refunds.return_reason_ref = return_reasons.return_reason_record,,online_refunds_reason,3,Online returns by reason.
+gold_080,returns,medium,Online refund amount for Music products with reason reason 31 in 2004.,"
+        SELECT rr.reason_description, m.category, cd.year, SUM(orx.return_amount) AS return_amount
+        FROM online_refunds orx
+        JOIN calendar_days cd ON orx.return_calendar_day_ref = cd.calendar_day_record
+        JOIN return_reasons rr ON orx.return_reason_ref = rr.return_reason_record
+        JOIN merchandise m ON orx.merchandise_ref = m.merchandise_record
+        WHERE rr.reason_description = 'reason 31' AND m.category = 'Music' AND cd.year = 2004
+        GROUP BY rr.reason_description, m.category, cd.year
+        ",calendar_days;merchandise;online_refunds;return_reasons,calendar_days.calendar_day_record;calendar_days.year;merchandise.category;merchandise.merchandise_record;online_refunds.merchandise_ref;online_refunds.return_amount;online_refunds.return_calendar_day_ref;online_refunds.return_reason_ref;return_reasons.reason_description;return_reasons.return_reason_record,calendar_days.calendar_day_record = online_refunds.return_calendar_day_ref;merchandise.merchandise_record = online_refunds.merchandise_ref;online_refunds.return_reason_ref = return_reasons.return_reason_record,,online_refunds_reason,4,Online returns by reason.
+gold_081,returns,hard,Online refunds from site pages of type general with reason reason 31 in 2001.,"
+        SELECT sp.type, rr.reason_description, cd.year, SUM(orx.return_amount) AS return_amount
+        FROM online_refunds orx
+        JOIN calendar_days cd ON orx.return_calendar_day_ref = cd.calendar_day_record
+        JOIN site_pages sp ON orx.site_page_ref = sp.site_page_record
+        JOIN return_reasons rr ON orx.return_reason_ref = rr.return_reason_record
+        WHERE sp.type = 'general' AND rr.reason_description = 'reason 31' AND cd.year = 2001
+        GROUP BY sp.type, rr.reason_description, cd.year
+        ",calendar_days;online_refunds;return_reasons;site_pages,calendar_days.calendar_day_record;calendar_days.year;online_refunds.return_amount;online_refunds.return_calendar_day_ref;online_refunds.return_reason_ref;online_refunds.site_page_ref;return_reasons.reason_description;return_reasons.return_reason_record;site_pages.site_page_record;site_pages.type,calendar_days.calendar_day_record = online_refunds.return_calendar_day_ref;online_refunds.return_reason_ref = return_reasons.return_reason_record;online_refunds.site_page_ref = site_pages.site_page_record,,online_refunds_site,1,Online refund site-page attribution.
+gold_082,returns,hard,Online refunds from site pages of type general with reason reason 31 in 2002.,"
+        SELECT sp.type, rr.reason_description, cd.year, SUM(orx.return_amount) AS return_amount
+        FROM online_refunds orx
+        JOIN calendar_days cd ON orx.return_calendar_day_ref = cd.calendar_day_record
+        JOIN site_pages sp ON orx.site_page_ref = sp.site_page_record
+        JOIN return_reasons rr ON orx.return_reason_ref = rr.return_reason_record
+        WHERE sp.type = 'general' AND rr.reason_description = 'reason 31' AND cd.year = 2002
+        GROUP BY sp.type, rr.reason_description, cd.year
+        ",calendar_days;online_refunds;return_reasons;site_pages,calendar_days.calendar_day_record;calendar_days.year;online_refunds.return_amount;online_refunds.return_calendar_day_ref;online_refunds.return_reason_ref;online_refunds.site_page_ref;return_reasons.reason_description;return_reasons.return_reason_record;site_pages.site_page_record;site_pages.type,calendar_days.calendar_day_record = online_refunds.return_calendar_day_ref;online_refunds.return_reason_ref = return_reasons.return_reason_record;online_refunds.site_page_ref = site_pages.site_page_record,,online_refunds_site,2,Online refund site-page attribution.
+gold_083,returns,hard,Online refunds from site pages of type general with reason reason 31 in 2003.,"
+        SELECT sp.type, rr.reason_description, cd.year, SUM(orx.return_amount) AS return_amount
+        FROM online_refunds orx
+        JOIN calendar_days cd ON orx.return_calendar_day_ref = cd.calendar_day_record
+        JOIN site_pages sp ON orx.site_page_ref = sp.site_page_record
+        JOIN return_reasons rr ON orx.return_reason_ref = rr.return_reason_record
+        WHERE sp.type = 'general' AND rr.reason_description = 'reason 31' AND cd.year = 2003
+        GROUP BY sp.type, rr.reason_description, cd.year
+        ",calendar_days;online_refunds;return_reasons;site_pages,calendar_days.calendar_day_record;calendar_days.year;online_refunds.return_amount;online_refunds.return_calendar_day_ref;online_refunds.return_reason_ref;online_refunds.site_page_ref;return_reasons.reason_description;return_reasons.return_reason_record;site_pages.site_page_record;site_pages.type,calendar_days.calendar_day_record = online_refunds.return_calendar_day_ref;online_refunds.return_reason_ref = return_reasons.return_reason_record;online_refunds.site_page_ref = site_pages.site_page_record,,online_refunds_site,3,Online refund site-page attribution.
+gold_084,returns,hard,Online refunds from site pages of type general with reason reason 31 in 2004.,"
+        SELECT sp.type, rr.reason_description, cd.year, SUM(orx.return_amount) AS return_amount
+        FROM online_refunds orx
+        JOIN calendar_days cd ON orx.return_calendar_day_ref = cd.calendar_day_record
+        JOIN site_pages sp ON orx.site_page_ref = sp.site_page_record
+        JOIN return_reasons rr ON orx.return_reason_ref = rr.return_reason_record
+        WHERE sp.type = 'general' AND rr.reason_description = 'reason 31' AND cd.year = 2004
+        GROUP BY sp.type, rr.reason_description, cd.year
+        ",calendar_days;online_refunds;return_reasons;site_pages,calendar_days.calendar_day_record;calendar_days.year;online_refunds.return_amount;online_refunds.return_calendar_day_ref;online_refunds.return_reason_ref;online_refunds.site_page_ref;return_reasons.reason_description;return_reasons.return_reason_record;site_pages.site_page_record;site_pages.type,calendar_days.calendar_day_record = online_refunds.return_calendar_day_ref;online_refunds.return_reason_ref = return_reasons.return_reason_record;online_refunds.site_page_ref = site_pages.site_page_record,,online_refunds_site,4,Online refund site-page attribution.
+gold_085,mail_order,medium,Mail order net paid with delivery for support center North Midwest and carrier AIRBORNE in 2001.,"
+        SELECT sc.name, dm.carrier, cd.year, SUM(mp.net_paid_with_delivery) AS net_paid_with_delivery
+        FROM mail_order_purchases mp
+        JOIN calendar_days cd ON mp.sale_calendar_day_ref = cd.calendar_day_record
+        JOIN support_centers sc ON mp.support_center_ref = sc.support_center_record
+        JOIN delivery_methods dm ON mp.delivery_method_ref = dm.delivery_method_record
+        WHERE sc.name = 'North Midwest' AND dm.carrier = 'AIRBORNE' AND cd.year = 2001
+        GROUP BY sc.name, dm.carrier, cd.year
+        ",calendar_days;delivery_methods;mail_order_purchases;support_centers,calendar_days.calendar_day_record;calendar_days.year;delivery_methods.carrier;delivery_methods.delivery_method_record;mail_order_purchases.delivery_method_ref;mail_order_purchases.net_paid_with_delivery;mail_order_purchases.sale_calendar_day_ref;mail_order_purchases.support_center_ref;support_centers.name;support_centers.support_center_record,calendar_days.calendar_day_record = mail_order_purchases.sale_calendar_day_ref;delivery_methods.delivery_method_record = mail_order_purchases.delivery_method_ref;mail_order_purchases.support_center_ref = support_centers.support_center_record,,mail_order_support,1,Mail order support center and carrier.
+gold_086,mail_order,medium,Mail order net paid with delivery for support center North Midwest and carrier AIRBORNE in 2002.,"
+        SELECT sc.name, dm.carrier, cd.year, SUM(mp.net_paid_with_delivery) AS net_paid_with_delivery
+        FROM mail_order_purchases mp
+        JOIN calendar_days cd ON mp.sale_calendar_day_ref = cd.calendar_day_record
+        JOIN support_centers sc ON mp.support_center_ref = sc.support_center_record
+        JOIN delivery_methods dm ON mp.delivery_method_ref = dm.delivery_method_record
+        WHERE sc.name = 'North Midwest' AND dm.carrier = 'AIRBORNE' AND cd.year = 2002
+        GROUP BY sc.name, dm.carrier, cd.year
+        ",calendar_days;delivery_methods;mail_order_purchases;support_centers,calendar_days.calendar_day_record;calendar_days.year;delivery_methods.carrier;delivery_methods.delivery_method_record;mail_order_purchases.delivery_method_ref;mail_order_purchases.net_paid_with_delivery;mail_order_purchases.sale_calendar_day_ref;mail_order_purchases.support_center_ref;support_centers.name;support_centers.support_center_record,calendar_days.calendar_day_record = mail_order_purchases.sale_calendar_day_ref;delivery_methods.delivery_method_record = mail_order_purchases.delivery_method_ref;mail_order_purchases.support_center_ref = support_centers.support_center_record,,mail_order_support,2,Mail order support center and carrier.
+gold_087,mail_order,medium,Mail order net paid with delivery for support center North Midwest and carrier AIRBORNE in 2003.,"
+        SELECT sc.name, dm.carrier, cd.year, SUM(mp.net_paid_with_delivery) AS net_paid_with_delivery
+        FROM mail_order_purchases mp
+        JOIN calendar_days cd ON mp.sale_calendar_day_ref = cd.calendar_day_record
+        JOIN support_centers sc ON mp.support_center_ref = sc.support_center_record
+        JOIN delivery_methods dm ON mp.delivery_method_ref = dm.delivery_method_record
+        WHERE sc.name = 'North Midwest' AND dm.carrier = 'AIRBORNE' AND cd.year = 2003
+        GROUP BY sc.name, dm.carrier, cd.year
+        ",calendar_days;delivery_methods;mail_order_purchases;support_centers,calendar_days.calendar_day_record;calendar_days.year;delivery_methods.carrier;delivery_methods.delivery_method_record;mail_order_purchases.delivery_method_ref;mail_order_purchases.net_paid_with_delivery;mail_order_purchases.sale_calendar_day_ref;mail_order_purchases.support_center_ref;support_centers.name;support_centers.support_center_record,calendar_days.calendar_day_record = mail_order_purchases.sale_calendar_day_ref;delivery_methods.delivery_method_record = mail_order_purchases.delivery_method_ref;mail_order_purchases.support_center_ref = support_centers.support_center_record,,mail_order_support,3,Mail order support center and carrier.
+gold_088,mail_order,medium,Mail order net paid with delivery for support center North Midwest and carrier AIRBORNE in 2004.,"
+        SELECT sc.name, dm.carrier, cd.year, SUM(mp.net_paid_with_delivery) AS net_paid_with_delivery
+        FROM mail_order_purchases mp
+        JOIN calendar_days cd ON mp.sale_calendar_day_ref = cd.calendar_day_record
+        JOIN support_centers sc ON mp.support_center_ref = sc.support_center_record
+        JOIN delivery_methods dm ON mp.delivery_method_ref = dm.delivery_method_record
+        WHERE sc.name = 'North Midwest' AND dm.carrier = 'AIRBORNE' AND cd.year = 2004
+        GROUP BY sc.name, dm.carrier, cd.year
+        ",calendar_days;delivery_methods;mail_order_purchases;support_centers,calendar_days.calendar_day_record;calendar_days.year;delivery_methods.carrier;delivery_methods.delivery_method_record;mail_order_purchases.delivery_method_ref;mail_order_purchases.net_paid_with_delivery;mail_order_purchases.sale_calendar_day_ref;mail_order_purchases.support_center_ref;support_centers.name;support_centers.support_center_record,calendar_days.calendar_day_record = mail_order_purchases.sale_calendar_day_ref;delivery_methods.delivery_method_record = mail_order_purchases.delivery_method_ref;mail_order_purchases.support_center_ref = support_centers.support_center_record,,mail_order_support,4,Mail order support center and carrier.
+gold_089,mail_order,medium,Mail order delivery cost by warehouse Conventional childr and carrier AIRBORNE in 2001.,"
+        SELECT fc.warehouse_name, dm.carrier, cd.year, SUM(mp.extended_delivery_cost) AS delivery_cost
+        FROM mail_order_purchases mp
+        JOIN calendar_days cd ON mp.sale_calendar_day_ref = cd.calendar_day_record
+        JOIN fulfillment_centers fc ON mp.fulfillment_center_ref = fc.fulfillment_center_record
+        JOIN delivery_methods dm ON mp.delivery_method_ref = dm.delivery_method_record
+        WHERE fc.warehouse_name = 'Conventional childr' AND dm.carrier = 'AIRBORNE' AND cd.year = 2001
+        GROUP BY fc.warehouse_name, dm.carrier, cd.year
+        ",calendar_days;delivery_methods;fulfillment_centers;mail_order_purchases,calendar_days.calendar_day_record;calendar_days.year;delivery_methods.carrier;delivery_methods.delivery_method_record;fulfillment_centers.fulfillment_center_record;fulfillment_centers.warehouse_name;mail_order_purchases.delivery_method_ref;mail_order_purchases.extended_delivery_cost;mail_order_purchases.fulfillment_center_ref;mail_order_purchases.sale_calendar_day_ref,calendar_days.calendar_day_record = mail_order_purchases.sale_calendar_day_ref;delivery_methods.delivery_method_record = mail_order_purchases.delivery_method_ref;fulfillment_centers.fulfillment_center_record = mail_order_purchases.fulfillment_center_ref,,mail_order_warehouse,1,Mail order warehouse and delivery.
+gold_090,mail_order,medium,Mail order delivery cost by warehouse Conventional childr and carrier AIRBORNE in 2002.,"
+        SELECT fc.warehouse_name, dm.carrier, cd.year, SUM(mp.extended_delivery_cost) AS delivery_cost
+        FROM mail_order_purchases mp
+        JOIN calendar_days cd ON mp.sale_calendar_day_ref = cd.calendar_day_record
+        JOIN fulfillment_centers fc ON mp.fulfillment_center_ref = fc.fulfillment_center_record
+        JOIN delivery_methods dm ON mp.delivery_method_ref = dm.delivery_method_record
+        WHERE fc.warehouse_name = 'Conventional childr' AND dm.carrier = 'AIRBORNE' AND cd.year = 2002
+        GROUP BY fc.warehouse_name, dm.carrier, cd.year
+        ",calendar_days;delivery_methods;fulfillment_centers;mail_order_purchases,calendar_days.calendar_day_record;calendar_days.year;delivery_methods.carrier;delivery_methods.delivery_method_record;fulfillment_centers.fulfillment_center_record;fulfillment_centers.warehouse_name;mail_order_purchases.delivery_method_ref;mail_order_purchases.extended_delivery_cost;mail_order_purchases.fulfillment_center_ref;mail_order_purchases.sale_calendar_day_ref,calendar_days.calendar_day_record = mail_order_purchases.sale_calendar_day_ref;delivery_methods.delivery_method_record = mail_order_purchases.delivery_method_ref;fulfillment_centers.fulfillment_center_record = mail_order_purchases.fulfillment_center_ref,,mail_order_warehouse,2,Mail order warehouse and delivery.
+gold_091,mail_order,medium,Mail order delivery cost by warehouse Conventional childr and carrier AIRBORNE in 2003.,"
+        SELECT fc.warehouse_name, dm.carrier, cd.year, SUM(mp.extended_delivery_cost) AS delivery_cost
+        FROM mail_order_purchases mp
+        JOIN calendar_days cd ON mp.sale_calendar_day_ref = cd.calendar_day_record
+        JOIN fulfillment_centers fc ON mp.fulfillment_center_ref = fc.fulfillment_center_record
+        JOIN delivery_methods dm ON mp.delivery_method_ref = dm.delivery_method_record
+        WHERE fc.warehouse_name = 'Conventional childr' AND dm.carrier = 'AIRBORNE' AND cd.year = 2003
+        GROUP BY fc.warehouse_name, dm.carrier, cd.year
+        ",calendar_days;delivery_methods;fulfillment_centers;mail_order_purchases,calendar_days.calendar_day_record;calendar_days.year;delivery_methods.carrier;delivery_methods.delivery_method_record;fulfillment_centers.fulfillment_center_record;fulfillment_centers.warehouse_name;mail_order_purchases.delivery_method_ref;mail_order_purchases.extended_delivery_cost;mail_order_purchases.fulfillment_center_ref;mail_order_purchases.sale_calendar_day_ref,calendar_days.calendar_day_record = mail_order_purchases.sale_calendar_day_ref;delivery_methods.delivery_method_record = mail_order_purchases.delivery_method_ref;fulfillment_centers.fulfillment_center_record = mail_order_purchases.fulfillment_center_ref,,mail_order_warehouse,3,Mail order warehouse and delivery.
+gold_092,mail_order,medium,Mail order delivery cost by warehouse Conventional childr and carrier AIRBORNE in 2004.,"
+        SELECT fc.warehouse_name, dm.carrier, cd.year, SUM(mp.extended_delivery_cost) AS delivery_cost
+        FROM mail_order_purchases mp
+        JOIN calendar_days cd ON mp.sale_calendar_day_ref = cd.calendar_day_record
+        JOIN fulfillment_centers fc ON mp.fulfillment_center_ref = fc.fulfillment_center_record
+        JOIN delivery_methods dm ON mp.delivery_method_ref = dm.delivery_method_record
+        WHERE fc.warehouse_name = 'Conventional childr' AND dm.carrier = 'AIRBORNE' AND cd.year = 2004
+        GROUP BY fc.warehouse_name, dm.carrier, cd.year
+        ",calendar_days;delivery_methods;fulfillment_centers;mail_order_purchases,calendar_days.calendar_day_record;calendar_days.year;delivery_methods.carrier;delivery_methods.delivery_method_record;fulfillment_centers.fulfillment_center_record;fulfillment_centers.warehouse_name;mail_order_purchases.delivery_method_ref;mail_order_purchases.extended_delivery_cost;mail_order_purchases.fulfillment_center_ref;mail_order_purchases.sale_calendar_day_ref,calendar_days.calendar_day_record = mail_order_purchases.sale_calendar_day_ref;delivery_methods.delivery_method_record = mail_order_purchases.delivery_method_ref;fulfillment_centers.fulfillment_center_record = mail_order_purchases.fulfillment_center_ref,,mail_order_warehouse,4,Mail order warehouse and delivery.
+gold_093,mail_order,hard,Mail order customers shipped to TX by carrier AIRBORNE in 2001.,"
+        SELECT a.state, dm.carrier, cd.year, COUNT(DISTINCT mp.billing_client_ref) AS customers
+        FROM mail_order_purchases mp
+        JOIN calendar_days cd ON mp.sale_calendar_day_ref = cd.calendar_day_record
+        JOIN addresses a ON mp.shipping_address_ref = a.address_record
+        JOIN delivery_methods dm ON mp.delivery_method_ref = dm.delivery_method_record
+        WHERE a.state = 'TX' AND dm.carrier = 'AIRBORNE' AND cd.year = 2001
+        GROUP BY a.state, dm.carrier, cd.year
+        ",addresses;calendar_days;delivery_methods;mail_order_purchases,addresses.address_record;addresses.state;calendar_days.calendar_day_record;calendar_days.year;delivery_methods.carrier;delivery_methods.delivery_method_record;mail_order_purchases.billing_client_ref;mail_order_purchases.delivery_method_ref;mail_order_purchases.sale_calendar_day_ref;mail_order_purchases.shipping_address_ref,addresses.address_record = mail_order_purchases.shipping_address_ref;calendar_days.calendar_day_record = mail_order_purchases.sale_calendar_day_ref;delivery_methods.delivery_method_record = mail_order_purchases.delivery_method_ref,,mail_order_shipping,1,Mail order shipping geography.
+gold_094,mail_order,hard,Mail order customers shipped to TX by carrier AIRBORNE in 2002.,"
+        SELECT a.state, dm.carrier, cd.year, COUNT(DISTINCT mp.billing_client_ref) AS customers
+        FROM mail_order_purchases mp
+        JOIN calendar_days cd ON mp.sale_calendar_day_ref = cd.calendar_day_record
+        JOIN addresses a ON mp.shipping_address_ref = a.address_record
+        JOIN delivery_methods dm ON mp.delivery_method_ref = dm.delivery_method_record
+        WHERE a.state = 'TX' AND dm.carrier = 'AIRBORNE' AND cd.year = 2002
+        GROUP BY a.state, dm.carrier, cd.year
+        ",addresses;calendar_days;delivery_methods;mail_order_purchases,addresses.address_record;addresses.state;calendar_days.calendar_day_record;calendar_days.year;delivery_methods.carrier;delivery_methods.delivery_method_record;mail_order_purchases.billing_client_ref;mail_order_purchases.delivery_method_ref;mail_order_purchases.sale_calendar_day_ref;mail_order_purchases.shipping_address_ref,addresses.address_record = mail_order_purchases.shipping_address_ref;calendar_days.calendar_day_record = mail_order_purchases.sale_calendar_day_ref;delivery_methods.delivery_method_record = mail_order_purchases.delivery_method_ref,,mail_order_shipping,2,Mail order shipping geography.
+gold_095,mail_order,hard,Mail order customers shipped to TX by carrier AIRBORNE in 2003.,"
+        SELECT a.state, dm.carrier, cd.year, COUNT(DISTINCT mp.billing_client_ref) AS customers
+        FROM mail_order_purchases mp
+        JOIN calendar_days cd ON mp.sale_calendar_day_ref = cd.calendar_day_record
+        JOIN addresses a ON mp.shipping_address_ref = a.address_record
+        JOIN delivery_methods dm ON mp.delivery_method_ref = dm.delivery_method_record
+        WHERE a.state = 'TX' AND dm.carrier = 'AIRBORNE' AND cd.year = 2003
+        GROUP BY a.state, dm.carrier, cd.year
+        ",addresses;calendar_days;delivery_methods;mail_order_purchases,addresses.address_record;addresses.state;calendar_days.calendar_day_record;calendar_days.year;delivery_methods.carrier;delivery_methods.delivery_method_record;mail_order_purchases.billing_client_ref;mail_order_purchases.delivery_method_ref;mail_order_purchases.sale_calendar_day_ref;mail_order_purchases.shipping_address_ref,addresses.address_record = mail_order_purchases.shipping_address_ref;calendar_days.calendar_day_record = mail_order_purchases.sale_calendar_day_ref;delivery_methods.delivery_method_record = mail_order_purchases.delivery_method_ref,,mail_order_shipping,3,Mail order shipping geography.
+gold_096,mail_order,hard,Mail order customers shipped to TX by carrier AIRBORNE in 2004.,"
+        SELECT a.state, dm.carrier, cd.year, COUNT(DISTINCT mp.billing_client_ref) AS customers
+        FROM mail_order_purchases mp
+        JOIN calendar_days cd ON mp.sale_calendar_day_ref = cd.calendar_day_record
+        JOIN addresses a ON mp.shipping_address_ref = a.address_record
+        JOIN delivery_methods dm ON mp.delivery_method_ref = dm.delivery_method_record
+        WHERE a.state = 'TX' AND dm.carrier = 'AIRBORNE' AND cd.year = 2004
+        GROUP BY a.state, dm.carrier, cd.year
+        ",addresses;calendar_days;delivery_methods;mail_order_purchases,addresses.address_record;addresses.state;calendar_days.calendar_day_record;calendar_days.year;delivery_methods.carrier;delivery_methods.delivery_method_record;mail_order_purchases.billing_client_ref;mail_order_purchases.delivery_method_ref;mail_order_purchases.sale_calendar_day_ref;mail_order_purchases.shipping_address_ref,addresses.address_record = mail_order_purchases.shipping_address_ref;calendar_days.calendar_day_record = mail_order_purchases.sale_calendar_day_ref;delivery_methods.delivery_method_record = mail_order_purchases.delivery_method_ref,,mail_order_shipping,4,Mail order shipping geography.
+gold_097,mailer,medium,Mail order net sales by mailer department DEPARTMENT and mailer type monthly in 2001.,"
+        SELECT ml.department, ml.type, cd.year, SUM(mp.net_paid) AS net_paid
+        FROM mail_order_purchases mp
+        JOIN calendar_days cd ON mp.sale_calendar_day_ref = cd.calendar_day_record
+        JOIN mailer_pages ml ON mp.mailer_page_ref = ml.mailer_page_record
+        WHERE ml.department = 'DEPARTMENT' AND ml.type = 'monthly' AND cd.year = 2001
+        GROUP BY ml.department, ml.type, cd.year
+        ",calendar_days;mail_order_purchases;mailer_pages,calendar_days.calendar_day_record;calendar_days.year;mail_order_purchases.mailer_page_ref;mail_order_purchases.net_paid;mail_order_purchases.sale_calendar_day_ref;mailer_pages.department;mailer_pages.mailer_page_record;mailer_pages.type,calendar_days.calendar_day_record = mail_order_purchases.sale_calendar_day_ref;mail_order_purchases.mailer_page_ref = mailer_pages.mailer_page_record,,mail_order_mailer,1,Mail order mailer page attribution.
+gold_098,mailer,medium,Mail order net sales by mailer department DEPARTMENT and mailer type monthly in 2002.,"
+        SELECT ml.department, ml.type, cd.year, SUM(mp.net_paid) AS net_paid
+        FROM mail_order_purchases mp
+        JOIN calendar_days cd ON mp.sale_calendar_day_ref = cd.calendar_day_record
+        JOIN mailer_pages ml ON mp.mailer_page_ref = ml.mailer_page_record
+        WHERE ml.department = 'DEPARTMENT' AND ml.type = 'monthly' AND cd.year = 2002
+        GROUP BY ml.department, ml.type, cd.year
+        ",calendar_days;mail_order_purchases;mailer_pages,calendar_days.calendar_day_record;calendar_days.year;mail_order_purchases.mailer_page_ref;mail_order_purchases.net_paid;mail_order_purchases.sale_calendar_day_ref;mailer_pages.department;mailer_pages.mailer_page_record;mailer_pages.type,calendar_days.calendar_day_record = mail_order_purchases.sale_calendar_day_ref;mail_order_purchases.mailer_page_ref = mailer_pages.mailer_page_record,,mail_order_mailer,2,Mail order mailer page attribution.
+gold_099,mailer,medium,Mail order net sales by mailer department DEPARTMENT and mailer type monthly in 2003.,"
+        SELECT ml.department, ml.type, cd.year, SUM(mp.net_paid) AS net_paid
+        FROM mail_order_purchases mp
+        JOIN calendar_days cd ON mp.sale_calendar_day_ref = cd.calendar_day_record
+        JOIN mailer_pages ml ON mp.mailer_page_ref = ml.mailer_page_record
+        WHERE ml.department = 'DEPARTMENT' AND ml.type = 'monthly' AND cd.year = 2003
+        GROUP BY ml.department, ml.type, cd.year
+        ",calendar_days;mail_order_purchases;mailer_pages,calendar_days.calendar_day_record;calendar_days.year;mail_order_purchases.mailer_page_ref;mail_order_purchases.net_paid;mail_order_purchases.sale_calendar_day_ref;mailer_pages.department;mailer_pages.mailer_page_record;mailer_pages.type,calendar_days.calendar_day_record = mail_order_purchases.sale_calendar_day_ref;mail_order_purchases.mailer_page_ref = mailer_pages.mailer_page_record,,mail_order_mailer,3,Mail order mailer page attribution.
+gold_100,mailer,medium,Mail order net sales by mailer department DEPARTMENT and mailer type monthly in 2004.,"
+        SELECT ml.department, ml.type, cd.year, SUM(mp.net_paid) AS net_paid
+        FROM mail_order_purchases mp
+        JOIN calendar_days cd ON mp.sale_calendar_day_ref = cd.calendar_day_record
+        JOIN mailer_pages ml ON mp.mailer_page_ref = ml.mailer_page_record
+        WHERE ml.department = 'DEPARTMENT' AND ml.type = 'monthly' AND cd.year = 2004
+        GROUP BY ml.department, ml.type, cd.year
+        ",calendar_days;mail_order_purchases;mailer_pages,calendar_days.calendar_day_record;calendar_days.year;mail_order_purchases.mailer_page_ref;mail_order_purchases.net_paid;mail_order_purchases.sale_calendar_day_ref;mailer_pages.department;mailer_pages.mailer_page_record;mailer_pages.type,calendar_days.calendar_day_record = mail_order_purchases.sale_calendar_day_ref;mail_order_purchases.mailer_page_ref = mailer_pages.mailer_page_record,,mail_order_mailer,4,Mail order mailer page attribution.
+gold_101,mailer,easy,Mailer pages in department DEPARTMENT of type monthly that started in 2001.,"
+        SELECT ml.department, ml.type, start_day.year, COUNT(*) AS pages
+        FROM mailer_pages ml
+        JOIN calendar_days start_day ON ml.start_calendar_day_ref = start_day.calendar_day_record
+        JOIN calendar_days end_day ON ml.end_calendar_day_ref = end_day.calendar_day_record
+        WHERE ml.department = 'DEPARTMENT' AND ml.type = 'monthly' AND start_day.year = 2001
+        GROUP BY ml.department, ml.type, start_day.year
+        ",calendar_days;mailer_pages,calendar_days.calendar_day_record;calendar_days.year;mailer_pages.department;mailer_pages.end_calendar_day_ref;mailer_pages.start_calendar_day_ref;mailer_pages.type,calendar_days.calendar_day_record = mailer_pages.end_calendar_day_ref;calendar_days.calendar_day_record = mailer_pages.start_calendar_day_ref,,mailer_page_calendar,1,Mailer page start and end date roles.
+gold_102,mailer,easy,Mailer pages in department DEPARTMENT of type monthly that started in 2002.,"
+        SELECT ml.department, ml.type, start_day.year, COUNT(*) AS pages
+        FROM mailer_pages ml
+        JOIN calendar_days start_day ON ml.start_calendar_day_ref = start_day.calendar_day_record
+        JOIN calendar_days end_day ON ml.end_calendar_day_ref = end_day.calendar_day_record
+        WHERE ml.department = 'DEPARTMENT' AND ml.type = 'monthly' AND start_day.year = 2002
+        GROUP BY ml.department, ml.type, start_day.year
+        ",calendar_days;mailer_pages,calendar_days.calendar_day_record;calendar_days.year;mailer_pages.department;mailer_pages.end_calendar_day_ref;mailer_pages.start_calendar_day_ref;mailer_pages.type,calendar_days.calendar_day_record = mailer_pages.end_calendar_day_ref;calendar_days.calendar_day_record = mailer_pages.start_calendar_day_ref,,mailer_page_calendar,2,Mailer page start and end date roles.
+gold_103,mailer,easy,Mailer pages in department DEPARTMENT of type monthly that started in 2003.,"
+        SELECT ml.department, ml.type, start_day.year, COUNT(*) AS pages
+        FROM mailer_pages ml
+        JOIN calendar_days start_day ON ml.start_calendar_day_ref = start_day.calendar_day_record
+        JOIN calendar_days end_day ON ml.end_calendar_day_ref = end_day.calendar_day_record
+        WHERE ml.department = 'DEPARTMENT' AND ml.type = 'monthly' AND start_day.year = 2003
+        GROUP BY ml.department, ml.type, start_day.year
+        ",calendar_days;mailer_pages,calendar_days.calendar_day_record;calendar_days.year;mailer_pages.department;mailer_pages.end_calendar_day_ref;mailer_pages.start_calendar_day_ref;mailer_pages.type,calendar_days.calendar_day_record = mailer_pages.end_calendar_day_ref;calendar_days.calendar_day_record = mailer_pages.start_calendar_day_ref,,mailer_page_calendar,3,Mailer page start and end date roles.
+gold_104,mailer,easy,Mailer pages in department DEPARTMENT of type monthly that started in 2004.,"
+        SELECT ml.department, ml.type, start_day.year, COUNT(*) AS pages
+        FROM mailer_pages ml
+        JOIN calendar_days start_day ON ml.start_calendar_day_ref = start_day.calendar_day_record
+        JOIN calendar_days end_day ON ml.end_calendar_day_ref = end_day.calendar_day_record
+        WHERE ml.department = 'DEPARTMENT' AND ml.type = 'monthly' AND start_day.year = 2004
+        GROUP BY ml.department, ml.type, start_day.year
+        ",calendar_days;mailer_pages,calendar_days.calendar_day_record;calendar_days.year;mailer_pages.department;mailer_pages.end_calendar_day_ref;mailer_pages.start_calendar_day_ref;mailer_pages.type,calendar_days.calendar_day_record = mailer_pages.end_calendar_day_ref;calendar_days.calendar_day_record = mailer_pages.start_calendar_day_ref,,mailer_page_calendar,4,Mailer page start and end date roles.
+gold_105,returns,hard,Mail order refunds with reason reason 31 by carrier AIRBORNE in 2001.,"
+        SELECT rr.reason_description, dm.carrier, cd.year, SUM(mr.return_amount) AS return_amount
+        FROM mail_order_refunds mr
+        JOIN calendar_days cd ON mr.return_calendar_day_ref = cd.calendar_day_record
+        JOIN return_reasons rr ON mr.return_reason_ref = rr.return_reason_record
+        JOIN delivery_methods dm ON mr.delivery_method_ref = dm.delivery_method_record
+        WHERE rr.reason_description = 'reason 31' AND dm.carrier = 'AIRBORNE' AND cd.year = 2001
+        GROUP BY rr.reason_description, dm.carrier, cd.year
+        ",calendar_days;delivery_methods;mail_order_refunds;return_reasons,calendar_days.calendar_day_record;calendar_days.year;delivery_methods.carrier;delivery_methods.delivery_method_record;mail_order_refunds.delivery_method_ref;mail_order_refunds.return_amount;mail_order_refunds.return_calendar_day_ref;mail_order_refunds.return_reason_ref;return_reasons.reason_description;return_reasons.return_reason_record,calendar_days.calendar_day_record = mail_order_refunds.return_calendar_day_ref;delivery_methods.delivery_method_record = mail_order_refunds.delivery_method_ref;mail_order_refunds.return_reason_ref = return_reasons.return_reason_record,,mail_refunds_ops,1,Mail order refund operations.
+gold_106,returns,hard,Mail order refunds with reason reason 31 by carrier AIRBORNE in 2002.,"
+        SELECT rr.reason_description, dm.carrier, cd.year, SUM(mr.return_amount) AS return_amount
+        FROM mail_order_refunds mr
+        JOIN calendar_days cd ON mr.return_calendar_day_ref = cd.calendar_day_record
+        JOIN return_reasons rr ON mr.return_reason_ref = rr.return_reason_record
+        JOIN delivery_methods dm ON mr.delivery_method_ref = dm.delivery_method_record
+        WHERE rr.reason_description = 'reason 31' AND dm.carrier = 'AIRBORNE' AND cd.year = 2002
+        GROUP BY rr.reason_description, dm.carrier, cd.year
+        ",calendar_days;delivery_methods;mail_order_refunds;return_reasons,calendar_days.calendar_day_record;calendar_days.year;delivery_methods.carrier;delivery_methods.delivery_method_record;mail_order_refunds.delivery_method_ref;mail_order_refunds.return_amount;mail_order_refunds.return_calendar_day_ref;mail_order_refunds.return_reason_ref;return_reasons.reason_description;return_reasons.return_reason_record,calendar_days.calendar_day_record = mail_order_refunds.return_calendar_day_ref;delivery_methods.delivery_method_record = mail_order_refunds.delivery_method_ref;mail_order_refunds.return_reason_ref = return_reasons.return_reason_record,,mail_refunds_ops,2,Mail order refund operations.
+gold_107,returns,hard,Mail order refunds with reason reason 31 by carrier AIRBORNE in 2003.,"
+        SELECT rr.reason_description, dm.carrier, cd.year, SUM(mr.return_amount) AS return_amount
+        FROM mail_order_refunds mr
+        JOIN calendar_days cd ON mr.return_calendar_day_ref = cd.calendar_day_record
+        JOIN return_reasons rr ON mr.return_reason_ref = rr.return_reason_record
+        JOIN delivery_methods dm ON mr.delivery_method_ref = dm.delivery_method_record
+        WHERE rr.reason_description = 'reason 31' AND dm.carrier = 'AIRBORNE' AND cd.year = 2003
+        GROUP BY rr.reason_description, dm.carrier, cd.year
+        ",calendar_days;delivery_methods;mail_order_refunds;return_reasons,calendar_days.calendar_day_record;calendar_days.year;delivery_methods.carrier;delivery_methods.delivery_method_record;mail_order_refunds.delivery_method_ref;mail_order_refunds.return_amount;mail_order_refunds.return_calendar_day_ref;mail_order_refunds.return_reason_ref;return_reasons.reason_description;return_reasons.return_reason_record,calendar_days.calendar_day_record = mail_order_refunds.return_calendar_day_ref;delivery_methods.delivery_method_record = mail_order_refunds.delivery_method_ref;mail_order_refunds.return_reason_ref = return_reasons.return_reason_record,,mail_refunds_ops,3,Mail order refund operations.
+gold_108,returns,hard,Mail order refunds with reason reason 31 by carrier AIRBORNE in 2004.,"
+        SELECT rr.reason_description, dm.carrier, cd.year, SUM(mr.return_amount) AS return_amount
+        FROM mail_order_refunds mr
+        JOIN calendar_days cd ON mr.return_calendar_day_ref = cd.calendar_day_record
+        JOIN return_reasons rr ON mr.return_reason_ref = rr.return_reason_record
+        JOIN delivery_methods dm ON mr.delivery_method_ref = dm.delivery_method_record
+        WHERE rr.reason_description = 'reason 31' AND dm.carrier = 'AIRBORNE' AND cd.year = 2004
+        GROUP BY rr.reason_description, dm.carrier, cd.year
+        ",calendar_days;delivery_methods;mail_order_refunds;return_reasons,calendar_days.calendar_day_record;calendar_days.year;delivery_methods.carrier;delivery_methods.delivery_method_record;mail_order_refunds.delivery_method_ref;mail_order_refunds.return_amount;mail_order_refunds.return_calendar_day_ref;mail_order_refunds.return_reason_ref;return_reasons.reason_description;return_reasons.return_reason_record,calendar_days.calendar_day_record = mail_order_refunds.return_calendar_day_ref;delivery_methods.delivery_method_record = mail_order_refunds.delivery_method_ref;mail_order_refunds.return_reason_ref = return_reasons.return_reason_record,,mail_refunds_ops,4,Mail order refund operations.
+gold_109,inventory,medium,Positive stock for Music at warehouse Conventional childr during month 1 of 2001.,"
+        SELECT fc.warehouse_name, m.category, cd.year, cd.month_of_year, SUM(sl.quantity_on_hand) AS quantity_on_hand
+        FROM stock_levels sl
+        JOIN calendar_days cd ON sl.calendar_day_ref = cd.calendar_day_record
+        JOIN fulfillment_centers fc ON sl.fulfillment_center_ref = fc.fulfillment_center_record
+        JOIN merchandise m ON sl.merchandise_ref = m.merchandise_record
+        WHERE fc.warehouse_name = 'Conventional childr' AND m.category = 'Music' AND cd.year = 2001 AND cd.month_of_year = 1 AND sl.quantity_on_hand > 0
+        GROUP BY fc.warehouse_name, m.category, cd.year, cd.month_of_year
+        ",calendar_days;fulfillment_centers;merchandise;stock_levels,calendar_days.calendar_day_record;calendar_days.month_of_year;calendar_days.year;fulfillment_centers.fulfillment_center_record;fulfillment_centers.warehouse_name;merchandise.category;merchandise.merchandise_record;stock_levels.calendar_day_ref;stock_levels.fulfillment_center_ref;stock_levels.merchandise_ref;stock_levels.quantity_on_hand,calendar_days.calendar_day_record = stock_levels.calendar_day_ref;fulfillment_centers.fulfillment_center_record = stock_levels.fulfillment_center_ref;merchandise.merchandise_record = stock_levels.merchandise_ref,,inventory_stock,1,Inventory stock by warehouse and item.
+gold_110,inventory,medium,Positive stock for Music at warehouse Conventional childr during month 2 of 2001.,"
+        SELECT fc.warehouse_name, m.category, cd.year, cd.month_of_year, SUM(sl.quantity_on_hand) AS quantity_on_hand
+        FROM stock_levels sl
+        JOIN calendar_days cd ON sl.calendar_day_ref = cd.calendar_day_record
+        JOIN fulfillment_centers fc ON sl.fulfillment_center_ref = fc.fulfillment_center_record
+        JOIN merchandise m ON sl.merchandise_ref = m.merchandise_record
+        WHERE fc.warehouse_name = 'Conventional childr' AND m.category = 'Music' AND cd.year = 2001 AND cd.month_of_year = 2 AND sl.quantity_on_hand > 0
+        GROUP BY fc.warehouse_name, m.category, cd.year, cd.month_of_year
+        ",calendar_days;fulfillment_centers;merchandise;stock_levels,calendar_days.calendar_day_record;calendar_days.month_of_year;calendar_days.year;fulfillment_centers.fulfillment_center_record;fulfillment_centers.warehouse_name;merchandise.category;merchandise.merchandise_record;stock_levels.calendar_day_ref;stock_levels.fulfillment_center_ref;stock_levels.merchandise_ref;stock_levels.quantity_on_hand,calendar_days.calendar_day_record = stock_levels.calendar_day_ref;fulfillment_centers.fulfillment_center_record = stock_levels.fulfillment_center_ref;merchandise.merchandise_record = stock_levels.merchandise_ref,,inventory_stock,2,Inventory stock by warehouse and item.
+gold_111,inventory,medium,Positive stock for Music at warehouse Conventional childr during month 3 of 2001.,"
+        SELECT fc.warehouse_name, m.category, cd.year, cd.month_of_year, SUM(sl.quantity_on_hand) AS quantity_on_hand
+        FROM stock_levels sl
+        JOIN calendar_days cd ON sl.calendar_day_ref = cd.calendar_day_record
+        JOIN fulfillment_centers fc ON sl.fulfillment_center_ref = fc.fulfillment_center_record
+        JOIN merchandise m ON sl.merchandise_ref = m.merchandise_record
+        WHERE fc.warehouse_name = 'Conventional childr' AND m.category = 'Music' AND cd.year = 2001 AND cd.month_of_year = 3 AND sl.quantity_on_hand > 0
+        GROUP BY fc.warehouse_name, m.category, cd.year, cd.month_of_year
+        ",calendar_days;fulfillment_centers;merchandise;stock_levels,calendar_days.calendar_day_record;calendar_days.month_of_year;calendar_days.year;fulfillment_centers.fulfillment_center_record;fulfillment_centers.warehouse_name;merchandise.category;merchandise.merchandise_record;stock_levels.calendar_day_ref;stock_levels.fulfillment_center_ref;stock_levels.merchandise_ref;stock_levels.quantity_on_hand,calendar_days.calendar_day_record = stock_levels.calendar_day_ref;fulfillment_centers.fulfillment_center_record = stock_levels.fulfillment_center_ref;merchandise.merchandise_record = stock_levels.merchandise_ref,,inventory_stock,3,Inventory stock by warehouse and item.
+gold_112,inventory,medium,Positive stock for Music at warehouse Conventional childr during month 4 of 2001.,"
+        SELECT fc.warehouse_name, m.category, cd.year, cd.month_of_year, SUM(sl.quantity_on_hand) AS quantity_on_hand
+        FROM stock_levels sl
+        JOIN calendar_days cd ON sl.calendar_day_ref = cd.calendar_day_record
+        JOIN fulfillment_centers fc ON sl.fulfillment_center_ref = fc.fulfillment_center_record
+        JOIN merchandise m ON sl.merchandise_ref = m.merchandise_record
+        WHERE fc.warehouse_name = 'Conventional childr' AND m.category = 'Music' AND cd.year = 2001 AND cd.month_of_year = 4 AND sl.quantity_on_hand > 0
+        GROUP BY fc.warehouse_name, m.category, cd.year, cd.month_of_year
+        ",calendar_days;fulfillment_centers;merchandise;stock_levels,calendar_days.calendar_day_record;calendar_days.month_of_year;calendar_days.year;fulfillment_centers.fulfillment_center_record;fulfillment_centers.warehouse_name;merchandise.category;merchandise.merchandise_record;stock_levels.calendar_day_ref;stock_levels.fulfillment_center_ref;stock_levels.merchandise_ref;stock_levels.quantity_on_hand,calendar_days.calendar_day_record = stock_levels.calendar_day_ref;fulfillment_centers.fulfillment_center_record = stock_levels.fulfillment_center_ref;merchandise.merchandise_record = stock_levels.merchandise_ref,,inventory_stock,4,Inventory stock by warehouse and item.
+gold_113,inventory,hard,Compare online demand and stock for Music at warehouse Conventional childr in 2001.,"
+        SELECT fc.warehouse_name, m.category, cd.year, SUM(op.quantity) AS online_units, SUM(sl.quantity_on_hand) AS stock_units
+        FROM online_purchases op
+        JOIN calendar_days cd ON op.sale_calendar_day_ref = cd.calendar_day_record
+        JOIN merchandise m ON op.merchandise_ref = m.merchandise_record
+        JOIN fulfillment_centers fc ON op.fulfillment_center_ref = fc.fulfillment_center_record
+        JOIN stock_levels sl ON sl.calendar_day_ref = cd.calendar_day_record AND sl.merchandise_ref = m.merchandise_record AND sl.fulfillment_center_ref = fc.fulfillment_center_record
+        WHERE fc.warehouse_name = 'Conventional childr' AND m.category = 'Music' AND cd.year = 2001
+        GROUP BY fc.warehouse_name, m.category, cd.year
+        ",calendar_days;fulfillment_centers;merchandise;online_purchases;stock_levels,calendar_days.calendar_day_record;calendar_days.year;fulfillment_centers.fulfillment_center_record;fulfillment_centers.warehouse_name;merchandise.category;merchandise.merchandise_record;online_purchases.fulfillment_center_ref;online_purchases.merchandise_ref;online_purchases.quantity;online_purchases.sale_calendar_day_ref;stock_levels.calendar_day_ref;stock_levels.fulfillment_center_ref;stock_levels.merchandise_ref;stock_levels.quantity_on_hand,calendar_days.calendar_day_record = online_purchases.sale_calendar_day_ref;calendar_days.calendar_day_record = stock_levels.calendar_day_ref;fulfillment_centers.fulfillment_center_record = online_purchases.fulfillment_center_ref;fulfillment_centers.fulfillment_center_record = stock_levels.fulfillment_center_ref;merchandise.merchandise_record = online_purchases.merchandise_ref;merchandise.merchandise_record = stock_levels.merchandise_ref,,inventory_demand,1,Demand to stock same-day join.
+gold_114,inventory,hard,Compare online demand and stock for Music at warehouse Conventional childr in 2002.,"
+        SELECT fc.warehouse_name, m.category, cd.year, SUM(op.quantity) AS online_units, SUM(sl.quantity_on_hand) AS stock_units
+        FROM online_purchases op
+        JOIN calendar_days cd ON op.sale_calendar_day_ref = cd.calendar_day_record
+        JOIN merchandise m ON op.merchandise_ref = m.merchandise_record
+        JOIN fulfillment_centers fc ON op.fulfillment_center_ref = fc.fulfillment_center_record
+        JOIN stock_levels sl ON sl.calendar_day_ref = cd.calendar_day_record AND sl.merchandise_ref = m.merchandise_record AND sl.fulfillment_center_ref = fc.fulfillment_center_record
+        WHERE fc.warehouse_name = 'Conventional childr' AND m.category = 'Music' AND cd.year = 2002
+        GROUP BY fc.warehouse_name, m.category, cd.year
+        ",calendar_days;fulfillment_centers;merchandise;online_purchases;stock_levels,calendar_days.calendar_day_record;calendar_days.year;fulfillment_centers.fulfillment_center_record;fulfillment_centers.warehouse_name;merchandise.category;merchandise.merchandise_record;online_purchases.fulfillment_center_ref;online_purchases.merchandise_ref;online_purchases.quantity;online_purchases.sale_calendar_day_ref;stock_levels.calendar_day_ref;stock_levels.fulfillment_center_ref;stock_levels.merchandise_ref;stock_levels.quantity_on_hand,calendar_days.calendar_day_record = online_purchases.sale_calendar_day_ref;calendar_days.calendar_day_record = stock_levels.calendar_day_ref;fulfillment_centers.fulfillment_center_record = online_purchases.fulfillment_center_ref;fulfillment_centers.fulfillment_center_record = stock_levels.fulfillment_center_ref;merchandise.merchandise_record = online_purchases.merchandise_ref;merchandise.merchandise_record = stock_levels.merchandise_ref,,inventory_demand,2,Demand to stock same-day join.
+gold_115,inventory,hard,Compare online demand and stock for Music at warehouse Conventional childr in 2003.,"
+        SELECT fc.warehouse_name, m.category, cd.year, SUM(op.quantity) AS online_units, SUM(sl.quantity_on_hand) AS stock_units
+        FROM online_purchases op
+        JOIN calendar_days cd ON op.sale_calendar_day_ref = cd.calendar_day_record
+        JOIN merchandise m ON op.merchandise_ref = m.merchandise_record
+        JOIN fulfillment_centers fc ON op.fulfillment_center_ref = fc.fulfillment_center_record
+        JOIN stock_levels sl ON sl.calendar_day_ref = cd.calendar_day_record AND sl.merchandise_ref = m.merchandise_record AND sl.fulfillment_center_ref = fc.fulfillment_center_record
+        WHERE fc.warehouse_name = 'Conventional childr' AND m.category = 'Music' AND cd.year = 2003
+        GROUP BY fc.warehouse_name, m.category, cd.year
+        ",calendar_days;fulfillment_centers;merchandise;online_purchases;stock_levels,calendar_days.calendar_day_record;calendar_days.year;fulfillment_centers.fulfillment_center_record;fulfillment_centers.warehouse_name;merchandise.category;merchandise.merchandise_record;online_purchases.fulfillment_center_ref;online_purchases.merchandise_ref;online_purchases.quantity;online_purchases.sale_calendar_day_ref;stock_levels.calendar_day_ref;stock_levels.fulfillment_center_ref;stock_levels.merchandise_ref;stock_levels.quantity_on_hand,calendar_days.calendar_day_record = online_purchases.sale_calendar_day_ref;calendar_days.calendar_day_record = stock_levels.calendar_day_ref;fulfillment_centers.fulfillment_center_record = online_purchases.fulfillment_center_ref;fulfillment_centers.fulfillment_center_record = stock_levels.fulfillment_center_ref;merchandise.merchandise_record = online_purchases.merchandise_ref;merchandise.merchandise_record = stock_levels.merchandise_ref,,inventory_demand,3,Demand to stock same-day join.
+gold_116,inventory,hard,Compare online demand and stock for Music at warehouse Conventional childr in 2004.,"
+        SELECT fc.warehouse_name, m.category, cd.year, SUM(op.quantity) AS online_units, SUM(sl.quantity_on_hand) AS stock_units
+        FROM online_purchases op
+        JOIN calendar_days cd ON op.sale_calendar_day_ref = cd.calendar_day_record
+        JOIN merchandise m ON op.merchandise_ref = m.merchandise_record
+        JOIN fulfillment_centers fc ON op.fulfillment_center_ref = fc.fulfillment_center_record
+        JOIN stock_levels sl ON sl.calendar_day_ref = cd.calendar_day_record AND sl.merchandise_ref = m.merchandise_record AND sl.fulfillment_center_ref = fc.fulfillment_center_record
+        WHERE fc.warehouse_name = 'Conventional childr' AND m.category = 'Music' AND cd.year = 2004
+        GROUP BY fc.warehouse_name, m.category, cd.year
+        ",calendar_days;fulfillment_centers;merchandise;online_purchases;stock_levels,calendar_days.calendar_day_record;calendar_days.year;fulfillment_centers.fulfillment_center_record;fulfillment_centers.warehouse_name;merchandise.category;merchandise.merchandise_record;online_purchases.fulfillment_center_ref;online_purchases.merchandise_ref;online_purchases.quantity;online_purchases.sale_calendar_day_ref;stock_levels.calendar_day_ref;stock_levels.fulfillment_center_ref;stock_levels.merchandise_ref;stock_levels.quantity_on_hand,calendar_days.calendar_day_record = online_purchases.sale_calendar_day_ref;calendar_days.calendar_day_record = stock_levels.calendar_day_ref;fulfillment_centers.fulfillment_center_record = online_purchases.fulfillment_center_ref;fulfillment_centers.fulfillment_center_record = stock_levels.fulfillment_center_ref;merchandise.merchandise_record = online_purchases.merchandise_ref;merchandise.merchandise_record = stock_levels.merchandise_ref,,inventory_demand,4,Demand to stock same-day join.
+gold_117,product,easy,"Summarize merchandise for brand edu packscholar #1, color turquoise, and size N/A.","
+        SELECT m.brand, m.color, m.size, m.category, m.class, m.manufacturer, AVG(m.current_price) AS avg_current_price, AVG(m.wholesale_cost) AS avg_wholesale_cost, COUNT(*) AS products
+        FROM merchandise m
+        WHERE m.brand = 'edu packscholar #1' AND m.color = 'turquoise' AND m.size = 'N/A'
+        GROUP BY m.brand, m.color, m.size, m.category, m.class, m.manufacturer
+        ",merchandise,merchandise.brand;merchandise.category;merchandise.class;merchandise.color;merchandise.current_price;merchandise.manufacturer;merchandise.size;merchandise.wholesale_cost,,,product_catalog,1,Product catalog attributes.
+gold_118,product,easy,"Summarize merchandise for brand edu packscholar #1, color turquoise, and size medium.","
+        SELECT m.brand, m.color, m.size, m.category, m.class, m.manufacturer, AVG(m.current_price) AS avg_current_price, AVG(m.wholesale_cost) AS avg_wholesale_cost, COUNT(*) AS products
+        FROM merchandise m
+        WHERE m.brand = 'edu packscholar #1' AND m.color = 'turquoise' AND m.size = 'medium'
+        GROUP BY m.brand, m.color, m.size, m.category, m.class, m.manufacturer
+        ",merchandise,merchandise.brand;merchandise.category;merchandise.class;merchandise.color;merchandise.current_price;merchandise.manufacturer;merchandise.size;merchandise.wholesale_cost,,,product_catalog,2,Product catalog attributes.
+gold_119,product,easy,"Summarize merchandise for brand edu packscholar #1, color turquoise, and size large.","
+        SELECT m.brand, m.color, m.size, m.category, m.class, m.manufacturer, AVG(m.current_price) AS avg_current_price, AVG(m.wholesale_cost) AS avg_wholesale_cost, COUNT(*) AS products
+        FROM merchandise m
+        WHERE m.brand = 'edu packscholar #1' AND m.color = 'turquoise' AND m.size = 'large'
+        GROUP BY m.brand, m.color, m.size, m.category, m.class, m.manufacturer
+        ",merchandise,merchandise.brand;merchandise.category;merchandise.class;merchandise.color;merchandise.current_price;merchandise.manufacturer;merchandise.size;merchandise.wholesale_cost,,,product_catalog,3,Product catalog attributes.
+gold_120,product,easy,"Summarize merchandise for brand edu packscholar #1, color turquoise, and size small.","
+        SELECT m.brand, m.color, m.size, m.category, m.class, m.manufacturer, AVG(m.current_price) AS avg_current_price, AVG(m.wholesale_cost) AS avg_wholesale_cost, COUNT(*) AS products
+        FROM merchandise m
+        WHERE m.brand = 'edu packscholar #1' AND m.color = 'turquoise' AND m.size = 'small'
+        GROUP BY m.brand, m.color, m.size, m.category, m.class, m.manufacturer
+        ",merchandise,merchandise.brand;merchandise.category;merchandise.class;merchandise.color;merchandise.current_price;merchandise.manufacturer;merchandise.size;merchandise.wholesale_cost,,,product_catalog,4,Product catalog attributes.

@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -45,6 +46,20 @@ def main() -> int:
     parser.add_argument("--pattern-mode", choices=["llm", "heuristic", "off"], default="heuristic")
     parser.add_argument("--pattern-batch-size", type=int, default=20)
     parser.add_argument("--pattern-limit", type=int, default=80)
+    parser.add_argument(
+        "--nl-sql-pairs",
+        action="append",
+        default=None,
+        help=(
+            "Trusted NL-SQL pair CSV path. May be repeated or comma-separated. "
+            "Defaults to DIRACDATA_V2_NL_SQL_PAIR_PATHS."
+        ),
+    )
+    parser.add_argument("--nl-sql-pair-limit", type=int, default=None)
+    parser.add_argument(
+        "--nl-sql-pair-review-status",
+        default=os.environ.get("DIRACDATA_V2_NL_SQL_PAIR_REVIEW_STATUS", "approved"),
+    )
     parser.add_argument("--output-dir", default=None)
     parser.add_argument("--object-prefix", default="v2/learning/artifacts")
     parser.add_argument("--no-upload", action="store_true")
@@ -59,6 +74,15 @@ def main() -> int:
         V1ChatAdapter(chat_model_client_from_settings(settings))
         if args.pattern_mode == "llm"
         else None
+    )
+    nl_sql_pair_paths = _path_list(
+        explicit=args.nl_sql_pairs,
+        env_value=os.environ.get("DIRACDATA_V2_NL_SQL_PAIR_PATHS", ""),
+    )
+    nl_sql_pair_limit = (
+        args.nl_sql_pair_limit
+        if args.nl_sql_pair_limit is not None
+        else _optional_int_env("DIRACDATA_V2_NL_SQL_PAIR_LIMIT")
     )
 
     result = SQLLibraryBuilder(
@@ -79,6 +103,9 @@ def main() -> int:
         history_limit=args.history_limit,
         pattern_batch_size=args.pattern_batch_size,
         pattern_limit=0 if args.pattern_mode == "off" else args.pattern_limit,
+        nl_sql_pair_paths=tuple(nl_sql_pair_paths),
+        nl_sql_pair_limit=nl_sql_pair_limit,
+        nl_sql_pair_review_status=args.nl_sql_pair_review_status,
     )
     entries = result.document["entries"]
     patterns = result.document.get("patterns", {})
@@ -90,6 +117,7 @@ def main() -> int:
                 "object_key": result.object_key,
                 "entry_count": len(entries),
                 "history_entries": sum(1 for item in entries.values() if item["source"] == "query_history"),
+                "nl_sql_pair_entries": sum(1 for item in entries.values() if item["source"] == "nl_sql_pair"),
                 "self_play_entries": sum(1 for item in entries.values() if item["source"] == "self_play"),
                 "patterns": len(patterns),
                 "missing_columns": len(result.document["coverage"]["columns_missing"]),
@@ -98,6 +126,26 @@ def main() -> int:
         )
     )
     return 0
+
+
+def _path_list(*, explicit: list[str] | None, env_value: str) -> list[Path]:
+    values: list[str] = []
+    if explicit:
+        values.extend(explicit)
+    elif env_value:
+        values.append(env_value)
+    paths: list[Path] = []
+    for value in values:
+        for item in value.split(","):
+            clean = item.strip()
+            if clean:
+                paths.append(Path(clean))
+    return paths
+
+
+def _optional_int_env(key: str) -> int | None:
+    value = os.environ.get(key)
+    return int(value) if value else None
 
 
 if __name__ == "__main__":

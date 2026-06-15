@@ -63,8 +63,21 @@ class SQLToolTests(unittest.TestCase):
         self.assertEqual(probe["status"], "ok")
         self.assertEqual(final["status"], "ok")
 
+    def test_validate_ignores_inline_comments_when_extracting_tables(self):
+        sql = """
+        WITH base AS (
+            -- Customers from Arizona are filtered here.
+            SELECT * FROM payments
+        )
+        SELECT * FROM base
+        """
+
+        result = validate_sql(sql, available_tables={"payments"})
+
+        self.assertEqual(result["status"], "ok")
+
     def test_distinct_value_probes_keep_columns_and_rows_aligned(self):
-        engine = DuckDBEngine(data_root=Path("data"), schema_name="fintech_schema")
+        engine = DuckDBEngine(data_root=Path("v2/data"), schema_name="fintech_schema")
 
         product_area = engine.query("SELECT DISTINCT product_area FROM orders ORDER BY 1", max_rows=20)
         kyc_status = engine.query("SELECT DISTINCT kyc_status FROM user_attributes ORDER BY 1", max_rows=20)
@@ -75,7 +88,7 @@ class SQLToolTests(unittest.TestCase):
         self.assertIn(("verified",), kyc_status.rows)
 
     def test_duckdb_engine_runs_explain_without_wrapping_as_subquery(self):
-        engine = DuckDBEngine(data_root=Path("data"), schema_name="fintech_schema")
+        engine = DuckDBEngine(data_root=Path("v2/data"), schema_name="fintech_schema")
 
         result = engine.query("EXPLAIN SELECT * FROM orders", max_rows=5)
 

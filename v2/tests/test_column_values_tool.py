@@ -8,7 +8,7 @@ from diracdata_v2.tools.column_values import build_column_values_tool
 
 class ColumnValuesToolTests(unittest.TestCase):
     def setUp(self):
-        self.settings = V2Settings(data_root=Path("data"), schema="fintech_schema")
+        self.settings = V2Settings(data_root=Path("v2/data"), schema="fintech_schema")
         self.engine = DuckDBEngine(data_root=self.settings.data_root, schema_name=self.settings.schema)
         self.tool = build_column_values_tool(settings=self.settings, engine=self.engine)
 

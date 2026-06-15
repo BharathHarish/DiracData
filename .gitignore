@@ -23,6 +23,7 @@ v2/data/tpcds/
 # Local UAT/model traces can be large and may include provider output.
 **/data/uat_runs/
 **/tmp_model_runs*/
+v2/models/
 
 # Build/test packaging output.
 *.egg-info/

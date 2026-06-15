@@ -16,6 +16,7 @@ from diracdata_v2.semantic_catalog.contracts import (
     CatalogReviewStatus,
     CatalogSource,
 )
+from diracdata_v2.semantic_catalog.sql_analysis import analyze_sql_references
 
 
 class CatalogTextGenerator(Protocol):
@@ -47,7 +48,7 @@ class SemanticCatalogBuilder:
         self,
         *,
         metadata_descriptions: dict[str, Any],
-        schema_ast: dict[str, Any],
+        schema_ast: dict[str, Any] | None = None,
         sql_library: dict[str, Any],
         catalog: str,
         database: str,
@@ -80,7 +81,7 @@ class SemanticCatalogBuilder:
 def build_semantic_catalog_document(
     *,
     metadata_descriptions: dict[str, Any],
-    schema_ast: dict[str, Any],
+    schema_ast: dict[str, Any] | None = None,
     sql_library: dict[str, Any],
     catalog: str,
     database: str,
@@ -88,11 +89,13 @@ def build_semantic_catalog_document(
     run_id: str,
 ) -> dict[str, Any]:
     table_columns = _table_columns(metadata_descriptions)
-    cards = _schema_cards(schema_ast=schema_ast, metadata_descriptions=metadata_descriptions)
+    cards = _schema_cards(
+        schema_ast=schema_ast,
+        metadata_descriptions=metadata_descriptions,
+        schema=schema,
+    )
     cards.extend(_sql_pattern_cards(sql_library))
     cards.extend(_metric_cards(sql_library))
-    cards.extend(_dimension_cards(cards))
-    cards.extend(_value_cards(cards))
     cards = _dedupe_cards(cards)
     join_edges = _join_edges(sql_library=sql_library, table_columns=table_columns)
     validation = _validate(cards=cards, join_edges=join_edges, table_columns=table_columns)
@@ -104,7 +107,7 @@ def build_semantic_catalog_document(
         "created_at": datetime.now(UTC).isoformat(),
         "scope": {"catalog": catalog, "database": database, "schema": schema},
         "source_artifacts": {
-            "schema_ast_run_id": schema_ast.get("run_id"),
+            "schema_ast_run_id": _dict(schema_ast).get("run_id"),
             "sql_library_run_id": sql_library.get("run_id"),
         },
         "cards": {card.id: card.to_dict() for card in cards},
@@ -117,13 +120,17 @@ def build_semantic_catalog_document(
 
 def _schema_cards(
     *,
-    schema_ast: dict[str, Any],
+    schema_ast: dict[str, Any] | None,
     metadata_descriptions: dict[str, Any],
+    schema: str,
 ) -> list[CatalogCard]:
+    if not _dict(schema_ast).get("domains"):
+        return _schema_cards_from_metadata(metadata_descriptions=metadata_descriptions, schema=schema)
+
     cards: list[CatalogCard] = []
     table_descriptions = _dict(metadata_descriptions.get("tables"))
     column_descriptions = _dict(metadata_descriptions.get("columns"))
-    for domain in schema_ast.get("domains", []):
+    for domain in _dict(schema_ast).get("domains", []):
         cards.append(_card_from_ast_node(domain, CatalogCardKind.DOMAIN, parent_ids=()))
         for entity in domain.get("entities", []):
             cards.append(_card_from_ast_node(entity, CatalogCardKind.ENTITY, parent_ids=(domain["id"],)))
@@ -144,26 +151,95 @@ def _schema_cards(
                     column_name = sql_ref.split(".", 1)[1] if "." in sql_ref else str(column.get("name") or "")
                     column_meta = _dict(_dict(column_descriptions.get(table_name)).get(column_name))
                     column_desc = _description(column_meta) or str(column.get("description") or "")
-                    role = _column_role(table_name=table_name, column_name=column_name, description=column_desc)
+                    role = _one_line(column.get("role"))
                     cards.append(
                         _card_from_ast_node(
                             {
                                 **column,
                                 "description": column_desc,
-                                "role": column.get("role") or role,
+                                "role": role or column.get("role"),
                             },
                             CatalogCardKind.COLUMN,
                             parent_ids=(domain["id"], entity["id"], table["id"]),
                             metadata={
                                 "table_name": table_name,
                                 "column_name": column_name,
-                                "role": column.get("role") or role,
+                                **({"role": role} if role else {}),
                                 "table_grain": table.get("grain"),
                                 "null_meaning": column.get("null_meaning"),
                                 "sql_guidance": column.get("sql_guidance"),
                             },
                         )
                     )
+    return cards
+
+
+def _schema_cards_from_metadata(*, metadata_descriptions: dict[str, Any], schema: str) -> list[CatalogCard]:
+    domain_id = f"domain:{_slug(schema)}"
+    entity_id = f"entity:{_slug(schema)}"
+    cards = [
+        CatalogCard(
+            id=domain_id,
+            kind=CatalogCardKind.DOMAIN,
+            name=schema,
+            description="Schema scope from metadata descriptions.",
+            terms=_terms_for(schema),
+            source=CatalogSource.DESCRIPTION,
+            review_status=CatalogReviewStatus.OBSERVED,
+            metadata={"path": [schema]},
+        ),
+        CatalogCard(
+            id=entity_id,
+            kind=CatalogCardKind.ENTITY,
+            name=schema,
+            description="Tables grouped by the provided schema scope.",
+            terms=_terms_for(schema),
+            parent_ids=(domain_id,),
+            source=CatalogSource.DESCRIPTION,
+            review_status=CatalogReviewStatus.OBSERVED,
+            metadata={"path": [schema]},
+        ),
+    ]
+    table_descriptions = _dict(metadata_descriptions.get("tables"))
+    column_descriptions = _dict(metadata_descriptions.get("columns"))
+    for table_name, table_meta in sorted(table_descriptions.items()):
+        table_desc = _description(_dict(table_meta))
+        table_id = f"table:{table_name}"
+        cards.append(
+            CatalogCard(
+                id=table_id,
+                kind=CatalogCardKind.TABLE,
+                name=str(table_name),
+                description=table_desc,
+                terms=_terms_for(table_name, table_desc),
+                sql_ref=str(table_name),
+                parent_ids=(domain_id, entity_id),
+                source=CatalogSource.DESCRIPTION,
+                review_status=CatalogReviewStatus.OBSERVED,
+                metadata={"path": [schema, table_name]},
+            )
+        )
+        for column_name, column_meta in sorted(_dict(column_descriptions.get(table_name)).items()):
+            column_desc = _description(_dict(column_meta))
+            sql_ref = f"{table_name}.{column_name}"
+            cards.append(
+                CatalogCard(
+                    id=f"column:{sql_ref}",
+                    kind=CatalogCardKind.COLUMN,
+                    name=str(column_name),
+                    description=column_desc,
+                    terms=_terms_for(column_name, column_desc, sql_ref),
+                    sql_ref=sql_ref,
+                    parent_ids=(domain_id, entity_id, table_id),
+                    source=CatalogSource.DESCRIPTION,
+                    review_status=CatalogReviewStatus.OBSERVED,
+                    metadata={
+                        "table_name": table_name,
+                        "column_name": column_name,
+                        "path": [schema, table_name, column_name],
+                    },
+                )
+            )
     return cards
 
 
@@ -266,89 +342,33 @@ def _metric_cards(sql_library: dict[str, Any]) -> list[CatalogCard]:
     cards: list[CatalogCard] = []
     for pattern_id, pattern in sorted(_dict(sql_library.get("patterns")).items()):
         intent = _dict(pattern.get("intent_signature"))
-        measure = str(intent.get("measure") or "")
+        measure = _one_line(intent.get("measure"))
         if not measure:
             continue
-        for metric_name in _metric_names(measure):
-            cards.append(
-                CatalogCard(
-                    id=f"metric:{_slug(metric_name)}:{_slug(pattern_id)[-10:]}",
-                    kind=CatalogCardKind.METRIC,
-                    name=metric_name,
-                    description=f"Metric used by pattern: {pattern.get('summary') or pattern.get('canonical_question') or pattern_id}",
-                    terms=_terms_for(metric_name, measure, pattern.get("canonical_question")),
-                    source=_source(pattern.get("source")),
-                    review_status=_review_status(pattern.get("review_status")),
-                    metadata={
-                        "pattern_id": pattern.get("id") or pattern_id,
-                        "tables": pattern.get("tables", []),
-                        "columns": pattern.get("columns", []),
-                        "sql_template": pattern.get("sql_template"),
-                    },
-                )
-            )
-    return cards
-
-
-def _dimension_cards(cards: list[CatalogCard]) -> list[CatalogCard]:
-    dimensions: list[CatalogCard] = []
-    for card in cards:
-        if card.kind != CatalogCardKind.COLUMN:
-            continue
-        role = str(card.metadata.get("role") or "")
-        column_name = str(card.metadata.get("column_name") or card.name)
-        if role not in {"dimension", "status", "time"}:
-            continue
-        dimensions.append(
+        cards.append(
             CatalogCard(
-                id=f"dimension:{card.sql_ref}",
-                kind=CatalogCardKind.DIMENSION,
-                name=column_name,
-                description=card.description,
-                terms=_terms_for(column_name, card.description, *card.terms),
-                sql_ref=card.sql_ref,
-                parent_ids=(card.id,),
-                source=CatalogSource.DESCRIPTION,
-                review_status=CatalogReviewStatus.OBSERVED,
+                id=f"metric:{_slug(measure)}:{_slug(pattern_id)[-10:]}",
+                kind=CatalogCardKind.METRIC,
+                name=measure,
+                description=f"Metric used by pattern: {pattern.get('summary') or pattern.get('canonical_question') or pattern_id}",
+                terms=_terms_for(measure, pattern.get("canonical_question")),
+                source=_source(pattern.get("source")),
+                review_status=_review_status(pattern.get("review_status")),
                 metadata={
-                    "column_card_id": card.id,
-                    "table_name": card.metadata.get("table_name"),
-                    "column_name": column_name,
-                    "role": role,
+                    "pattern_id": pattern.get("id") or pattern_id,
+                    "tables": pattern.get("tables", []),
+                    "columns": pattern.get("columns", []),
+                    "sql_template": pattern.get("sql_template"),
                 },
             )
         )
-    return dimensions
-
-
-def _value_cards(cards: list[CatalogCard]) -> list[CatalogCard]:
-    values: list[CatalogCard] = []
-    for card in cards:
-        if card.kind != CatalogCardKind.COLUMN or not card.sql_ref:
-            continue
-        for value in _quoted_values(card.description):
-            values.append(
-                CatalogCard(
-                    id=f"value:{card.sql_ref}:{_slug(value)}",
-                    kind=CatalogCardKind.VALUE,
-                    name=value,
-                    description=f"Observed/described value for {card.sql_ref}.",
-                    terms=_terms_for(value, card.sql_ref, card.description),
-                    sql_ref=card.sql_ref,
-                    parent_ids=(card.id,),
-                    source=CatalogSource.DESCRIPTION,
-                    review_status=CatalogReviewStatus.OBSERVED,
-                    metadata={"value": value, "column_card_id": card.id},
-                )
-            )
-    return values
+    return cards
 
 
 def _join_edges(*, sql_library: dict[str, Any], table_columns: dict[str, list[str]]) -> list[CatalogJoinEdge]:
     edge_state: dict[str, dict[str, Any]] = {}
     for entry_id, entry in sorted(_dict(sql_library.get("entries")).items()):
-        sql = str(entry.get("sql") or entry.get("sql_template") or "")
-        for left, right in _extract_join_column_pairs(sql=sql, table_columns=table_columns):
+        for left, right in _join_pairs_from_entry(entry=entry, table_columns=table_columns):
             ordered = tuple(sorted([left, right]))
             edge_id = f"join:{ordered[0]}:{ordered[1]}"
             state = edge_state.setdefault(
@@ -380,40 +400,28 @@ def _join_edges(*, sql_library: dict[str, Any], table_columns: dict[str, list[st
     return edges
 
 
-def _extract_join_column_pairs(*, sql: str, table_columns: dict[str, list[str]]) -> list[tuple[str, str]]:
-    aliases = _aliases(sql, table_columns)
-    pairs: list[tuple[str, str]] = []
-    for left_alias, left_col, right_alias, right_col in re.findall(
-        r"\b([a-zA-Z_][\w]*)\.([a-zA-Z_][\w]*)\s*=\s*([a-zA-Z_][\w]*)\.([a-zA-Z_][\w]*)\b",
-        sql,
-        flags=re.IGNORECASE,
-    ):
-        left_table = aliases.get(left_alias.lower())
-        right_table = aliases.get(right_alias.lower())
-        if not left_table or not right_table or left_table == right_table:
+def _join_pairs_from_entry(*, entry: dict[str, Any], table_columns: dict[str, list[str]]) -> list[tuple[str, str]]:
+    explicit_pairs = []
+    for edge in entry.get("join_edges", []) if isinstance(entry.get("join_edges"), list) else []:
+        if not isinstance(edge, dict):
             continue
-        if left_col not in table_columns.get(left_table, []) or right_col not in table_columns.get(right_table, []):
-            continue
-        pairs.append((f"{left_table}.{left_col}", f"{right_table}.{right_col}"))
-    return pairs
+        left = str(edge.get("left_column") or "")
+        right = str(edge.get("right_column") or "")
+        if _valid_column_ref(left, table_columns) and _valid_column_ref(right, table_columns):
+            explicit_pairs.append((left, right))
+    if explicit_pairs:
+        return explicit_pairs
+
+    sql = str(entry.get("sql") or entry.get("sql_template") or "")
+    analysis = analyze_sql_references(sql, table_columns)
+    return [(pair.left_column, pair.right_column) for pair in analysis.join_pairs]
 
 
-def _aliases(sql: str, table_columns: dict[str, list[str]]) -> dict[str, str]:
-    aliases: dict[str, str] = {}
-    table_names = set(table_columns)
-    for table, alias in re.findall(
-        r"\b(?:from|join)\s+([a-zA-Z_][\w]*)(?:\s+(?:as\s+)?([a-zA-Z_][\w]*))?",
-        sql,
-        flags=re.IGNORECASE,
-    ):
-        table_name = table.lower()
-        actual = next((item for item in table_names if item.lower() == table_name), None)
-        if actual is None:
-            continue
-        aliases[actual.lower()] = actual
-        if alias and alias.lower() not in {"on", "where", "join", "left", "right", "inner", "outer", "full", "cross"}:
-            aliases[alias.lower()] = actual
-    return aliases
+def _valid_column_ref(ref: str, table_columns: dict[str, list[str]]) -> bool:
+    if "." not in ref:
+        return False
+    table, column = ref.split(".", 1)
+    return column in table_columns.get(table, [])
 
 
 def _indexes(*, cards: list[CatalogCard], join_edges: list[CatalogJoinEdge]) -> dict[str, Any]:
@@ -497,37 +505,12 @@ def _table_columns(metadata_descriptions: dict[str, Any]) -> dict[str, list[str]
     }
 
 
-def _column_role(*, table_name: str, column_name: str, description: str) -> str:
-    text = f"{table_name} {column_name} {description}".lower()
-    if re.search(r"(_ref|_record|_id| identifier| unique id| links? )", text):
-        return "join_key"
-    if re.search(r"(date|day|month|year|time|calendar)", text):
-        return "time"
-    if re.search(r"(amount|price|cost|paid|profit|revenue|tax|discount|quantity|count|volume)", text):
-        return "measure"
-    if re.search(r"(status|flag|rating|category|class|type|state|country|city|gender|name|brand|channel)", text):
-        return "dimension"
-    return "unknown"
-
-
-def _metric_names(measure_text: str) -> list[str]:
-    chunks = re.split(r",|\band\b|/", measure_text)
-    output = []
-    for chunk in chunks:
-        clean = " ".join(chunk.strip().strip("()").split())
-        if len(clean) >= 3 and re.search(
-            r"\b(count|sum|avg|average|revenue|amount|paid|profit|cost|customers|orders|sales|quantity|volume)\b",
-            clean,
-            flags=re.IGNORECASE,
-        ):
-            output.append(clean)
-    return output[:8]
-
-
 def _source(value: Any) -> CatalogSource:
     normalized = str(value or "").strip().lower()
     if normalized == "query_history":
         return CatalogSource.QUERY_HISTORY
+    if normalized == "nl_sql_pair":
+        return CatalogSource.NL_SQL_PAIR
     if normalized == "self_play":
         return CatalogSource.SELF_PLAY
     if normalized == "description":
@@ -550,13 +533,8 @@ def _description(payload: dict[str, Any]) -> str:
     return str(payload.get("long_description") or payload.get("short_description") or "")
 
 
-def _quoted_values(text: str) -> list[str]:
-    values = []
-    for value in re.findall(r"'([^']{1,60})'", text):
-        clean = " ".join(value.split())
-        if clean and clean.lower() not in {"unknown", "null"}:
-            values.append(clean)
-    return sorted(set(values))
+def _one_line(value: Any) -> str:
+    return " ".join(str(value or "").split())
 
 
 def _terms_for(*values: Any) -> tuple[str, ...]:
@@ -574,23 +552,10 @@ def _terms_for(*values: Any) -> tuple[str, ...]:
 
 
 def _tokens(text: str) -> list[str]:
-    stop = {
-        "and",
-        "are",
-        "for",
-        "from",
-        "into",
-        "one",
-        "per",
-        "the",
-        "this",
-        "used",
-        "with",
-    }
     return [
         token
         for token in re.findall(r"[a-zA-Z][a-zA-Z0-9]+", text.lower().replace("_", " "))
-        if len(token) > 1 and token not in stop
+        if len(token) > 1
     ]
 
 

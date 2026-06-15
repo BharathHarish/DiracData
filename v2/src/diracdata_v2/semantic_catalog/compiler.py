@@ -4,58 +4,35 @@ from __future__ import annotations
 
 import json
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 from diracdata_v2.semantic_catalog.contracts import CatalogCardKind, CompiledContext
+from diracdata_v2.semantic_catalog.intent import (
+    DeterministicIntentFrameExtractor,
+    IntentFrameExtractor,
+    QueryIntentFrame,
+)
 from diracdata_v2.tools.hybrid import RetrievalDocument, hybrid_search, tokenize
-
-
-QUERY_STOPWORDS = {
-    "all",
-    "also",
-    "any",
-    "but",
-    "did",
-    "does",
-    "give",
-    "have",
-    "how",
-    "many",
-    "not",
-    "number",
-    "show",
-    "the",
-    "then",
-    "were",
-    "what",
-    "which",
-    "who",
-}
-
-DEFINITION_REQUIRED_TERMS = {
-    "active",
-    "activated",
-    "churn",
-    "churned",
-    "engaged",
-    "inactive",
-    "new",
-    "retained",
-    "retention",
-    "returning",
-    "repeat",
-}
 
 
 @dataclass(frozen=True)
 class SemanticCatalogCompiler:
     semantic_catalog: dict[str, Any]
+    intent_extractor: IntentFrameExtractor = field(default_factory=DeterministicIntentFrameExtractor)
 
     @classmethod
-    def from_file(cls, path: Path) -> "SemanticCatalogCompiler":
-        return cls(semantic_catalog=json.loads(path.read_text(encoding="utf-8")))
+    def from_file(
+        cls,
+        path: Path,
+        *,
+        intent_extractor: IntentFrameExtractor | None = None,
+    ) -> "SemanticCatalogCompiler":
+        return cls(
+            semantic_catalog=json.loads(path.read_text(encoding="utf-8")),
+            intent_extractor=intent_extractor or DeterministicIntentFrameExtractor(),
+        )
 
     def compile(
         self,
@@ -63,12 +40,19 @@ class SemanticCatalogCompiler:
         *,
         max_cards: int = 24,
         max_patterns: int = 6,
+        intent_frame: QueryIntentFrame | dict[str, Any] | None = None,
     ) -> CompiledContext:
+        frame = _intent_frame(
+            question=question,
+            value=intent_frame,
+            extractor=self.intent_extractor,
+            catalog=self.semantic_catalog,
+        )
         documents = _documents(self.semantic_catalog)
         recall = hybrid_search(
             documents=documents,
             query=question,
-            search_terms=_focused_search_terms(question),
+            search_terms=_focused_search_terms(question=question, intent_frame=frame),
             top_k=max(80, (max_cards + max_patterns) * 4),
         )
         cards_by_id = self.semantic_catalog.get("cards", {})
@@ -77,6 +61,7 @@ class SemanticCatalogCompiler:
             documents=documents,
             cards_by_id=cards_by_id,
             question=question,
+            intent_frame=frame,
             recalled_card_ids={str(card.get("id")) for card in recalled_cards},
         )
         selected_cards = [card for card, _ in ranked_cards[: max(80, (max_cards + max_patterns) * 4)]]
@@ -88,6 +73,7 @@ class SemanticCatalogCompiler:
         pattern_cards = _select_patterns(
             ranked_cards=ranked_cards,
             question=question,
+            intent_frame=frame,
             direct_cards=direct_cards,
             limit=max_patterns,
         )
@@ -103,8 +89,17 @@ class SemanticCatalogCompiler:
         )
         required_tables = _required_tables(pattern_cards=pattern_cards, cards=non_pattern_cards)
         join_edges = _join_edges_for_tables(self.semantic_catalog, required_tables)
-        unresolved = _unresolved_terms(question=question, selected_cards=selected_cards)
-        resolved = _resolved_terms(question=question, selected_cards=selected_cards)
+        unresolved = _unresolved_terms(
+            intent_frame=frame,
+            catalog_cards=list(cards_by_id.values()),
+        )
+        unresolved = _dedupe_unresolved(
+            [
+                *unresolved,
+                *_scope_ambiguities(question),
+            ]
+        )
+        resolved = _resolved_terms(question=question, intent_frame=frame, selected_cards=selected_cards)
         assertions = _assertions(pattern_cards=pattern_cards, cards=non_pattern_cards, join_edges=join_edges)
         return CompiledContext(
             question=question,
@@ -120,6 +115,7 @@ class SemanticCatalogCompiler:
                 "hit_count": len(recall["hits"]),
                 "reranked_card_count": len(ranked_cards),
                 "required_tables": sorted(required_tables),
+                "intent_frame": _runtime_intent_frame(frame, unresolved_terms=unresolved),
                 **recall["retrieval"],
             },
         )
@@ -153,14 +149,15 @@ def _documents(catalog: dict[str, Any]) -> list[RetrievalDocument]:
     return documents
 
 
-def _focused_search_terms(question: str) -> list[str]:
-    tokens = _meaningful_tokens(question)
+def _focused_search_terms(*, question: str, intent_frame: QueryIntentFrame) -> list[str]:
+    explicit = _frame_search_phrases(intent_frame)
+    tokens = tokenize(" ".join([question, *explicit]))
     terms = []
     for size in (3, 2):
         for index in range(0, max(0, len(tokens) - size + 1)):
             terms.append(" ".join(tokens[index : index + size]))
     terms.extend(tokens)
-    return terms[:24]
+    return _dedupe(explicit + terms)[:32]
 
 
 def _rank_cards_by_intent(
@@ -168,17 +165,18 @@ def _rank_cards_by_intent(
     documents: list[RetrievalDocument],
     cards_by_id: dict[str, Any],
     question: str,
+    intent_frame: QueryIntentFrame,
     recalled_card_ids: set[str],
 ) -> list[tuple[dict[str, Any], float]]:
-    query_tokens = set(_meaningful_tokens(question))
+    query_tokens = set(tokenize(_intent_text(question=question, intent_frame=intent_frame)))
     if not query_tokens:
         return []
     tokenized_documents = {
-        document.id: set(_meaningful_tokens(document.text))
+        document.id: set(tokenize(document.text))
         for document in documents
     }
     idf = _idf(tokenized_documents)
-    phrases = _focused_search_terms(question)
+    phrases = _focused_search_terms(question=question, intent_frame=intent_frame)
     ranked: list[tuple[dict[str, Any], float]] = []
     for document in documents:
         card = cards_by_id.get(document.id)
@@ -204,10 +202,11 @@ def _select_patterns(
     *,
     ranked_cards: list[tuple[dict[str, Any], float]],
     question: str,
+    intent_frame: QueryIntentFrame,
     direct_cards: list[dict[str, Any]],
     limit: int,
 ) -> list[dict[str, Any]]:
-    query_tokens = set(_meaningful_tokens(question))
+    query_tokens = set(tokenize(_intent_text(question=question, intent_frame=intent_frame)))
     direct_sql_refs = {
         str(card.get("sql_ref"))
         for card in direct_cards
@@ -231,7 +230,7 @@ def _select_patterns(
                 " ".join(map(str, intent.values())),
             ]
         )
-        intent_tokens = set(_meaningful_tokens(intent_text))
+        intent_tokens = set(tokenize(intent_text))
         overlap = query_tokens & intent_tokens
         if not overlap:
             continue
@@ -350,7 +349,7 @@ def _query_overlap_count(card: dict[str, Any], query_tokens: set[str]) -> int:
             " ".join(map(str, card.get("terms", []))),
         ]
     )
-    return len(query_tokens & set(_meaningful_tokens(text)))
+    return len(query_tokens & set(tokenize(text)))
 
 
 def _kind_order(card: dict[str, Any]) -> int:
@@ -391,21 +390,150 @@ def _join_edges_for_tables(catalog: dict[str, Any], tables: set[str]) -> list[di
     return edges[:16]
 
 
-def _unresolved_terms(*, question: str, selected_cards: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    terms = set(_meaningful_tokens(question))
+def _unresolved_terms(*, intent_frame: QueryIntentFrame, catalog_cards: list[dict[str, Any]]) -> list[dict[str, Any]]:
     unresolved = []
-    for term in sorted(terms & DEFINITION_REQUIRED_TERMS):
-        if not _has_explicit_definition(term, selected_cards):
+    for item in intent_frame.definition_required_terms:
+        term = str(item.get("term") or "").strip()
+        if not term:
+            continue
+        if not _has_explicit_definition(term, catalog_cards):
+            if _has_catalog_support(term, catalog_cards):
+                continue
             unresolved.append(
                 {
                     "term": term,
                     "reason": (
-                        "SQL-affecting business term requires an explicit metric, business-term, "
-                        "or approved semantic definition before SQL execution."
+                        item.get("reason")
+                        or "SQL-affecting business term requires an explicit approved definition before SQL execution."
                     ),
                 }
             )
     return unresolved
+
+
+_ACTION_VARIANTS = {
+    "buy": {"buy", "buys", "bought", "purchase", "purchases", "purchased", "order", "orders", "ordered"},
+    "pay": {"pay", "pays", "paid", "payment", "payments", "transact", "transacts", "transacted", "transaction", "transactions"},
+    "visit": {"visit", "visits", "visited", "use", "uses", "used", "engage", "engages", "engaged"},
+    "return": {"return", "returns", "returned", "refund", "refunds", "refunded"},
+}
+_ACTION_CANONICAL = {
+    variant: canonical
+    for canonical, variants in _ACTION_VARIANTS.items()
+    for variant in variants
+}
+_NEGATION_MARKERS = ("did not", "didn't", "never", "not")
+_CLAUSE_BOUNDARY = re.compile(
+    r"\b(?:and|then|slice|group|split|show|give|rank|order|where|with)\b",
+    flags=re.IGNORECASE,
+)
+_SCOPE_STOPWORDS = {
+    "all",
+    "any",
+    "but",
+    "calendar",
+    "count",
+    "customer",
+    "customers",
+    "did",
+    "distinct",
+    "entity",
+    "entities",
+    "from",
+    "how",
+    "in",
+    "many",
+    "number",
+    "on",
+    "that",
+    "the",
+    "them",
+    "they",
+    "who",
+    "with",
+}
+
+
+def _scope_ambiguities(question: str) -> list[dict[str, Any]]:
+    text = " ".join(question.split())
+    lowered = text.lower()
+    output: list[dict[str, Any]] = []
+    for marker in _NEGATION_MARKERS:
+        marker_match = re.search(rf"\b{re.escape(marker)}\b", lowered)
+        if not marker_match:
+            continue
+        if marker == "not" and re.search(r"\bdid\s+$", lowered[: marker_match.start()]):
+            continue
+        before = text[: marker_match.start()]
+        after = text[marker_match.end() :]
+        negative_clause = _CLAUSE_BOUNDARY.split(after, maxsplit=1)[0]
+        negative_action = _first_action(negative_clause)
+        if not negative_action:
+            continue
+        positive_action = _last_matching_action(before, negative_action)
+        if not positive_action:
+            continue
+        positive_terms = _scope_terms(before, action=positive_action)
+        negative_terms = _scope_terms(negative_clause, action=negative_action)
+        missing_scope = sorted(positive_terms - negative_terms)
+        if not missing_scope:
+            continue
+        output.append(
+            {
+                "term": f"{marker} {negative_action}",
+                "reason": (
+                    "Requires clarification: the exclusion clause repeats a broad action but omits "
+                    f"scope terms from the inclusion clause ({', '.join(missing_scope[:5])}). "
+                    "Should the exclusion use the same scope as the positive clause, or a broader action scope?"
+                ),
+                "choices": [
+                    f"Use the same scope as the positive clause ({', '.join(missing_scope[:5])}).",
+                    "Use a broader action scope across all relevant sources or categories.",
+                ],
+            }
+        )
+    return output[:2]
+
+
+def _first_action(text: str) -> str | None:
+    for token in tokenize(text):
+        canonical = _ACTION_CANONICAL.get(token)
+        if canonical:
+            return canonical
+    return None
+
+
+def _last_matching_action(text: str, action: str) -> str | None:
+    found = None
+    for token in tokenize(text):
+        canonical = _ACTION_CANONICAL.get(token)
+        if canonical == action:
+            found = canonical
+    return found
+
+
+def _scope_terms(text: str, *, action: str) -> set[str]:
+    action_variants = _ACTION_VARIANTS.get(action, {action})
+    terms = set()
+    for token in tokenize(text):
+        if token in _SCOPE_STOPWORDS or token in action_variants:
+            continue
+        if token.isdigit():
+            continue
+        terms.add(token)
+    return terms
+
+
+def _dedupe_unresolved(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    seen: set[str] = set()
+    output: list[dict[str, Any]] = []
+    for item in items:
+        key = str(item.get("term") or "").strip().lower()
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        output.append(item)
+    return output
 
 
 def _has_explicit_definition(term: str, selected_cards: list[dict[str, Any]]) -> bool:
@@ -425,12 +553,38 @@ def _has_explicit_definition(term: str, selected_cards: list[dict[str, Any]]) ->
     return False
 
 
-def _resolved_terms(*, question: str, selected_cards: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    query_terms = set(_meaningful_tokens(question))
+def _has_catalog_support(term: str, selected_cards: list[dict[str, Any]]) -> bool:
+    term_tokens = set(tokenize(term))
+    if not term_tokens:
+        return False
+    required_overlap = len(term_tokens) if len(term_tokens) <= 2 else max(2, len(term_tokens) // 2)
+    for card in selected_cards:
+        searchable = " ".join(
+            [
+                str(card.get("name") or ""),
+                str(card.get("description") or ""),
+                str(card.get("sql_ref") or ""),
+                " ".join(map(str, card.get("terms", []))),
+                " ".join(map(str, card.get("metadata", {}).get("tables", []))),
+                " ".join(map(str, card.get("metadata", {}).get("columns", []))),
+            ]
+        )
+        if len(term_tokens & set(tokenize(searchable))) >= required_overlap:
+            return True
+    return False
+
+
+def _resolved_terms(
+    *,
+    question: str,
+    intent_frame: QueryIntentFrame,
+    selected_cards: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    query_terms = set(tokenize(_intent_text(question=question, intent_frame=intent_frame)))
     resolved = []
     seen: set[tuple[str, str]] = set()
     for card in selected_cards:
-        terms = set(_meaningful_tokens(" ".join(map(str, card.get("terms", [])))))
+        terms = set(tokenize(" ".join(map(str, card.get("terms", [])))))
         overlap = sorted(query_terms & terms)
         if not overlap:
             continue
@@ -453,10 +607,6 @@ def _resolved_terms(*, question: str, selected_cards: list[dict[str, Any]]) -> l
     return resolved
 
 
-def _meaningful_tokens(text: str) -> list[str]:
-    return [token for token in tokenize(text) if token not in QUERY_STOPWORDS]
-
-
 def _binding_for_resolved_term(card: dict[str, Any]) -> str:
     if card.get("sql_ref"):
         return str(card["sql_ref"])
@@ -475,12 +625,10 @@ def _assertions(
     join_edges: list[dict[str, Any]],
 ) -> list[str]:
     assertions: list[str] = []
-    for pattern in pattern_cards:
-        assertions.extend(map(str, pattern.get("metadata", {}).get("assumptions", [])))
-        intent = pattern.get("metadata", {}).get("intent_signature", {})
-        grain = intent.get("grain") if isinstance(intent, dict) else None
-        if grain:
-            assertions.append(f"Preserve pattern grain: {grain}")
+    if pattern_cards:
+        assertions.append(
+            "Treat SQL pattern assumptions as pattern-local evidence; apply them only when that pattern matches the final intent."
+        )
     if join_edges:
         assertions.append("Use observed join edges unless the question requires a different relationship.")
     if any(card.get("kind") == CatalogCardKind.COLUMN.value and card.get("metadata", {}).get("role") == "measure" for card in cards):
@@ -528,3 +676,116 @@ def _dedupe(values: list[str]) -> list[str]:
             seen.add(clean)
             output.append(clean)
     return output
+
+
+def _intent_frame(
+    *,
+    question: str,
+    value: QueryIntentFrame | dict[str, Any] | None,
+    extractor: IntentFrameExtractor,
+    catalog: dict[str, Any],
+) -> QueryIntentFrame:
+    if isinstance(value, QueryIntentFrame):
+        return value
+    if isinstance(value, dict):
+        return QueryIntentFrame(
+            search_queries=tuple(_strings(value.get("search_queries"))),
+            measures=tuple(_strings(value.get("measures"))),
+            dimensions=tuple(_strings(value.get("dimensions"))),
+            filters=tuple(_strings(value.get("filters"))),
+            time_windows=tuple(_strings(value.get("time_windows"))),
+            entities=tuple(_strings(value.get("entities"))),
+            definition_required_terms=tuple(_definition_terms(value.get("definition_required_terms"))),
+            notes=tuple(_strings(value.get("notes"))),
+            source=str(value.get("source") or "provided"),
+        )
+    try:
+        return extractor.extract(question, catalog_summary=_catalog_summary(catalog))
+    except Exception as exc:  # noqa: BLE001
+        fallback = DeterministicIntentFrameExtractor().extract(question)
+        return QueryIntentFrame(
+            search_queries=fallback.search_queries,
+            notes=(f"intent_extractor_failed:{type(exc).__name__}",),
+            source="deterministic_fallback",
+        )
+
+
+def _catalog_summary(catalog: dict[str, Any]) -> dict[str, Any]:
+    indexes = catalog.get("indexes", {})
+    cards_by_kind = indexes.get("cards_by_kind", {}) if isinstance(indexes, dict) else {}
+    return {
+        "scope": catalog.get("scope", {}),
+        "card_counts": {
+            str(kind): len(ids) if isinstance(ids, list) else 0
+            for kind, ids in _dict(cards_by_kind).items()
+        },
+    }
+
+
+def _intent_text(*, question: str, intent_frame: QueryIntentFrame) -> str:
+    return " ".join([question, *_frame_search_phrases(intent_frame)])
+
+
+def _frame_search_phrases(intent_frame: QueryIntentFrame) -> list[str]:
+    terms = [
+        *intent_frame.search_queries,
+        *intent_frame.measures,
+        *intent_frame.dimensions,
+        *intent_frame.filters,
+        *intent_frame.time_windows,
+        *intent_frame.entities,
+    ]
+    terms.extend(item.get("term", "") for item in intent_frame.definition_required_terms)
+    return _dedupe([str(item) for item in terms])
+
+
+def _runtime_intent_frame(
+    intent_frame: QueryIntentFrame,
+    *,
+    unresolved_terms: list[dict[str, Any]],
+) -> dict[str, Any]:
+    payload = intent_frame.to_dict()
+    unresolved_names = {
+        str(item.get("term") or item.get("name") or "").strip().lower()
+        for item in unresolved_terms
+        if isinstance(item, dict)
+    }
+    payload["definition_required_terms"] = [
+        item
+        for item in payload.get("definition_required_terms", [])
+        if isinstance(item, dict)
+        and str(item.get("term") or item.get("name") or "").strip().lower() in unresolved_names
+    ]
+    if not payload["definition_required_terms"]:
+        payload["notes"] = []
+    return payload
+
+
+def _strings(value: Any) -> list[str]:
+    if isinstance(value, str):
+        clean = " ".join(value.split())
+        return [clean] if clean else []
+    if isinstance(value, list):
+        return [" ".join(str(item).split()) for item in value if " ".join(str(item).split())]
+    return []
+
+
+def _definition_terms(value: Any) -> list[dict[str, str]]:
+    output = []
+    if not isinstance(value, list):
+        return output
+    for item in value:
+        if isinstance(item, str):
+            term = " ".join(item.split())
+            if term:
+                output.append({"term": term, "reason": "Needs explicit business definition."})
+        elif isinstance(item, dict):
+            term = " ".join(str(item.get("term") or item.get("name") or "").split())
+            reason = " ".join(str(item.get("reason") or "").split())
+            if term:
+                output.append({"term": term, "reason": reason})
+    return output
+
+
+def _dict(value: Any) -> dict[str, Any]:
+    return value if isinstance(value, dict) else {}

@@ -22,7 +22,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--env-file", default=str(ROOT / ".env"))
     parser.add_argument("--metadata-descriptions", required=True)
-    parser.add_argument("--schema-ast", required=True)
+    parser.add_argument("--schema-ast", default=None)
     parser.add_argument("--sql-library", required=True)
     parser.add_argument("--artifact-root", default=str(V2_ROOT / "learning" / "artifacts"))
     parser.add_argument("--run-id", default=None)
@@ -40,7 +40,7 @@ def main() -> int:
         object_store = object_store_from_settings(v1_settings_from_env(args.env_file))
 
     metadata = json.loads(Path(args.metadata_descriptions).read_text(encoding="utf-8"))
-    schema_ast = json.loads(Path(args.schema_ast).read_text(encoding="utf-8"))
+    schema_ast = json.loads(Path(args.schema_ast).read_text(encoding="utf-8")) if args.schema_ast else None
     sql_library = json.loads(Path(args.sql_library).read_text(encoding="utf-8"))
     result = SemanticCatalogBuilder().build(
         metadata_descriptions=metadata,

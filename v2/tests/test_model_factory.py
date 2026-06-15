@@ -29,7 +29,23 @@ class ModelFactoryTests(unittest.TestCase):
         self.assertEqual(kwargs["model"], "claude-haiku-4-5-20251001")
         self.assertEqual(kwargs["model_provider"], "anthropic")
 
+    def test_factory_can_create_profile_specific_context_model(self):
+        settings = V2Settings(
+            agent_model_profile="openai_gpt_5_4_mini",
+            context_compiler_model_profile="anthropic_haiku_45",
+            anthropic_api_key="test-key",
+            openai_api_key="test-openai",
+        )
+        with patch("diracdata_v2.llms.model_factory.init_chat_model") as init_model:
+            init_model.return_value = object()
+            ChatModelFactory(settings=settings).create_chat_model(
+                profile_id=settings.context_compiler_model_profile,
+            )
+
+        kwargs = init_model.call_args.kwargs
+        self.assertEqual(kwargs["model"], "claude-haiku-4-5-20251001")
+        self.assertEqual(kwargs["model_provider"], "anthropic")
+
 
 if __name__ == "__main__":
     unittest.main()
-

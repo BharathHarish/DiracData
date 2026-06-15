@@ -10,6 +10,7 @@ class HarnessStage(StrEnum):
     DEFINITION_GATE = "definition_gate"
     SQL_AUTHORING = "sql_authoring"
     STEWARD_REVIEW = "steward_review"
+    DATA_ENGINEERING = "data_engineering"
     FINAL_EXECUTION = "final_execution"
     ANSWER = "answer"
 
@@ -38,4 +39,3 @@ class GateDecision(StrEnum):
 class AssumptionImpact(StrEnum):
     SQL_AFFECTING = "sql_affecting"
     NON_SQL_AFFECTING = "non_sql_affecting"
-

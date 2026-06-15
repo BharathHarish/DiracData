@@ -28,6 +28,7 @@ class CatalogCardKind(str, Enum):
 class CatalogSource(str, Enum):
     DESCRIPTION = "description"
     QUERY_HISTORY = "query_history"
+    NL_SQL_PAIR = "nl_sql_pair"
     SELF_PLAY = "self_play"
     AGENTIC_LEARNING = "agentic_learning"
     INFERRED = "inferred"

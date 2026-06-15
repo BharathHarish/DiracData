@@ -19,9 +19,20 @@ from diracdata_v2.primitive.runner import (
     SubAgentInput,
     build_subagent_tool,
 )
+from diracdata_v2.primitive.supervisor import SupervisorPrimitiveWorkflow
+from diracdata_v2.primitive.typed_workflow import (
+    SemanticAssertion,
+    TypedPrimitiveWorkflow,
+    TypedWorkflowConfig,
+    evaluate_semantic_assertions,
+)
 
 __all__ = [
     "GatedPrimitiveWorkflow",
+    "SupervisorPrimitiveWorkflow",
+    "SemanticAssertion",
+    "TypedPrimitiveWorkflow",
+    "TypedWorkflowConfig",
     "AssumptionImpact",
     "GateDecision",
     "HarnessStage",
@@ -33,5 +44,6 @@ __all__ = [
     "TermResolutionStatus",
     "ToolPermission",
     "build_subagent_tool",
+    "evaluate_semantic_assertions",
     "parse_status_packet",
 ]

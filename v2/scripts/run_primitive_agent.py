@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 from pathlib import Path
 from typing import Any, Callable
@@ -24,7 +25,7 @@ def main() -> int:
     parser.add_argument("--env-file", default=str(ROOT / ".env"))
     parser.add_argument("--model-profile", default=None)
     parser.add_argument("--question", required=True)
-    parser.add_argument("--workflow", choices=["gated", "outer"], default=None)
+    parser.add_argument("--workflow", choices=["gated", "supervisor", "typed", "outer"], default=None)
     parser.add_argument("--interactive", action="store_true")
     parser.add_argument("--max-clarifications", type=int, default=3)
     parser.add_argument(
@@ -72,18 +73,19 @@ def main() -> int:
     if args.column_embeddings_path:
         os.environ["DIRACDATA_V2_COLUMN_EMBEDDINGS_PATH"] = args.column_embeddings_path
 
-    workflow = args.workflow or "gated"
+    settings = settings_from_env(args.env_file)
+    workflow = (args.workflow or settings.primitive_workflow_mode or "gated").strip().lower()
     if args.interactive and args.clarification:
         raise SystemExit("--clarification is for non-interactive runs; use the prompt in --interactive mode instead")
-    settings = settings_from_env(args.env_file)
     runtime = create_primitive_data_agent(settings=settings)
     if args.interactive:
-        if workflow != "gated":
-            raise SystemExit("--interactive requires --workflow gated")
+        if workflow not in {"gated", "supervisor", "typed"}:
+            raise SystemExit("--interactive requires --workflow gated, --workflow supervisor, or --workflow typed")
         event_sink = _event_printer(args.stream_format) if args.stream else None
         turns = run_interactive_session(
             runtime=runtime,
             question=args.question,
+            workflow=workflow,
             max_clarifications=args.max_clarifications,
             input_func=input,
             output_func=print,
@@ -102,7 +104,14 @@ def main() -> int:
                 _print_stream_event(row, args.stream_format)
         else:
             previous_context = _resume_context_for_args(args)
-            result = runtime.invoke(
+            invoke = (
+                runtime.invoke_supervisor
+                if workflow == "supervisor"
+                else runtime.invoke_typed
+                if workflow == "typed"
+                else runtime.invoke
+            )
+            result = invoke(
                 args.question,
                 clarification=args.clarification,
                 previous_context=previous_context,
@@ -126,6 +135,18 @@ def main() -> int:
     result = (
         runtime.invoke_outer(args.question)
         if workflow == "outer"
+        else runtime.invoke_supervisor(
+            args.question,
+            clarification=args.clarification,
+            previous_context=previous_context,
+        )
+        if workflow == "supervisor"
+        else runtime.invoke_typed(
+            args.question,
+            clarification=args.clarification,
+            previous_context=previous_context,
+        )
+        if workflow == "typed"
         else runtime.invoke(
             args.question,
             clarification=args.clarification,
@@ -144,6 +165,7 @@ def run_interactive_session(
     *,
     runtime: Any,
     question: str,
+    workflow: str,
     max_clarifications: int,
     input_func: Callable[[str], str],
     output_func: Callable[[str], None],
@@ -153,7 +175,14 @@ def run_interactive_session(
     clarification: str | None = None
     previous_context: str | None = None
     for turn_index in range(max(0, max_clarifications) + 1):
-        result = runtime.invoke(
+        invoke = (
+            runtime.invoke_supervisor
+            if workflow == "supervisor"
+            else runtime.invoke_typed
+            if workflow == "typed"
+            else runtime.invoke
+        )
+        result = invoke(
             question,
             clarification=clarification,
             previous_context=previous_context,
@@ -168,7 +197,12 @@ def run_interactive_session(
         if turn_index >= max_clarifications:
             output_func("Maximum clarification turns reached.")
             return turns
-        clarification = input_func("Clarification> ").strip()
+        clarification = _ask_for_clarification(
+            payload=payload,
+            output_text=result.output_text,
+            input_func=input_func,
+            output_func=output_func,
+        )
         if clarification.lower() in {"exit", "quit"}:
             output_func("Exiting clarification session.")
             return turns
@@ -181,24 +215,149 @@ def _write_json(path: Path, value: Any) -> None:
 
 
 def _latest_clarification_context(payload: dict[str, Any]) -> str | None:
-    turns = payload.get("turns")
-    if isinstance(turns, list):
-        for turn in reversed(turns):
-            if isinstance(turn, dict):
-                context = _latest_clarification_context(turn)
-                if context:
-                    return context
-    for event in reversed(payload.get("trace_events", [])):
-        if not isinstance(event, dict):
-            continue
-        if event.get("event_type") != "clarification_required":
-            continue
+    event = _latest_clarification_event(payload)
+    if event is not None:
         event_payload = event.get("payload")
         if isinstance(event_payload, dict):
             context = event_payload.get("previous_context")
             if isinstance(context, str):
                 return context
     return None
+
+
+def _latest_clarification_event(payload: dict[str, Any]) -> dict[str, Any] | None:
+    turns = payload.get("turns")
+    if isinstance(turns, list):
+        for turn in reversed(turns):
+            if isinstance(turn, dict):
+                event = _latest_clarification_event(turn)
+                if event is not None:
+                    return event
+    for event in reversed(payload.get("trace_events", [])):
+        if not isinstance(event, dict):
+            continue
+        if event.get("event_type") != "clarification_required":
+            continue
+        return event
+    return None
+
+
+def _latest_clarification_question(payload: dict[str, Any]) -> str | None:
+    event = _latest_clarification_event(payload)
+    if event is None:
+        return None
+    event_payload = event.get("payload")
+    if not isinstance(event_payload, dict):
+        return None
+    question = event_payload.get("question")
+    return question if isinstance(question, str) and question.strip() else None
+
+
+def _latest_clarification_choices(payload: dict[str, Any]) -> list[str]:
+    event = _latest_clarification_event(payload)
+    if event is None:
+        return []
+    event_payload = event.get("payload")
+    if not isinstance(event_payload, dict):
+        return []
+    choices = event_payload.get("choices")
+    if not isinstance(choices, list):
+        return []
+    return [str(choice).strip() for choice in choices if str(choice).strip()]
+
+
+def _ask_for_clarification(
+    *,
+    payload: dict[str, Any],
+    output_text: str,
+    input_func: Callable[[str], str],
+    output_func: Callable[[str], None],
+) -> str:
+    question = _latest_clarification_question(payload) or _clarification_question_from_text(output_text)
+    choices = _latest_clarification_choices(payload) or _clarification_choices_from_text(output_text)
+    choices = _with_other_choice(choices)
+    if not choices:
+        return input_func("Clarification> ").strip()
+
+    if question:
+        output_func("Clarification choices:")
+    for index, choice in enumerate(choices, start=1):
+        output_func(f"{index}. {choice}")
+    answer = input_func(f"Clarification [1-{len(choices)} or text]> ").strip()
+    if not answer:
+        return answer
+    if answer.isdigit():
+        selected_index = int(answer)
+        if 1 <= selected_index <= len(choices):
+            selected = choices[selected_index - 1]
+            if _is_other_choice(selected):
+                return input_func("Other clarification> ").strip()
+            return selected
+    return answer
+
+
+def _clarification_question_from_text(text: str) -> str:
+    clean = text.strip()
+    match = re.search(r"(?ims)^\s*CLARIFICATION_QUESTION\s*:\s*(.+?)(?:\n\s*[A-Z_ ]+\s*:|\Z)", clean)
+    if match:
+        return match.group(1).strip()
+    if re.match(r"(?is)^CLARIFICATION_REQUIRED\b", clean):
+        return clean.split("\n", 1)[1].strip() if "\n" in clean else clean
+    return clean
+
+
+def _clarification_choices_from_text(text: str) -> list[str]:
+    section = re.search(
+        r"(?ims)^\s*(?:MCQ_OPTIONS|OPTIONS)\s*:\s*(.+?)(?:\n\s*[A-Z_ ]+\s*:|\Z)",
+        text,
+    )
+    if section:
+        return _parse_choice_lines(section.group(1))
+    option_choices = _option_label_choices_from_text(text)
+    if option_choices:
+        return option_choices
+    question = _clarification_question_from_text(text)
+    match = re.search(r"(?is)\bshould\s+(?:i|we)\s+(.+?)\?", question)
+    if not match:
+        return []
+    raw = re.split(r"\s*,?\s+or\s+", match.group(1), maxsplit=1, flags=re.IGNORECASE)
+    if len(raw) < 2:
+        return []
+    return [part.strip(" .?") for part in raw if part.strip(" .?")]
+
+
+def _parse_choice_lines(text: str) -> list[str]:
+    choices: list[str] = []
+    for line in text.splitlines():
+        clean = line.strip()
+        if not clean:
+            continue
+        clean = re.sub(r"^\s*(?:[-*]|\d+[\).])\s*", "", clean).strip()
+        if clean:
+            choices.append(clean)
+    return choices[:4]
+
+
+def _option_label_choices_from_text(text: str) -> list[str]:
+    choices: list[str] = []
+    for match in re.finditer(r"(?im)^\s*[-*]\s*\*\*Option\s+[A-Z]\s*:\*\*\s*(.+)$", text):
+        clean = match.group(1).strip()
+        if clean:
+            choices.append(clean)
+    return choices[:4]
+
+
+def _with_other_choice(choices: list[str]) -> list[str]:
+    clean = [choice for choice in choices if choice]
+    if not clean:
+        return []
+    if any(_is_other_choice(choice) for choice in clean):
+        return clean
+    return [*clean[:2], "Other: I will type a different definition or scope."]
+
+
+def _is_other_choice(choice: str) -> bool:
+    return choice.strip().lower().startswith("other")
 
 
 def _resume_context_for_args(args: argparse.Namespace) -> str | None:
@@ -299,10 +458,23 @@ def _print_text_stream_event(row: dict[str, Any]) -> None:
         agent = row.get("agent_name")
         print(f"\n[{event_type}:{agent}]", file=sys.stderr, flush=True)
         return
-    if event_type in {"gated_start", "gated_done", "subagent_start", "subagent_done", "clarification_required"}:
+    if event_type in {
+        "gated_start",
+        "gated_done",
+        "supervisor_start",
+        "supervisor_done",
+        "typed_start",
+        "typed_done",
+        "stage_start",
+        "stage_done",
+        "subagent_start",
+        "subagent_done",
+        "clarification_required",
+        "assertions_evaluated",
+    }:
         agent = row.get("agent_name")
         status = payload.get("status") or payload.get("stop_reason") or ""
-        name = payload.get("name") or payload.get("source") or ""
+        name = payload.get("name") or payload.get("source") or payload.get("stage") or ""
         suffix = f":{name}" if name else ""
         if status:
             suffix += f":{status}"
@@ -321,6 +493,14 @@ def _print_text_stream_event(row: dict[str, Any]) -> None:
         unresolved = payload.get("unresolved_terms")
         if unresolved:
             print(json.dumps({"unresolved_terms": unresolved}, default=str), file=sys.stderr, flush=True)
+        intent_frame = payload.get("intent_frame")
+        if isinstance(intent_frame, dict) and intent_frame:
+            compact_intent = {
+                "source": intent_frame.get("source"),
+                "search_queries": (intent_frame.get("search_queries") or [])[:8],
+                "definition_required_terms": intent_frame.get("definition_required_terms") or [],
+            }
+            print(json.dumps({"intent_frame": compact_intent}, default=str), file=sys.stderr, flush=True)
         return
     if event_type == "value_grounding_blocked":
         print(f"\n[value_grounding_blocked:{payload.get('reason')}]", file=sys.stderr, flush=True)

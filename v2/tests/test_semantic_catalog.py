@@ -4,6 +4,7 @@ import unittest
 from pathlib import Path
 
 from diracdata_v2.semantic_catalog import (
+    QueryIntentFrame,
     SemanticCatalogBuilder,
     SemanticCatalogCompiler,
     build_semantic_catalog_document,
@@ -188,6 +189,18 @@ def _sql_library():
     }
 
 
+class FakeIntentExtractor:
+    def extract(self, question, *, catalog_summary=None):
+        self.question = question
+        self.catalog_summary = catalog_summary
+        return QueryIntentFrame(
+            search_queries=("net revenue", "customer state"),
+            measures=("net revenue",),
+            dimensions=("customer state",),
+            source="fake_llm",
+        )
+
+
 class SemanticCatalogTests(unittest.TestCase):
     def test_builder_creates_cards_indexes_and_observed_join_edges(self):
         document = build_semantic_catalog_document(
@@ -202,14 +215,67 @@ class SemanticCatalogTests(unittest.TestCase):
 
         self.assertEqual(document["validation"]["status"], "ok")
         self.assertIn("column:orders.net_amount", document["cards"])
-        self.assertIn("dimension:customers.state", document["cards"])
         self.assertIn("pattern:history:orders_customers", document["cards"])
         self.assertTrue(document["join_edges"])
         edge = next(iter(document["join_edges"].values()))
         self.assertEqual(edge["sql_condition"], "customers.customer_id = orders.customer_id")
         self.assertIn("orders", document["indexes"]["join_edges_by_table"])
 
-    def test_compiler_returns_compact_packet_and_blocks_unresolved_business_terms(self):
+    def test_builder_preserves_trusted_nl_sql_pair_provenance(self):
+        library = _sql_library()
+        pattern = library["patterns"]["pattern:history:orders_customers"]
+        pattern["id"] = "pattern:nl_sql:gold_001"
+        pattern["entry_id"] = "nl_sql:gold_001"
+        pattern["source"] = "nl_sql_pair"
+        pattern["review_status"] = "approved"
+        library["patterns"] = {"pattern:nl_sql:gold_001": pattern}
+        library["entries"] = {
+            "nl_sql:gold_001": {
+                **library["entries"]["history:orders_customers"],
+                "source": "nl_sql_pair",
+                "review_status": "approved",
+                "join_edges": [
+                    {
+                        "left_column": "customers.customer_id",
+                        "right_column": "orders.customer_id",
+                    }
+                ],
+            }
+        }
+
+        document = build_semantic_catalog_document(
+            metadata_descriptions=_metadata(),
+            schema_ast=_schema_ast(),
+            sql_library=library,
+            catalog="commerce_pod",
+            database="analytics",
+            schema="commerce",
+            run_id="catalog_run",
+        )
+
+        card = document["cards"]["pattern:nl_sql:gold_001"]
+        self.assertEqual(card["source"], "nl_sql_pair")
+        self.assertEqual(card["review_status"], "approved")
+        self.assertEqual(document["validation"]["status"], "ok")
+
+    def test_builder_can_build_catalog_without_schema_ast(self):
+        document = build_semantic_catalog_document(
+            metadata_descriptions=_metadata(),
+            schema_ast=None,
+            sql_library=_sql_library(),
+            catalog="commerce_pod",
+            database="analytics",
+            schema="commerce",
+            run_id="catalog_run",
+        )
+
+        self.assertEqual(document["validation"]["status"], "ok")
+        self.assertIn("table:orders", document["cards"])
+        self.assertIn("column:customers.state", document["cards"])
+        self.assertIn("pattern:history:orders_customers", document["cards"])
+        self.assertTrue(document["join_edges"])
+
+    def test_compiler_blocks_only_terms_marked_definition_required_by_intent_frame(self):
         document = build_semantic_catalog_document(
             metadata_descriptions=_metadata(),
             schema_ast=_schema_ast(),
@@ -220,14 +286,103 @@ class SemanticCatalogTests(unittest.TestCase):
             run_id="catalog_run",
         )
 
-        packet = SemanticCatalogCompiler(document).compile("net revenue by state for active customers")
+        packet = SemanticCatalogCompiler(document).compile(
+            "net revenue by state for active customers",
+            intent_frame=QueryIntentFrame(
+                search_queries=("net revenue by state", "active customers"),
+                definition_required_terms=(
+                    {"term": "active customers", "reason": "Requires approved customer activity definition."},
+                ),
+                source="test",
+            ),
+        )
         payload = packet.to_dict()
 
         self.assertTrue(payload["needs_clarification"])
-        self.assertEqual(payload["unresolved_terms"][0]["term"], "active")
+        self.assertEqual(payload["unresolved_terms"][0]["term"], "active customers")
+        self.assertEqual(
+            payload["retrieval"]["intent_frame"]["definition_required_terms"][0]["term"],
+            "active customers",
+        )
         self.assertTrue(payload["sql_patterns"])
         self.assertTrue(payload["join_edges"])
-        self.assertIn("Use net amount, not gross amount.", payload["assertions"])
+        self.assertIn("Use net amount, not gross amount.", payload["sql_patterns"][0]["assumptions"])
+        self.assertNotIn("Use net amount, not gross amount.", payload["assertions"])
+        self.assertIn(
+            "Treat SQL pattern assumptions as pattern-local evidence; apply them only when that pattern matches the final intent.",
+            payload["assertions"],
+        )
+
+    def test_compiler_does_not_block_definition_term_when_catalog_supports_phrase(self):
+        document = build_semantic_catalog_document(
+            metadata_descriptions=_metadata(),
+            schema_ast=_schema_ast(),
+            sql_library=_sql_library(),
+            catalog="commerce_pod",
+            database="analytics",
+            schema="commerce",
+            run_id="catalog_run",
+        )
+
+        packet = SemanticCatalogCompiler(document).compile(
+            "net revenue by state for completed orders",
+            intent_frame=QueryIntentFrame(
+                search_queries=("net revenue by state", "completed orders"),
+                definition_required_terms=(
+                    {"term": "order status", "reason": "LLM caution that should be resolved by catalog support."},
+                ),
+                source="test",
+            ),
+        )
+        payload = packet.to_dict()
+
+        self.assertFalse(payload["needs_clarification"])
+        self.assertEqual(payload["unresolved_terms"], [])
+        self.assertEqual(payload["retrieval"]["intent_frame"]["definition_required_terms"], [])
+
+    def test_compiler_flags_broader_negative_action_scope(self):
+        document = build_semantic_catalog_document(
+            metadata_descriptions=_metadata(),
+            schema_ast=_schema_ast(),
+            sql_library=_sql_library(),
+            catalog="commerce_pod",
+            database="analytics",
+            schema="commerce",
+            run_id="catalog_run",
+        )
+
+        packet = SemanticCatalogCompiler(document).compile(
+            "count customers who bought jewelry online in 2002 but did not buy in 2001"
+        )
+        payload = packet.to_dict()
+
+        self.assertTrue(payload["needs_clarification"])
+        self.assertIn("did not buy", payload["unresolved_terms"][0]["term"])
+        self.assertIn("jewelry", payload["unresolved_terms"][0]["reason"])
+        self.assertIn("online", payload["unresolved_terms"][0]["reason"])
+        self.assertEqual(
+            payload["unresolved_terms"][0]["choices"][0],
+            "Use the same scope as the positive clause (jewelry, online).",
+        )
+
+    def test_compiler_allows_negative_action_with_matching_scope(self):
+        document = build_semantic_catalog_document(
+            metadata_descriptions=_metadata(),
+            schema_ast=_schema_ast(),
+            sql_library=_sql_library(),
+            catalog="commerce_pod",
+            database="analytics",
+            schema="commerce",
+            run_id="catalog_run",
+        )
+
+        packet = SemanticCatalogCompiler(document).compile(
+            "count customers who bought jewelry online in 2002 but did not buy jewelry online in 2001"
+        )
+        payload = packet.to_dict()
+
+        self.assertFalse(payload["needs_clarification"])
+        self.assertEqual(payload["unresolved_terms"], [])
 
     def test_compiler_expands_top_patterns_into_required_columns(self):
         document = build_semantic_catalog_document(
@@ -249,6 +404,30 @@ class SemanticCatalogTests(unittest.TestCase):
         self.assertIn("column:orders.net_amount", candidate_ids)
         self.assertIn("column:customers.state", candidate_ids)
         self.assertIn("column:orders.order_status", candidate_ids)
+        self.assertIn("intent_frame", payload["retrieval"])
+        self.assertEqual(payload["retrieval"]["intent_frame"]["source"], "deterministic")
+
+    def test_compiler_uses_injected_intent_extractor_for_search_terms(self):
+        document = build_semantic_catalog_document(
+            metadata_descriptions=_metadata(),
+            schema_ast=_schema_ast(),
+            sql_library=_sql_library(),
+            catalog="commerce_pod",
+            database="analytics",
+            schema="commerce",
+            run_id="catalog_run",
+        )
+        extractor = FakeIntentExtractor()
+
+        packet = SemanticCatalogCompiler(document, intent_extractor=extractor).compile(
+            "show the business result",
+        )
+        payload = packet.to_dict()
+
+        self.assertEqual(extractor.question, "show the business result")
+        self.assertEqual(extractor.catalog_summary["scope"]["schema"], "commerce")
+        self.assertEqual(payload["retrieval"]["intent_frame"]["source"], "fake_llm")
+        self.assertIn("pattern:history:orders_customers", {item["id"] for item in payload["sql_patterns"]})
 
     def test_builder_writes_semantic_catalog_artifact(self):
         with tempfile.TemporaryDirectory() as tmp:

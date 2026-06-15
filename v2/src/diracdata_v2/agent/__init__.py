@@ -23,6 +23,7 @@ from diracdata_v2.agent.data_agent_v2_primitive_agent import (
     load_primitive_data_steward_prompt,
     load_primitive_intent_prompt,
     load_primitive_outer_prompt,
+    load_primitive_supervisor_prompt,
     load_primitive_sql_author_prompt,
     load_primitive_sql_validator_prompt,
 )
@@ -40,6 +41,7 @@ __all__ = [
     "load_primitive_data_steward_prompt",
     "load_primitive_intent_prompt",
     "load_primitive_outer_prompt",
+    "load_primitive_supervisor_prompt",
     "load_primitive_sql_author_prompt",
     "load_primitive_sql_validator_prompt",
     "load_nl_ast_middleware_prompt",

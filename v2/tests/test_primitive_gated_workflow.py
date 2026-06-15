@@ -291,6 +291,92 @@ none
         self.assertEqual(steward.tasks, [])
         self.assertEqual(execute_tool.calls, [])
 
+    def test_staged_workflow_surfaces_blocking_assumption_details(self) -> None:
+        intent = FakeRunner(
+            [
+                """INTENT_STATUS: OK
+INTENT_SUMMARY:
+- measure: count customers
+UNRESOLVED_TERMS:
+<none>
+ASSUMPTIONS:
+- Treat missing warehouse relationship as any warehouse with stock.
+"""
+            ]
+        )
+        sql_author = FakeRunner(["SQL_AUTHOR_STATUS: OK\nFINAL_SQL:\nselect 1\nASSUMPTIONS:\nnone"])
+        steward = FakeRunner(["STEWARD_STATUS: PASS\nISSUES:\n- none"])
+        workflow = GatedPrimitiveWorkflow(
+            analyst=FakeRunner([]),
+            steward=steward,
+            data_engineer=FakeRunner([]),
+            intent=intent,
+            sql_author=sql_author,
+            final_execute_tool=FakeExecuteTool(),
+        )
+
+        result = workflow.run("count customers")
+
+        self.assertEqual(result.stop_reason, "needs_clarification")
+        self.assertIn("Assumption details", result.output_text)
+        self.assertIn("missing warehouse relationship", result.output_text)
+        self.assertEqual(sql_author.tasks, [])
+
+    def test_staged_workflow_does_not_block_none_with_resolution_text(self) -> None:
+        intent = FakeRunner(
+            [
+                """INTENT_STATUS: OK
+INTENT_SUMMARY:
+- measure: count customers
+UNRESOLVED_TERMS:
+<none>
+ASSUMPTIONS:
+<none; all SQL-affecting terms are resolved>
+"""
+            ]
+        )
+        sql_author = FakeRunner(
+            [
+                """SQL_AUTHOR_STATUS: OK
+INTERPRETATION:
+- chosen meaning: count customers
+FINAL_SQL:
+select 7 as answer
+DRY_RUN:
+passed
+VALUE_PROBES:
+not needed
+ASSUMPTIONS:
+None. All SQL-affecting terms are resolved.
+"""
+            ]
+        )
+        steward = FakeRunner(
+            [
+                """STEWARD_STATUS: PASS
+ISSUES:
+- none
+EVIDENCE:
+- dry run: passed
+"""
+            ]
+        )
+        execute_tool = FakeExecuteTool()
+        workflow = GatedPrimitiveWorkflow(
+            analyst=FakeRunner([]),
+            steward=steward,
+            data_engineer=FakeRunner([]),
+            intent=intent,
+            sql_author=sql_author,
+            final_execute_tool=execute_tool,
+        )
+
+        result = workflow.run("count customers")
+
+        self.assertEqual(result.stop_reason, "final")
+        self.assertIn("FINAL_STATUS: PASS", result.output_text)
+        self.assertEqual(execute_tool.calls, [{"sql": "select 7 as answer"}])
+
     def test_staged_workflow_executes_final_sql_only_after_steward_pass(self) -> None:
         intent = FakeRunner(
             [
@@ -625,6 +711,7 @@ class InteractiveCliTests(unittest.TestCase):
         turns = cli.run_interactive_session(
             runtime=runtime,
             question="count customers",
+            workflow="gated",
             max_clarifications=2,
             input_func=lambda prompt: next(inputs),
             output_func=printed.append,
@@ -635,6 +722,66 @@ class InteractiveCliTests(unittest.TestCase):
         self.assertEqual(runtime.calls[1]["previous_context"], "prior packet")
         self.assertIn("FINAL_STATUS: PASS", printed[-1])
 
+    def test_interactive_session_supports_numbered_clarification_choice(self) -> None:
+        cli = _load_cli_module()
+        runtime = FakeInteractiveRuntime(
+            choices=[
+                "Check only the scoped action source.",
+                "Check all available sources for the broad action.",
+            ]
+        )
+        printed: list[str] = []
+        inputs = iter(["2"])
+
+        turns = cli.run_interactive_session(
+            runtime=runtime,
+            question="count customers",
+            workflow="gated",
+            max_clarifications=2,
+            input_func=lambda prompt: next(inputs),
+            output_func=printed.append,
+        )
+
+        self.assertEqual(len(turns), 2)
+        self.assertEqual(
+            runtime.calls[1]["clarification"],
+            "Check all available sources for the broad action.",
+        )
+        self.assertTrue(any(line.startswith("1. Check only") for line in printed))
+        self.assertTrue(any(line.startswith("2. Check all") for line in printed))
+
+    def test_clarification_choices_from_text_adds_other_option(self) -> None:
+        cli = _load_cli_module()
+        choices = cli._with_other_choice(
+            cli._clarification_choices_from_text(
+                """CLARIFICATION_REQUIRED
+CLARIFICATION_QUESTION:
+Which scope should I use?
+MCQ_OPTIONS:
+1. Only the named source.
+2. All available sources.
+"""
+            )
+        )
+
+        self.assertEqual(choices[0], "Only the named source.")
+        self.assertEqual(choices[1], "All available sources.")
+        self.assertTrue(choices[-1].startswith("Other:"))
+
+    def test_clarification_choices_from_markdown_options(self) -> None:
+        cli = _load_cli_module()
+        choices = cli._clarification_choices_from_text(
+            """The intent subagent found an ambiguity.
+
+## CLARIFICATION_REQUIRED
+Should I use source A or all sources?
+- **Option A:** Source A only.
+- **Option B:** All sources.
+"""
+        )
+
+        self.assertEqual(choices, ["Source A only.", "All sources."])
+
     def test_interactive_session_streams_events_from_runtime(self) -> None:
         cli = _load_cli_module()
         runtime = FakeInteractiveRuntime()
@@ -643,6 +790,7 @@ class InteractiveCliTests(unittest.TestCase):
         cli.run_interactive_session(
             runtime=runtime,
             question="count customers",
+            workflow="gated",
             max_clarifications=0,
             input_func=lambda prompt: "",
             output_func=lambda text: None,
@@ -651,6 +799,26 @@ class InteractiveCliTests(unittest.TestCase):
 
         self.assertEqual(runtime.calls[0]["event_sink"], "provided")
         self.assertEqual(streamed[0].event_type, "model_delta")
+
+    def test_interactive_session_supports_typed_workflow(self) -> None:
+        cli = _load_cli_module()
+        runtime = FakeInteractiveRuntime(choices=["Use the scoped exclusion.", "Use broad exclusion."])
+        printed: list[str] = []
+        inputs = iter(["1"])
+
+        turns = cli.run_interactive_session(
+            runtime=runtime,
+            question="count customers",
+            workflow="typed",
+            max_clarifications=2,
+            input_func=lambda prompt: next(inputs),
+            output_func=printed.append,
+        )
+
+        self.assertEqual(len(turns), 2)
+        self.assertEqual(runtime.calls[1]["method"], "typed")
+        self.assertEqual(runtime.calls[1]["clarification"], "Use the scoped exclusion.")
+        self.assertTrue(any(line.startswith("1. Use the scoped") for line in printed))
 
     def test_resume_context_can_be_read_from_prior_output_file(self) -> None:
         cli = _load_cli_module()
@@ -742,10 +910,37 @@ class InteractiveCliTests(unittest.TestCase):
         self.assertIn("[tool_result:execute_sql]", rendered)
         self.assertIn('"rows"', rendered)
 
+    def test_text_stream_prints_supervisor_events(self) -> None:
+        cli = _load_cli_module()
+        stderr = io.StringIO()
+
+        with contextlib.redirect_stderr(stderr):
+            cli._print_stream_event(
+                {
+                    "event_type": "supervisor_start",
+                    "agent_name": "supervisor_workflow",
+                    "payload": {},
+                },
+                "text",
+            )
+            cli._print_stream_event(
+                {
+                    "event_type": "supervisor_done",
+                    "agent_name": "supervisor_workflow",
+                    "payload": {"stop_reason": "final"},
+                },
+                "text",
+            )
+
+        rendered = stderr.getvalue()
+        self.assertIn("[supervisor_start:supervisor_workflow]", rendered)
+        self.assertIn("[supervisor_done:supervisor_workflow:final]", rendered)
+
 
 class FakeInteractiveRuntime:
-    def __init__(self) -> None:
+    def __init__(self, choices: list[str] | None = None) -> None:
         self.calls: list[dict[str, str | None]] = []
+        self.choices = choices or []
 
     def invoke(
         self,
@@ -753,6 +948,39 @@ class FakeInteractiveRuntime:
         *,
         clarification: str | None = None,
         previous_context: str | None = None,
+        event_sink=None,
+    ) -> PrimitiveRunResult:
+        return self._invoke(
+            method="gated",
+            question=question,
+            clarification=clarification,
+            previous_context=previous_context,
+            event_sink=event_sink,
+        )
+
+    def invoke_typed(
+        self,
+        question: str,
+        *,
+        clarification: str | None = None,
+        previous_context: str | None = None,
+        event_sink=None,
+    ) -> PrimitiveRunResult:
+        return self._invoke(
+            method="typed",
+            question=question,
+            clarification=clarification,
+            previous_context=previous_context,
+            event_sink=event_sink,
+        )
+
+    def _invoke(
+        self,
+        *,
+        method: str,
+        question: str,
+        clarification: str | None,
+        previous_context: str | None,
         event_sink=None,
     ) -> PrimitiveRunResult:
         if event_sink is not None:
@@ -765,6 +993,7 @@ class FakeInteractiveRuntime:
             )
         self.calls.append(
             {
+                "method": method,
                 "question": question,
                 "clarification": clarification,
                 "previous_context": previous_context,
@@ -780,6 +1009,7 @@ class FakeInteractiveRuntime:
                         agent_name="gated_workflow",
                         payload={
                             "question": "Choose category or class.",
+                            "choices": self.choices,
                             "previous_context": "prior packet",
                         },
                     )

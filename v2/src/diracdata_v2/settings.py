@@ -32,6 +32,11 @@ class V2Settings:
     primitive_max_iterations: int = 8
     primitive_subagent_max_iterations: int = 6
     primitive_max_tool_result_chars: int = 12000
+    primitive_workflow_mode: str = "gated"
+    context_compiler_mode: str = "agentic"
+    context_compiler_model_profile: str = "anthropic_haiku_45"
+    context_compiler_max_cards: int = 24
+    context_compiler_max_patterns: int = 6
     data_root: Path = Path("v2/data")
     metadata_descriptions_path: Path = Path("v2/context/metadata_descriptions.json")
     schema_ast_path: Path = Path("v2/learning/artifacts/fintech_schema_ast_v2_20260609/schema_ast.json")
@@ -39,6 +44,9 @@ class V2Settings:
     semantic_catalog_path: Path | None = None
     retrieval_documents_path: Path | None = None
     column_embeddings_path: Path | None = None
+    nl_sql_pair_paths: tuple[Path, ...] = ()
+    nl_sql_pair_limit: int | None = None
+    nl_sql_pair_review_status: str = "approved"
     embedding_model: str = "BAAI/bge-small-en-v1.5"
     embedding_local_files_only: bool = True
 
@@ -77,6 +85,14 @@ def settings_from_env(env_file: str | Path | None = ".env") -> V2Settings:
         primitive_max_iterations=_int_env("DIRACDATA_PRIMITIVE_MAX_ITERATIONS", 8),
         primitive_subagent_max_iterations=_int_env("DIRACDATA_PRIMITIVE_SUBAGENT_MAX_ITERATIONS", 6),
         primitive_max_tool_result_chars=_int_env("DIRACDATA_PRIMITIVE_MAX_TOOL_RESULT_CHARS", 12000),
+        primitive_workflow_mode=os.environ.get("DIRACDATA_PRIMITIVE_WORKFLOW_MODE", "gated"),
+        context_compiler_mode=os.environ.get("DIRACDATA_CONTEXT_COMPILER_MODE", "agentic"),
+        context_compiler_model_profile=os.environ.get(
+            "DIRACDATA_CONTEXT_COMPILER_MODEL_PROFILE",
+            "anthropic_haiku_45",
+        ),
+        context_compiler_max_cards=_int_env("DIRACDATA_CONTEXT_COMPILER_MAX_CARDS", 24),
+        context_compiler_max_patterns=_int_env("DIRACDATA_CONTEXT_COMPILER_MAX_PATTERNS", 6),
         data_root=Path(os.environ.get("DIRACDATA_V2_DATA_ROOT", "v2/data")),
         metadata_descriptions_path=Path(
             os.environ.get(
@@ -99,6 +115,9 @@ def settings_from_env(env_file: str | Path | None = ".env") -> V2Settings:
         semantic_catalog_path=_optional_path_env("DIRACDATA_V2_SEMANTIC_CATALOG_PATH"),
         retrieval_documents_path=_optional_path_env("DIRACDATA_V2_RETRIEVAL_DOCUMENTS_PATH"),
         column_embeddings_path=_optional_path_env("DIRACDATA_V2_COLUMN_EMBEDDINGS_PATH"),
+        nl_sql_pair_paths=_path_tuple_env("DIRACDATA_V2_NL_SQL_PAIR_PATHS"),
+        nl_sql_pair_limit=_optional_int_env("DIRACDATA_V2_NL_SQL_PAIR_LIMIT"),
+        nl_sql_pair_review_status=os.environ.get("DIRACDATA_V2_NL_SQL_PAIR_REVIEW_STATUS", "approved"),
         embedding_model=os.environ.get("DIRACDATA_V2_EMBEDDING_MODEL", "BAAI/bge-small-en-v1.5"),
         embedding_local_files_only=_bool_env("DIRACDATA_V2_EMBEDDING_LOCAL_FILES_ONLY", True),
     )
@@ -123,6 +142,11 @@ def _int_env(key: str, default: int) -> int:
     return default if value is None or value == "" else int(value)
 
 
+def _optional_int_env(key: str) -> int | None:
+    value = os.environ.get(key)
+    return int(value) if value else None
+
+
 def _float_env(key: str, default: float) -> float:
     value = os.environ.get(key)
     return default if value is None or value == "" else float(value)
@@ -138,3 +162,10 @@ def _bool_env(key: str, default: bool) -> bool:
 def _optional_path_env(key: str) -> Path | None:
     value = os.environ.get(key)
     return Path(value) if value else None
+
+
+def _path_tuple_env(key: str) -> tuple[Path, ...]:
+    value = os.environ.get(key)
+    if not value:
+        return ()
+    return tuple(Path(item.strip()) for item in value.split(",") if item.strip())
