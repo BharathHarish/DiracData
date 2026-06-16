@@ -40,7 +40,7 @@ schema descriptions + query history + gold NL-SQL pairs
 
 ## Development Rules
 
-- Do not import from `v1/` in v2 code or scripts.
+- Do not import from legacy local experiments in v2 code or scripts.
 - Keep provider credentials in the root `.env`; never commit real keys.
 - Default generated artifact uploads to local storage unless S3/MinIO is explicitly configured.
 - Keep prompts generic and schema-agnostic.

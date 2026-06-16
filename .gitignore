@@ -3,6 +3,7 @@
 !.env.example
 .venv/
 .diracdata/
+v1/
 /data/
 /artifacts/
 __pycache__/

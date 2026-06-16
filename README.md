@@ -17,8 +17,8 @@ DiracData builds a compact, inspectable context layer from:
 - join and column retrieval evidence
 - dry-run and steward validation gates
 
-The current active implementation is in `v2/`. The older `v1/` implementation is
-kept in the repo as a preserved reference.
+The active implementation is in `v2/`. Legacy local experiments should stay out
+of Git; `v1/` is intentionally ignored.
 
 ## Why This Exists
 
@@ -94,8 +94,6 @@ execution.
 ├── docs/
 │   ├── schema_aware_retrieval_join_miner.md
 │   └── typed_workflow_kernel_plan.md
-├── v1/
-│   └── preserved first implementation
 └── v2/
     ├── context/                 # schema descriptions and context documents
     ├── data/                    # local datasets and query history

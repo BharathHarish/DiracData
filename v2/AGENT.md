@@ -9,9 +9,9 @@ Read this folder before touching v2 code:
 
 ## Responsibilities
 
-v2 is intentionally independent. Do not import from `v1/` in v2 package code or
-v2 scripts. If a v1 helper is still useful, re-create the narrow v2-native
-contract instead of coupling the lanes.
+v2 is intentionally independent. Do not import from legacy local experiments in
+v2 package code or v2 scripts. If an old helper is still useful, re-create the
+narrow v2-native contract instead of coupling lanes.
 
 Keep the runtime model:
 
@@ -26,7 +26,6 @@ Keep the runtime model:
 Use root-level assets instead of copying them:
 
 - environment: `../.env`
-- old implementation: `../v1`
 
 Use v2-local runtime inputs:
 
