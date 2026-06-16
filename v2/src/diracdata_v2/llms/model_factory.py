@@ -116,12 +116,48 @@ def agent_chat_model_from_settings(settings: V2Settings) -> object:
     return ChatModelFactory(settings=settings).create_agent_chat_model()
 
 
+class ChatCompletionClient:
+    """Tiny completion adapter for learning steps that expect dict messages."""
+
+    def __init__(self, *, model: object) -> None:
+        self._model = model
+
+    def complete(self, messages: list[dict[str, str]]) -> str:
+        response = self._model.invoke(messages)
+        return _response_text(response)
+
+
+def chat_completion_client_from_settings(
+    settings: V2Settings,
+    *,
+    profile_id: str | None = None,
+) -> ChatCompletionClient:
+    return ChatCompletionClient(
+        model=ChatModelFactory(settings=settings).create_chat_model(profile_id=profile_id)
+    )
+
+
 def init_chat_model(**kwargs: Any) -> object:
     try:
         from langchain.chat_models import init_chat_model as lc_init_chat_model
     except ImportError as exc:
         raise RuntimeError("v2 agent requires langchain chat model integrations") from exc
     return lc_init_chat_model(**kwargs)
+
+
+def _response_text(response: Any) -> str:
+    content = getattr(response, "content", response)
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts = []
+        for item in content:
+            if isinstance(item, dict):
+                parts.append(str(item.get("text") or item.get("content") or ""))
+            else:
+                parts.append(str(item))
+        return "\n".join(part for part in parts if part)
+    return str(content)
 
 
 def _validate(*, provider: ModelProvider, api_key: str | None, region_name: str | None) -> None:

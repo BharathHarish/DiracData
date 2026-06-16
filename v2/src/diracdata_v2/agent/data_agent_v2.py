@@ -70,7 +70,11 @@ def create_v2_agent(
         schema_ast_path=settings.schema_ast_path,
         sql_library_path=settings.sql_library_path,
     )
-    pattern_search = SQLPatternSearchService.from_file(settings.sql_library_path)
+    pattern_search = SQLPatternSearchService.from_file(
+        settings.sql_library_path,
+        embedding_model=settings.embedding_model,
+        local_files_only=settings.embedding_local_files_only,
+    )
     candidate_search = CandidateSearchService.from_files(
         schema_ast_path=settings.schema_ast_path,
         metadata_descriptions_path=settings.metadata_descriptions_path,

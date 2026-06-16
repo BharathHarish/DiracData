@@ -58,7 +58,11 @@ def create_nl_ast_agent(
         raise RuntimeError("NL AST agent requires langchain") from exc
 
     schema_info_service = SchemaInfoService.from_file(settings.metadata_descriptions_path)
-    pattern_search_service = SQLPatternSearchService.from_file(settings.sql_library_path)
+    pattern_search_service = SQLPatternSearchService.from_file(
+        settings.sql_library_path,
+        embedding_model=settings.embedding_model,
+        local_files_only=settings.embedding_local_files_only,
+    )
     candidate_search_service = CandidateSearchService.from_files(
         schema_ast_path=settings.schema_ast_path,
         metadata_descriptions_path=settings.metadata_descriptions_path,

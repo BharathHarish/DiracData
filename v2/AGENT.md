@@ -9,15 +9,17 @@ Read this folder before touching v2 code:
 
 ## Responsibilities
 
-v2 is intentionally small. Do not port v1 abstractions unless they directly
-serve the context fabric.
+v2 is intentionally independent. Do not import from `v1/` in v2 package code or
+v2 scripts. If a v1 helper is still useful, re-create the narrow v2-native
+contract instead of coupling the lanes.
 
 Keep the runtime model:
 
-- `schema_graph` is the lossless source of truth.
-- `sql_library` is the reusable pattern memory.
-- `context_compiler` will eventually produce a compact `context_slice`.
-- agents should consume slices, not whole catalogs.
+- `schema_graph` and `schema_ast` describe schema traversal.
+- `sql_library` is reusable pattern memory.
+- `semantic_catalog` is the searchable runtime context layer.
+- `context_compiler` produces compact context packets.
+- agents should consume compiled context, not whole catalogs.
 
 ## Shared Assets
 

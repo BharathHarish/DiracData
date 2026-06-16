@@ -10,6 +10,7 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from diracdata_v2.tools.hybrid import (
+    DEFAULT_EMBEDDING_MODEL,
     RetrievalDocument,
     hybrid_search,
     load_jsonl_documents,
@@ -30,7 +31,7 @@ class CandidateSearchInput(BaseModel):
 class CandidateSearchService:
     documents: list[RetrievalDocument]
     vector_rows: list[dict[str, Any]]
-    embedding_model: str = "BAAI/bge-small-en-v1.5"
+    embedding_model: str = DEFAULT_EMBEDDING_MODEL
     local_files_only: bool = True
 
     @classmethod
@@ -41,7 +42,7 @@ class CandidateSearchService:
         metadata_descriptions_path: Path | None = None,
         retrieval_documents_path: Path | None = None,
         column_embeddings_path: Path | None = None,
-        embedding_model: str = "BAAI/bge-small-en-v1.5",
+        embedding_model: str = DEFAULT_EMBEDDING_MODEL,
         local_files_only: bool = True,
     ) -> "CandidateSearchService":
         documents: list[RetrievalDocument] = []

@@ -7,32 +7,17 @@ import argparse
 import json
 import os
 import sys
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 
 ROOT = Path(__file__).resolve().parents[2]
 V2_ROOT = ROOT / "v2"
 sys.path.insert(0, str(V2_ROOT / "src"))
-sys.path.insert(0, str(ROOT / "v1" / "src"))
 
-from diracdata.config.settings import settings_from_env  # noqa: E402
-from diracdata.llms.chat_models import chat_model_client_from_settings  # noqa: E402
-from diracdata.storage.factory import object_store_from_settings  # noqa: E402
 from diracdata_v2.learning import LearningPipeline, LearningPipelineConfig  # noqa: E402
-
-
-@dataclass
-class V1ChatAdapter:
-    client: Any
-
-    def complete(self, messages: list[dict[str, str]]) -> str:
-        from diracdata.llms.chat_models import ChatModelMessage
-
-        return self.client.complete(
-            [ChatModelMessage(role=item["role"], content=item["content"]) for item in messages]
-        )
+from diracdata_v2.llms.model_factory import chat_completion_client_from_settings  # noqa: E402
+from diracdata_v2.settings import settings_from_env  # noqa: E402
+from diracdata_v2.storage import object_store_from_settings  # noqa: E402
 
 
 def main() -> int:
@@ -44,6 +29,7 @@ def main() -> int:
     parser.add_argument("--artifact-root", default=str(V2_ROOT / "learning" / "artifacts"))
     parser.add_argument("--run-id", default=None)
     parser.add_argument("--history-limit", type=int, default=80)
+    parser.add_argument("--learning-model-profile", default=None)
     parser.add_argument("--pattern-batch-size", type=int, default=20)
     parser.add_argument("--pattern-limit", type=int, default=80)
     parser.add_argument(
@@ -67,7 +53,12 @@ def main() -> int:
     settings = settings_from_env(args.env_file)
     run_id = args.run_id or f"{settings.catalog}_{settings.database}_{settings.schema}_learning"
     object_store = None if args.no_upload else object_store_from_settings(settings)
-    pipeline = LearningPipeline(generator=V1ChatAdapter(chat_model_client_from_settings(settings)))
+    pipeline = LearningPipeline(
+        generator=chat_completion_client_from_settings(
+            settings,
+            profile_id=args.learning_model_profile or settings.context_compiler_model_profile,
+        )
+    )
     nl_sql_pair_paths = _path_list(
         explicit=args.nl_sql_pairs,
         env_value=os.environ.get("DIRACDATA_V2_NL_SQL_PAIR_PATHS", ""),

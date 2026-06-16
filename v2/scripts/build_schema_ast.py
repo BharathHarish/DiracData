@@ -12,11 +12,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 V2_ROOT = ROOT / "v2"
 sys.path.insert(0, str(V2_ROOT / "src"))
-sys.path.insert(0, str(ROOT / "v1" / "src"))
 
-from diracdata.config.settings import settings_from_env  # noqa: E402
-from diracdata.storage.factory import object_store_from_settings  # noqa: E402
 from diracdata_v2.learning.schema_ast import SchemaASTBuilder  # noqa: E402
+from diracdata_v2.settings import settings_from_env  # noqa: E402
+from diracdata_v2.storage import object_store_from_settings  # noqa: E402
 
 
 def main() -> int:

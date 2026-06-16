@@ -93,12 +93,7 @@ class SemanticCatalogCompiler:
             intent_frame=frame,
             catalog_cards=list(cards_by_id.values()),
         )
-        unresolved = _dedupe_unresolved(
-            [
-                *unresolved,
-                *_scope_ambiguities(question),
-            ]
-        )
+        unresolved = _dedupe_unresolved(unresolved)
         resolved = _resolved_terms(question=question, intent_frame=frame, selected_cards=selected_cards)
         assertions = _assertions(pattern_cards=pattern_cards, cards=non_pattern_cards, join_edges=join_edges)
         return CompiledContext(
@@ -409,119 +404,6 @@ def _unresolved_terms(*, intent_frame: QueryIntentFrame, catalog_cards: list[dic
                 }
             )
     return unresolved
-
-
-_ACTION_VARIANTS = {
-    "buy": {"buy", "buys", "bought", "purchase", "purchases", "purchased", "order", "orders", "ordered"},
-    "pay": {"pay", "pays", "paid", "payment", "payments", "transact", "transacts", "transacted", "transaction", "transactions"},
-    "visit": {"visit", "visits", "visited", "use", "uses", "used", "engage", "engages", "engaged"},
-    "return": {"return", "returns", "returned", "refund", "refunds", "refunded"},
-}
-_ACTION_CANONICAL = {
-    variant: canonical
-    for canonical, variants in _ACTION_VARIANTS.items()
-    for variant in variants
-}
-_NEGATION_MARKERS = ("did not", "didn't", "never", "not")
-_CLAUSE_BOUNDARY = re.compile(
-    r"\b(?:and|then|slice|group|split|show|give|rank|order|where|with)\b",
-    flags=re.IGNORECASE,
-)
-_SCOPE_STOPWORDS = {
-    "all",
-    "any",
-    "but",
-    "calendar",
-    "count",
-    "customer",
-    "customers",
-    "did",
-    "distinct",
-    "entity",
-    "entities",
-    "from",
-    "how",
-    "in",
-    "many",
-    "number",
-    "on",
-    "that",
-    "the",
-    "them",
-    "they",
-    "who",
-    "with",
-}
-
-
-def _scope_ambiguities(question: str) -> list[dict[str, Any]]:
-    text = " ".join(question.split())
-    lowered = text.lower()
-    output: list[dict[str, Any]] = []
-    for marker in _NEGATION_MARKERS:
-        marker_match = re.search(rf"\b{re.escape(marker)}\b", lowered)
-        if not marker_match:
-            continue
-        if marker == "not" and re.search(r"\bdid\s+$", lowered[: marker_match.start()]):
-            continue
-        before = text[: marker_match.start()]
-        after = text[marker_match.end() :]
-        negative_clause = _CLAUSE_BOUNDARY.split(after, maxsplit=1)[0]
-        negative_action = _first_action(negative_clause)
-        if not negative_action:
-            continue
-        positive_action = _last_matching_action(before, negative_action)
-        if not positive_action:
-            continue
-        positive_terms = _scope_terms(before, action=positive_action)
-        negative_terms = _scope_terms(negative_clause, action=negative_action)
-        missing_scope = sorted(positive_terms - negative_terms)
-        if not missing_scope:
-            continue
-        output.append(
-            {
-                "term": f"{marker} {negative_action}",
-                "reason": (
-                    "Requires clarification: the exclusion clause repeats a broad action but omits "
-                    f"scope terms from the inclusion clause ({', '.join(missing_scope[:5])}). "
-                    "Should the exclusion use the same scope as the positive clause, or a broader action scope?"
-                ),
-                "choices": [
-                    f"Use the same scope as the positive clause ({', '.join(missing_scope[:5])}).",
-                    "Use a broader action scope across all relevant sources or categories.",
-                ],
-            }
-        )
-    return output[:2]
-
-
-def _first_action(text: str) -> str | None:
-    for token in tokenize(text):
-        canonical = _ACTION_CANONICAL.get(token)
-        if canonical:
-            return canonical
-    return None
-
-
-def _last_matching_action(text: str, action: str) -> str | None:
-    found = None
-    for token in tokenize(text):
-        canonical = _ACTION_CANONICAL.get(token)
-        if canonical == action:
-            found = canonical
-    return found
-
-
-def _scope_terms(text: str, *, action: str) -> set[str]:
-    action_variants = _ACTION_VARIANTS.get(action, {action})
-    terms = set()
-    for token in tokenize(text):
-        if token in _SCOPE_STOPWORDS or token in action_variants:
-            continue
-        if token.isdigit():
-            continue
-        terms.add(token)
-    return terms
 
 
 def _dedupe_unresolved(items: list[dict[str, Any]]) -> list[dict[str, Any]]:

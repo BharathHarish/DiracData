@@ -130,7 +130,11 @@ def create_primitive_data_agent(
     """Create the primitive outer ReAct agent and specialist subagents."""
     resolved_model = model or agent_chat_model_from_settings(settings)
     schema_info = SchemaInfoService.from_file(settings.metadata_descriptions_path)
-    pattern_search = SQLPatternSearchService.from_file(settings.sql_library_path)
+    pattern_search = SQLPatternSearchService.from_file(
+        settings.sql_library_path,
+        embedding_model=settings.embedding_model,
+        local_files_only=settings.embedding_local_files_only,
+    )
     candidate_search = CandidateSearchService.from_files(
         schema_ast_path=settings.schema_ast_path,
         metadata_descriptions_path=settings.metadata_descriptions_path,

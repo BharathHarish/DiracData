@@ -132,10 +132,14 @@ python -m pip install --upgrade pip
 python -m pip install -e v2
 ```
 
-The checked-in `v2/pyproject.toml` is intentionally minimal while the prototype
-is moving quickly. For live model runs, install the provider integrations you
-use, for example LangChain chat integrations and the relevant Anthropic,
-OpenAI, or AWS/Bedrock packages.
+For live model runs, install the provider extras you use:
+
+```bash
+python -m pip install -e "v2[anthropic]"
+python -m pip install -e "v2[openai]"
+python -m pip install -e "v2[bedrock]"
+python -m pip install -e "v2[retrieval]"
+```
 
 ### 3. Run The Focused Test Suite
 
@@ -275,4 +279,3 @@ This repo is evolving quickly. Good contributions are:
 ## License
 
 License is not defined yet.
-

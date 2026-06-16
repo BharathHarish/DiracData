@@ -11,6 +11,8 @@ from pathlib import Path
 from typing import Any
 
 
+DEFAULT_EMBEDDING_MODEL = "BAAI/bge-small-en-v1.5"
+
 STOPWORDS = {
     "a",
     "an",
@@ -51,7 +53,7 @@ def hybrid_search(
     search_terms: list[str] | None = None,
     top_k: int = 20,
     vector_rows: list[dict[str, Any]] | None = None,
-    embedding_model: str = "BAAI/bge-small-en-v1.5",
+    embedding_model: str = DEFAULT_EMBEDDING_MODEL,
     local_files_only: bool = True,
     rrf_k: int = 60,
 ) -> dict[str, Any]:

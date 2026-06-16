@@ -1,4 +1,6 @@
 import os
+from pathlib import Path
+from tempfile import TemporaryDirectory
 import unittest
 from unittest.mock import patch
 
@@ -11,6 +13,7 @@ from diracdata_v2.agent import (
     load_todo_planning_tool_description,
 )
 from diracdata_v2.settings import settings_from_env
+from diracdata_v2.storage import LocalObjectStore, object_store_from_settings
 
 
 class DataAgentV2Tests(unittest.TestCase):
@@ -76,6 +79,26 @@ class DataAgentV2Tests(unittest.TestCase):
 
         with patch.dict(os.environ, {"DIRACDATA_PRIMITIVE_WORKFLOW_MODE": "supervisor"}, clear=True):
             self.assertEqual(settings_from_env(env_file=None).primitive_workflow_mode, "supervisor")
+
+    def test_object_store_defaults_to_local_and_uses_v2_settings(self) -> None:
+        with TemporaryDirectory() as tmp:
+            with patch.dict(
+                os.environ,
+                {
+                    "DIRACDATA_OBJECT_STORE": "local",
+                    "DIRACDATA_LOCAL_ARTIFACT_ROOT": tmp,
+                },
+                clear=True,
+            ):
+                settings = settings_from_env(env_file=None)
+                store = object_store_from_settings(settings)
+
+            self.assertIsInstance(store, LocalObjectStore)
+            store.write_json("runs/example.json", {"ok": True})
+            self.assertEqual(
+                Path(tmp, "runs", "example.json").read_text(encoding="utf-8").strip(),
+                '{\n  "ok": true\n}',
+            )
 
 
 if __name__ == "__main__":

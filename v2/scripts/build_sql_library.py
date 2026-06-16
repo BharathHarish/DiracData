@@ -7,32 +7,17 @@ import argparse
 import json
 import os
 import sys
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 
 ROOT = Path(__file__).resolve().parents[2]
 V2_ROOT = ROOT / "v2"
 sys.path.insert(0, str(V2_ROOT / "src"))
-sys.path.insert(0, str(ROOT / "v1" / "src"))
 
-from diracdata.config.settings import settings_from_env  # noqa: E402
-from diracdata.llms.chat_models import chat_model_client_from_settings  # noqa: E402
-from diracdata.storage.factory import object_store_from_settings  # noqa: E402
 from diracdata_v2.learning.sql_library import SQLLibraryBuilder  # noqa: E402
-
-
-@dataclass
-class V1ChatAdapter:
-    client: Any
-
-    def complete(self, messages: list[dict[str, str]]) -> str:
-        from diracdata.llms.chat_models import ChatModelMessage
-
-        return self.client.complete(
-            [ChatModelMessage(role=item["role"], content=item["content"]) for item in messages]
-        )
+from diracdata_v2.llms.model_factory import chat_completion_client_from_settings  # noqa: E402
+from diracdata_v2.settings import settings_from_env  # noqa: E402
+from diracdata_v2.storage import object_store_from_settings  # noqa: E402
 
 
 def main() -> int:
@@ -44,6 +29,7 @@ def main() -> int:
     parser.add_argument("--run-id", default=None)
     parser.add_argument("--history-limit", type=int, default=80)
     parser.add_argument("--pattern-mode", choices=["llm", "heuristic", "off"], default="heuristic")
+    parser.add_argument("--pattern-model-profile", default=None)
     parser.add_argument("--pattern-batch-size", type=int, default=20)
     parser.add_argument("--pattern-limit", type=int, default=80)
     parser.add_argument(
@@ -71,7 +57,10 @@ def main() -> int:
     object_store = None if args.no_upload else object_store_from_settings(settings)
     schema_graph = json.loads(Path(args.schema_graph).read_text(encoding="utf-8"))
     pattern_generator = (
-        V1ChatAdapter(chat_model_client_from_settings(settings))
+        chat_completion_client_from_settings(
+            settings,
+            profile_id=args.pattern_model_profile or settings.context_compiler_model_profile,
+        )
         if args.pattern_mode == "llm"
         else None
     )

@@ -9,7 +9,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from diracdata_v2.tools.hybrid import RetrievalDocument, hybrid_search
+from diracdata_v2.tools.hybrid import DEFAULT_EMBEDDING_MODEL, RetrievalDocument, hybrid_search
 
 
 class PatternSearchInput(BaseModel):
@@ -24,13 +24,23 @@ class PatternSearchInput(BaseModel):
 @dataclass
 class SQLPatternSearchService:
     sql_library: dict[str, Any]
-    embedding_model: str = "BAAI/bge-small-en-v1.5"
+    embedding_model: str = DEFAULT_EMBEDDING_MODEL
     local_files_only: bool = True
     enable_vector: bool = False
 
     @classmethod
-    def from_file(cls, path: Path) -> "SQLPatternSearchService":
-        return cls(sql_library=json.loads(path.read_text(encoding="utf-8")) if path.exists() else {})
+    def from_file(
+        cls,
+        path: Path,
+        *,
+        embedding_model: str = DEFAULT_EMBEDDING_MODEL,
+        local_files_only: bool = True,
+    ) -> "SQLPatternSearchService":
+        return cls(
+            sql_library=json.loads(path.read_text(encoding="utf-8")) if path.exists() else {},
+            embedding_model=embedding_model,
+            local_files_only=local_files_only,
+        )
 
     def search(
         self,

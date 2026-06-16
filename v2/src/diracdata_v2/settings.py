@@ -49,6 +49,12 @@ class V2Settings:
     nl_sql_pair_review_status: str = "approved"
     embedding_model: str = "BAAI/bge-small-en-v1.5"
     embedding_local_files_only: bool = True
+    object_store: str = "local"
+    artifact_bucket: str = "diracdata"
+    s3_endpoint_url: str | None = None
+    aws_access_key_id: str | None = None
+    aws_secret_access_key: str | None = None
+    local_artifact_root: Path = Path(".diracdata/artifacts")
 
 
 def settings_from_env(env_file: str | Path | None = ".env") -> V2Settings:
@@ -120,6 +126,12 @@ def settings_from_env(env_file: str | Path | None = ".env") -> V2Settings:
         nl_sql_pair_review_status=os.environ.get("DIRACDATA_V2_NL_SQL_PAIR_REVIEW_STATUS", "approved"),
         embedding_model=os.environ.get("DIRACDATA_V2_EMBEDDING_MODEL", "BAAI/bge-small-en-v1.5"),
         embedding_local_files_only=_bool_env("DIRACDATA_V2_EMBEDDING_LOCAL_FILES_ONLY", True),
+        object_store=os.environ.get("DIRACDATA_OBJECT_STORE", "local"),
+        artifact_bucket=os.environ.get("DIRACDATA_ARTIFACT_BUCKET", "diracdata"),
+        s3_endpoint_url=os.environ.get("DIRACDATA_S3_ENDPOINT_URL") or None,
+        aws_access_key_id=os.environ.get("DIRACDATA_AWS_ACCESS_KEY_ID") or None,
+        aws_secret_access_key=os.environ.get("DIRACDATA_AWS_SECRET_ACCESS_KEY") or None,
+        local_artifact_root=Path(os.environ.get("DIRACDATA_LOCAL_ARTIFACT_ROOT", ".diracdata/artifacts")),
     )
 
 

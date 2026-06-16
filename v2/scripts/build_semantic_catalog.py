@@ -12,10 +12,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 V2_ROOT = ROOT / "v2"
 sys.path.insert(0, str(V2_ROOT / "src"))
-sys.path.insert(0, str(ROOT / "v1" / "src"))
 
 from diracdata_v2.semantic_catalog import SemanticCatalogBuilder  # noqa: E402
 from diracdata_v2.settings import settings_from_env  # noqa: E402
+from diracdata_v2.storage import object_store_from_settings  # noqa: E402
 
 
 def main() -> int:
@@ -34,10 +34,7 @@ def main() -> int:
     run_id = args.run_id or f"{settings.catalog}_{settings.database}_{settings.schema}_semantic_catalog"
     object_store = None
     if args.upload:
-        from diracdata.config.settings import settings_from_env as v1_settings_from_env
-        from diracdata.storage.factory import object_store_from_settings
-
-        object_store = object_store_from_settings(v1_settings_from_env(args.env_file))
+        object_store = object_store_from_settings(settings)
 
     metadata = json.loads(Path(args.metadata_descriptions).read_text(encoding="utf-8"))
     schema_ast = json.loads(Path(args.schema_ast).read_text(encoding="utf-8")) if args.schema_ast else None

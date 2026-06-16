@@ -340,7 +340,40 @@ class SemanticCatalogTests(unittest.TestCase):
         self.assertEqual(payload["unresolved_terms"], [])
         self.assertEqual(payload["retrieval"]["intent_frame"]["definition_required_terms"], [])
 
-    def test_compiler_flags_broader_negative_action_scope(self):
+    def test_compiler_uses_intent_frame_for_negative_scope_clarification(self):
+        document = build_semantic_catalog_document(
+            metadata_descriptions=_metadata(),
+            schema_ast=_schema_ast(),
+            sql_library=_sql_library(),
+            catalog="commerce_pod",
+            database="analytics",
+            schema="commerce",
+            run_id="catalog_run",
+        )
+
+        packet = SemanticCatalogCompiler(document).compile(
+            "count customers who bought jewelry online in 2002 but did not buy in 2001",
+            intent_frame=QueryIntentFrame(
+                search_queries=("customers bought jewelry online 2002 did not buy 2001",),
+                definition_required_terms=(
+                    {
+                        "term": "did not buy",
+                        "reason": (
+                            "The exclusion clause omits SQL-affecting scope from the positive clause; "
+                            "confirm whether the negative action uses the same scope or a broader scope."
+                        ),
+                    },
+                ),
+                source="test",
+            ),
+        )
+        payload = packet.to_dict()
+
+        self.assertTrue(payload["needs_clarification"])
+        self.assertIn("did not buy", payload["unresolved_terms"][0]["term"])
+        self.assertIn("same scope", payload["unresolved_terms"][0]["reason"])
+
+    def test_deterministic_compiler_does_not_create_semantic_clarifications(self):
         document = build_semantic_catalog_document(
             metadata_descriptions=_metadata(),
             schema_ast=_schema_ast(),
@@ -353,31 +386,6 @@ class SemanticCatalogTests(unittest.TestCase):
 
         packet = SemanticCatalogCompiler(document).compile(
             "count customers who bought jewelry online in 2002 but did not buy in 2001"
-        )
-        payload = packet.to_dict()
-
-        self.assertTrue(payload["needs_clarification"])
-        self.assertIn("did not buy", payload["unresolved_terms"][0]["term"])
-        self.assertIn("jewelry", payload["unresolved_terms"][0]["reason"])
-        self.assertIn("online", payload["unresolved_terms"][0]["reason"])
-        self.assertEqual(
-            payload["unresolved_terms"][0]["choices"][0],
-            "Use the same scope as the positive clause (jewelry, online).",
-        )
-
-    def test_compiler_allows_negative_action_with_matching_scope(self):
-        document = build_semantic_catalog_document(
-            metadata_descriptions=_metadata(),
-            schema_ast=_schema_ast(),
-            sql_library=_sql_library(),
-            catalog="commerce_pod",
-            database="analytics",
-            schema="commerce",
-            run_id="catalog_run",
-        )
-
-        packet = SemanticCatalogCompiler(document).compile(
-            "count customers who bought jewelry online in 2002 but did not buy jewelry online in 2001"
         )
         payload = packet.to_dict()
 

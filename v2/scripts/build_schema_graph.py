@@ -6,32 +6,17 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 
 ROOT = Path(__file__).resolve().parents[2]
 V2_ROOT = ROOT / "v2"
 sys.path.insert(0, str(V2_ROOT / "src"))
-sys.path.insert(0, str(ROOT / "v1" / "src"))
 
-from diracdata.config.settings import settings_from_env  # noqa: E402
-from diracdata.llms.chat_models import chat_model_client_from_settings  # noqa: E402
-from diracdata.storage.factory import object_store_from_settings  # noqa: E402
 from diracdata_v2.learning.schema_graph import SchemaGraphBuilder, load_prompt  # noqa: E402
-
-
-@dataclass
-class V1ChatAdapter:
-    client: Any
-
-    def complete(self, messages: list[dict[str, str]]) -> str:
-        from diracdata.llms.chat_models import ChatModelMessage
-
-        return self.client.complete(
-            [ChatModelMessage(role=item["role"], content=item["content"]) for item in messages]
-        )
+from diracdata_v2.llms.model_factory import chat_completion_client_from_settings  # noqa: E402
+from diracdata_v2.settings import settings_from_env  # noqa: E402
+from diracdata_v2.storage import object_store_from_settings  # noqa: E402
 
 
 def main() -> int:
@@ -41,6 +26,7 @@ def main() -> int:
         "--metadata-descriptions",
         default=str(V2_ROOT / "context" / "metadata_descriptions.json"),
     )
+    parser.add_argument("--model-profile", default=None)
     parser.add_argument("--run-id", default=None)
     parser.add_argument(
         "--output-dir",
@@ -56,8 +42,11 @@ def main() -> int:
     output_dir = Path(args.output_dir) if args.output_dir else V2_ROOT / "learning" / "artifacts" / run_id
     metadata = json.loads(Path(args.metadata_descriptions).read_text(encoding="utf-8"))
 
-    client = chat_model_client_from_settings(settings)
-    builder = SchemaGraphBuilder(generator=V1ChatAdapter(client), prompt=load_prompt())
+    client = chat_completion_client_from_settings(
+        settings,
+        profile_id=args.model_profile or settings.context_compiler_model_profile,
+    )
+    builder = SchemaGraphBuilder(generator=client, prompt=load_prompt())
     object_store = None if args.no_upload else object_store_from_settings(settings)
     result = builder.build(
         metadata_descriptions=metadata,
@@ -93,4 +82,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
