@@ -57,6 +57,7 @@ class SemanticCatalogBuilder:
         output_dir: Path,
         object_store: Any | None = None,
         object_prefix: str = "v2/learning/artifacts",
+        join_graph: dict[str, Any] | None = None,
     ) -> SemanticCatalogBuildResult:
         document = build_semantic_catalog_document(
             metadata_descriptions=metadata_descriptions,
@@ -66,6 +67,7 @@ class SemanticCatalogBuilder:
             database=database,
             schema=schema,
             run_id=run_id,
+            join_graph=join_graph,
         )
         output_dir.mkdir(parents=True, exist_ok=True)
         local_path = output_dir / "semantic_catalog.json"
@@ -87,6 +89,7 @@ def build_semantic_catalog_document(
     database: str,
     schema: str,
     run_id: str,
+    join_graph: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     table_columns = _table_columns(metadata_descriptions)
     cards = _schema_cards(
@@ -98,6 +101,8 @@ def build_semantic_catalog_document(
     cards.extend(_metric_cards(sql_library))
     cards = _dedupe_cards(cards)
     join_edges = _join_edges(sql_library=sql_library, table_columns=table_columns)
+    if join_graph:
+        join_edges = _merge_join_graph_edges(join_edges, join_graph, table_columns)
     validation = _validate(cards=cards, join_edges=join_edges, table_columns=table_columns)
 
     document = {
@@ -422,6 +427,65 @@ def _valid_column_ref(ref: str, table_columns: dict[str, list[str]]) -> bool:
         return False
     table, column = ref.split(".", 1)
     return column in table_columns.get(table, [])
+
+
+def _merge_join_graph_edges(
+    edges: list[CatalogJoinEdge],
+    join_graph: dict[str, Any],
+    table_columns: dict[str, list[str]],
+) -> list[CatalogJoinEdge]:
+    """Enrich observed catalog edges with mined evidence and add candidate edges."""
+
+    from dataclasses import replace
+
+    def _valid(col: str) -> bool:
+        if not table_columns:
+            return True  # no schema map provided (e.g. tests) -> accept
+        table, _, column = col.partition(".")
+        return column in table_columns.get(table, [])
+
+    merged: dict[frozenset, CatalogJoinEdge] = {
+        frozenset((edge.left_column, edge.right_column)): edge for edge in edges
+    }
+    mined = join_graph.get("join_edges", {})
+    for raw in (mined.values() if isinstance(mined, dict) else mined):
+        left = str(raw.get("left_column") or "")
+        right = str(raw.get("right_column") or "")
+        if not left or not right or not _valid(left) or not _valid(right):
+            continue
+        enrichment = {
+            key: value
+            for key, value in {
+                "evidence_type": raw.get("evidence_type"),
+                "relationship_type": raw.get("relationship_type"),
+                "grain_effect": raw.get("grain_effect"),
+                "confidence": _as_float(raw.get("score")),
+                "default_behavior": raw.get("default_behavior"),
+            }.items()
+            if value is not None
+        }
+        pair = frozenset((left, right))
+        if pair in merged:
+            merged[pair] = replace(merged[pair], **enrichment)
+        else:
+            ordered = tuple(sorted((left, right)))
+            merged[pair] = CatalogJoinEdge(
+                id=str(raw.get("edge_id") or f"join:{ordered[0]}:{ordered[1]}"),
+                left_column=left,
+                right_column=right,
+                sql_condition=str(raw.get("sql_condition") or f"{left} = {right}"),
+                tables=(left.split(".", 1)[0], right.split(".", 1)[0]),
+                observed_count=int(raw.get("observed_count") or 0),
+                **enrichment,
+            )
+    return list(merged.values())
+
+
+def _as_float(value: Any) -> float | None:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
 
 
 def _indexes(*, cards: list[CatalogCard], join_edges: list[CatalogJoinEdge]) -> dict[str, Any]:

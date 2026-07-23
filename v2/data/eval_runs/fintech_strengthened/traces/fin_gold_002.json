@@ -1,0 +1,572 @@
+{
+  "iterations": 5,
+  "output_text": "## Workflow Supervision Complete\n\n---\n\n**FINAL_STATUS:** PASS\n\n**ANSWER:**\n\nThe payment success rate for UPI payments since 2026-01-01 is **78.82%**.\n\n| Rail Type | Payment Success Rate | Total Attempts |\n|-----------|---------------------|----------------|\n| UPI | 0.7882 (78.82%) | 6,695 |\n\n---\n\n**SQL_USED:**\n```sql\nSELECT \n  pa.rail_type, \n  SUM(CASE WHEN p.payment_status = 'SUCCESS' THEN 1 ELSE 0 END)::DOUBLE / COUNT(*) AS psr, \n  COUNT(*) AS attempts \nFROM payments p \nJOIN payment_attributes pa ON p.rail_ref = pa.rail_ref \nWHERE pa.rail_type = 'UPI' \n  AND p.payment_time >= '2026-01-01' \nGROUP BY pa.rail_type\n```\n\n---\n\n**VERIFICATION:**\n- adaptive_route: slot_adapt\n- cognition: used (exact match, score 1.0)\n- context_compiler: skipped\n- steward: passed (6/6 assertions passed)\n- changed_slots: rail_type='UPI', payment_time>='2026-01-01', payment_status='SUCCESS'\n- dry_run: passed\n- execution: passed (1 row returned)\n\n**ASSUMPTIONS:**\n- None. All filter values verified from column_values before SQL construction.",
+  "stop_reason": "final",
+  "trace_events": [
+    {
+      "agent_name": "adaptive_runtime",
+      "created_at": "2026-07-14T06:52:33.527436+00:00",
+      "event_type": "adaptive_start",
+      "payload": {
+        "has_clarification": false,
+        "has_previous_context": false,
+        "question": "What is payment success rate for UPI payments since 2026-01-01?"
+      }
+    },
+    {
+      "agent_name": "adaptive_runtime",
+      "created_at": "2026-07-14T06:52:33.527464+00:00",
+      "event_type": "conversation_frame",
+      "payload": {
+        "changed_slots": {},
+        "confidence": "none",
+        "inherited_context": {},
+        "needs_clarification": false,
+        "notes": [],
+        "original_question": "What is payment success rate for UPI payments since 2026-01-01?",
+        "resolved_question": "What is payment success rate for UPI payments since 2026-01-01?",
+        "source": "identity",
+        "unresolved_followup_terms": [],
+        "user_clarifications": []
+      }
+    },
+    {
+      "agent_name": "adaptive_runtime",
+      "created_at": "2026-07-14T06:52:33.534689+00:00",
+      "event_type": "cognition_plan",
+      "payload": {
+        "context_mode": "none",
+        "match_count": 3,
+        "matches": [
+          {
+            "columns": [
+              "payment_attributes.rail_ref",
+              "payment_attributes.rail_type",
+              "payments.payment_status",
+              "payments.payment_time",
+              "payments.rail_ref"
+            ],
+            "context_score": 0.0,
+            "exact_question_match": true,
+            "final_sql_preview": "",
+            "key": "pattern:nl_sql:fin_gold_002:81537cc3bd",
+            "matched_terms": [
+              "payment",
+              "payments",
+              "rate",
+              "since",
+              "success",
+              "upi",
+              "what"
+            ],
+            "question": "What is payment success rate for UPI payments since 2026-01-01?",
+            "question_score": 1.0,
+            "review_status": "approved",
+            "score": 1.0,
+            "source": "sql_pattern",
+            "source_score": 1.0,
+            "sql_template_preview": "SELECT pa.rail_type, SUM(CASE WHEN p.payment_status = {{string}} THEN {{number}} ELSE {{number}} END)::DOUBLE / COUNT(*) AS psr, COUNT(*) AS attempts FROM payments p JOIN payment_attributes pa ON p.rail_ref = pa.rail_ref WHERE pa.rail_type = {{string}} AND p.payment_time >= {{string}} GROUP BY pa.rail_type",
+            "tables": [
+              "payment_attributes",
+              "payments"
+            ]
+          },
+          {
+            "columns": [
+              "payment_attributes.authentication_mode",
+              "payment_attributes.rail_ref",
+              "payment_attributes.rail_type",
+              "payments.payment_status",
+              "payments.payment_time",
+              "payments.rail_ref"
+            ],
+            "context_score": 0.0,
+            "exact_question_match": false,
+            "final_sql_preview": "",
+            "key": "pattern:nl_sql:fin_gold_019:771faa8f9c",
+            "matched_terms": [
+              "payment",
+              "payments",
+              "rate",
+              "since",
+              "success",
+              "what"
+            ],
+            "question": "Compare payment success rate for OTP/3DS authentication across credit and debit card rails since a specific date.",
+            "question_score": 0.5893,
+            "review_status": "approved",
+            "score": 0.7193,
+            "source": "sql_pattern",
+            "source_score": 0.0159,
+            "sql_template_preview": "SELECT pa.rail_type, SUM(CASE WHEN p.payment_status = {{string}} THEN {{number}} ELSE {{number}} END)::DOUBLE / COUNT(*) AS psr, COUNT(*) AS attempts FROM payments p JOIN payment_attributes pa ON p.rail_ref = pa.rail_ref WHERE pa.authentication_mode = {{string}} AND pa.rail_type IN ({{string}}, {{string}}) AND p.payment_time >= {{string}} GROUP BY pa.rail_type ORDER BY pa.rail_type",
+            "tables": [
+              "payment_attributes",
+              "payments"
+            ]
+          },
+          {
+            "columns": [
+              "payment_attributes.rail_ref",
+              "payment_attributes.rail_type",
+              "payments.payment_status",
+              "payments.payment_time",
+              "payments.rail_ref"
+            ],
+            "context_score": 0.0,
+            "exact_question_match": false,
+            "final_sql_preview": "",
+            "key": "pattern:history:payment_attributes_payments:rail_ref_rail_type:3d4fd81ccb",
+            "matched_terms": [
+              "payment",
+              "payments",
+              "rate",
+              "success",
+              "upi",
+              "what"
+            ],
+            "question": "What is the payment success rate and attempt count for a specific rail type?",
+            "question_score": 0.4881,
+            "review_status": "observed",
+            "score": 0.5881,
+            "source": "sql_pattern",
+            "source_score": 0.0161,
+            "sql_template_preview": "SELECT pa.rail_type, sum(CASE WHEN p.payment_status = {{string}} THEN {{number}} ELSE {{number}} END)::DOUBLE / count(*) AS psr, count(*) AS attempts FROM payments p JOIN payment_attributes pa ON p.rail_ref = pa.rail_ref WHERE pa.rail_type = {{string}} AND p.payment_time >= {{timestamp}} AND p.payment_time < {{timestamp}} GROUP BY pa.rail_type",
+            "tables": [
+              "payment_attributes",
+              "payments"
+            ]
+          }
+        ],
+        "model_candidates": [
+          "bedrock_zai_glm_5_ap_south_1"
+        ],
+        "model_profile": "bedrock_zai_glm_5_ap_south_1",
+        "model_selection_policy": "default_profile",
+        "model_selection_reason": "Selected default model profile.",
+        "reason": "Reviewed cognition matched closely enough for slot adaptation without full context compilation.",
+        "route": "slot_adapt",
+        "suppressed_match_count": 0,
+        "suppressed_matches": []
+      }
+    },
+    {
+      "agent_name": "adaptive_runtime",
+      "created_at": "2026-07-14T06:52:33.534709+00:00",
+      "event_type": "metric_definitions_selected",
+      "payload": {
+        "count": 0,
+        "metrics": []
+      }
+    },
+    {
+      "agent_name": "adaptive_runtime",
+      "created_at": "2026-07-14T06:52:33.534714+00:00",
+      "event_type": "adaptive_model_selected",
+      "payload": {
+        "candidate_profiles": [
+          "bedrock_zai_glm_5_ap_south_1"
+        ],
+        "model_profile": "bedrock_zai_glm_5_ap_south_1",
+        "policy": "default_profile",
+        "reason": "Selected default model profile.",
+        "route": "slot_adapt"
+      }
+    },
+    {
+      "agent_name": "adaptive_runtime",
+      "created_at": "2026-07-14T06:52:33.644179+00:00",
+      "event_type": "adaptive_tool_bundle",
+      "payload": {
+        "reason": "Slot adaptation receives value grounding, SQL shape, dry-run, Steward review, and execution tools.",
+        "route": "slot_adapt",
+        "tools": [
+          "data_steward_subagent",
+          "column_values",
+          "sql_semantic_profile",
+          "sql_dry_run",
+          "execute_sql"
+        ]
+      }
+    },
+    {
+      "agent_name": "adaptive_runtime",
+      "created_at": "2026-07-14T06:52:33.644273+00:00",
+      "event_type": "context_compilation_skipped",
+      "payload": {
+        "reason": "Cognition route does not require full context.",
+        "route": "slot_adapt"
+      }
+    },
+    {
+      "agent_name": "supervisor_workflow",
+      "created_at": "2026-07-14T06:52:33.644360+00:00",
+      "event_type": "supervisor_start",
+      "payload": {
+        "context_question": "Current user question:\n\nWhat is payment success rate for UPI payments since 2026-01-01?\n\nCognition already found these reusable patterns. Compile only missing delta context, changed slots, unresolved values, joins, or semantic cautions needed for SQL correctness:\n\n[\n  {\n    \"columns\": [\n      \"payment_attributes.rail_ref\",\n      \"payment_attributes.rail_type\",\n      \"payments.payment_status\",\n      \"payments.payment_time\",\n      \"payments.rail_ref\"\n    ],\n    \"question\": \"What is payment success rate for UPI payments since 2026-01-01?\",\n    \"score\": 1.0,\n    \"source\": \"sql_pattern\",\n    \"tables\": [\n      \"payment_attributes\",\n      \"payments\"\n    ]\n  },\n  {\n    \"columns\": [\n      \"payment_attributes.authentication_mode\",\n      \"payment_attributes.rail_ref\",\n      \"payment_attributes.rail_type\",\n      \"payments.payment_status\",\n      \"payments.payment_time\",\n      \"payments.rail_ref\"\n    ],\n    \"question\": \"Compare payment success rate for OTP/3DS authentication across credit and debit card rails since a specific date.\",\n    \"score\": 0.7193,\n    \"source\": \"sql_pattern\",\n    \"tables\": [\n      \"payment_attributes\",\n      \"payments\"\n    ]\n  },\n  {\n    \"columns\": [\n      \"payment_attributes.rail_ref\",\n      \"payment_attributes.rail_type\",\n      \"payments.payment_status\",\n      \"payments.payment_time\",\n      \"payments.rail_ref\"\n    ],\n    \"question\": \"What is the payment success rate and attempt count for a specific rail type?\",\n    \"score\": 0.5881,\n    \"source\": \"sql_pattern\",\n    \"tables\": [\n      \"payment_attributes\",\n      \"payments\"\n    ]\n  }\n]",
+        "has_clarification": false,
+        "has_previous_context": true,
+        "question": "What is payment success rate for UPI payments since 2026-01-01?"
+      }
+    },
+    {
+      "agent_name": "adaptive_primitive_supervisor_agent",
+      "created_at": "2026-07-14T06:52:33.644374+00:00",
+      "event_type": "agent_start",
+      "payload": {
+        "has_context": false,
+        "task": "Supervise this analytics workflow end to end.\n\nUSER_QUESTION:\nWhat is payment success rate for UPI payments since 2026-01-01?\n\nCONTEXT_COMPILER_QUERY:\nCurrent user question:\n\nWhat is payment success rate for UPI payments since 2026-01-01?\n\nCognition already found these reusable patterns. Compile only missing delta context, changed slots, unresolved values, joins, or semantic cautions needed for SQL correctness:\n\n[\n  {\n    \"columns\": [\n      \"payment_attributes.rail_ref\",\n      \"payment_attributes.rail_type\",\n      \"payments.payment_status\",\n      \"payments.payment_time\",\n      \"payments.rail_ref\"\n    ],\n    \"question\": \"What is payment success rate for UPI payments since 2026-01-01?\",\n    \"score\": 1.0,\n    \"source\": \"sql_pattern\",\n    \"tables\": [\n      \"payment_attributes\",\n      \"payments\"\n    ]\n  },\n  {\n    \"columns\": [\n      \"payment_attributes.authentication_mode\",\n      \"payment_attributes.rail_ref\",\n      \"payment_attributes.rail_type\",\n      \"payments.payment_status\",\n      \"payments.payment_time\",\n      \"payments.rail_ref\"\n    ],\n    \"question\": \"Compare payment success rate for OTP/3DS authentication across credit and debit card rails since a specific date.\",\n    \"score\": 0.7193,\n    \"source\": \"sql_pattern\",\n    \"tables\": [\n      \"payment_attributes\",\n      \"payments\"\n    ]\n  },\n  {\n    \"columns\": [\n      \"payment_attributes.rail_ref\",\n      \"payment_attributes.rail_type\",\n      \"payments.payment_status\",\n      \"payments.payment_time\",\n      \"payments.rail_ref\"\n    ],\n    \"question\": \"What is the payment success rate and attempt count for a specific rail type?\",\n    \"score\": 0.5881,\n    \"source\": \"sql_pattern\",\n    \"tables\": [\n      \"payment_attributes\",\n      \"payments\"\n    ]\n  }\n]\n\nPREVIOUS_SUPERVISOR_CONTEXT:\nCOGNITION_PLAN:\n{\n  \"cognition_matches\": [\n    {\n      \"columns\": [\n        \"payment_attributes.rail_ref\",\n        \"payment_attributes.rail_type\",\n        \"payments.payment_status\",\n        \"payments.payment_time\",\n        \"payments.rail_ref\"\n      ],\n      \"context_score\": 0.0,\n      \"evidence\": {\n        \"final_sql_is_truncated\": false,\n        \"intent_signature\": {\n          \"dimensions\": [\n            \"payment_attributes.rail_type\"\n          ],\n          \"filters\": [\n            \"payment_attributes.rail_type\",\n            \"payments.payment_time\"\n          ],\n          \"grain\": \"rail_type\",\n          \"measure\": \"payment_success_rate\",\n          \"time_window\": \"rolling\"\n        },\n        \"source_entry_ids\": [\n          \"nl_sql:fin_gold_002:81537cc3bd\"\n        ],\n        \"template_is_truncated\": false\n      },\n      \"exact_question_match\": true,\n      \"final_sql\": \"\",\n      \"key\": \"pattern:nl_sql:fin_gold_002:81537cc3bd\",\n      \"matched_terms\": [\n        \"payment\",\n        \"payments\",\n        \"rate\",\n        \"since\",\n        \"success\",\n        \"upi\",\n        \"what\"\n      ],\n      \"question\": \"What is payment success rate for UPI payments since 2026-01-01?\",\n      \"question_score\": 1.0,\n      \"review_status\": \"approved\",\n      \"score\": 1.0,\n      \"source\": \"sql_pattern\",\n      \"source_score\": 1.0,\n      \"sql_template\": \"SELECT pa.rail_type, SUM(CASE WHEN p.payment_status = {{string}} THEN {{number}} ELSE {{number}} END)::DOUBLE / COUNT(*) AS psr, COUNT(*) AS attempts FROM payments p JOIN payment_attributes pa ON p.rail_ref = pa.rail_ref WHERE pa.rail_type = {{string}} AND p.payment_time >= {{string}} GROUP BY pa.rail_type\",\n      \"tables\": [\n        \"payment_attributes\",\n        \"payments\"\n      ]\n    },\n    {\n      \"columns\": [\n        \"payment_attributes.authentication_mode\",\n        \"payment_attributes.rail_ref\",\n        \"payment_attributes.rail_type\",\n        \"payments.payment_status\",\n        \"payments.payment_time\",\n        \"payments.rail_ref\"\n      ],\n      \"context_score\": 0.0,\n      \"evidence\": {\n        \"final_sql_is_truncated\": false,\n        \"intent_signature\": {\n          \"dimensions\": [\n            \"rail_type\"\n          ],\n          \"filters\": [\n            \"authentication_mode = 'OTP/3DS'\",\n            \"rail_type IN ('credit card', 'debit card')\"\n          ],\n          \"grain\": \"rail_type\",\n          \"measure\": \"PSR (Payment Success Rate), COUNT(attempts)\",\n          \"time_window\": \"payment_time >= {{string}}\"\n        },\n        \"source_entry_ids\": [\n          \"nl_sql:fin_gold_019:771faa8f9c\"\n        ],\n        \"template_is_truncated\": false\n      },\n      \"exact_question_match\": false,\n      \"final_sql\": \"\",\n      \"key\": \"pattern:nl_sql:fin_gold_019:771faa8f9c\",\n      \"matched_terms\": [\n        \"payment\",\n        \"payments\",\n        \"rate\",\n        \"since\",\n        \"success\",\n        \"what\"\n      ],\n      \"question\": \"Compare payment success rate for OTP/3DS authentication across credit and debit card rails since a specific date.\",\n      \"question_score\": 0.5893,\n      \"review_status\": \"approved\",\n      \"score\": 0.7193,\n      \"source\": \"sql_pattern\",\n      \"source_score\": 0.0159,\n      \"sql_template\": \"SELECT pa.rail_type, SUM(CASE WHEN p.payment_status = {{string}} THEN {{number}} ELSE {{number}} END)::DOUBLE / COUNT(*) AS psr, COUNT(*) AS attempts FROM payments p JOIN payment_attributes pa ON p.rail_ref = pa.rail_ref WHERE pa.authentication_mode = {{string}} AND pa.rail_type IN ({{string}}, {{string}}) AND p.payment_time >= {{string}} GROUP BY pa.rail_type ORDER BY pa.rail_type\",\n      \"tables\": [\n        \"payment_attributes\",\n        \"payments\"\n      ]\n    },\n    {\n      \"columns\": [\n        \"payment_attributes.rail_ref\",\n        \"payment_attributes.rail_type\",\n        \"payments.payment_status\",\n        \"payments.payment_time\",\n        \"payments.rail_ref\"\n      ],\n      \"context_score\": 0.0,\n      \"evidence\": {\n        \"final_sql_is_truncated\": false,\n        \"intent_signature\": {\n          \"dimensions\": [\n            \"rail_type\"\n          ],\n          \"filters\": [\n            \"rail_type = {{string}}\",\n            \"payment_time range\"\n          ],\n          \"grain\": \"rail_type\",\n          \"measure\": \"psr, attempts\",\n          \"time_window\": \"{{timestamp}} to {{timestamp}}\"\n        },\n        \"source_entry_ids\": [\n          \"history:payment_attributes_payments:rail_ref_rail_type:3d4fd81ccb\"\n        ],\n        \"template_is_truncated\": false\n      },\n      \"exact_question_match\": false,\n      \"final_sql\": \"\",\n      \"key\": \"pattern:history:payment_attributes_payments:rail_ref_rail_type:3d4fd81ccb\",\n      \"matched_terms\": [\n        \"payment\",\n        \"payments\",\n        \"rate\",\n        \"success\",\n        \"upi\",\n        \"what\"\n      ],\n      \"question\": \"What is the payment success rate and attempt count for a specific rail type?\",\n      \"question_score\": 0.4881,\n      \"review_status\": \"observed\",\n      \"score\": 0.5881,\n      \"source\": \"sql_pattern\",\n      \"source_score\": 0.0161,\n      \"sql_template\": \"SELECT pa.rail_type, sum(CASE WHEN p.payment_status = {{string}} THEN {{number}} ELSE {{number}} END)::DOUBLE / count(*) AS psr, count(*) AS attempts FROM payments p JOIN payment_attributes pa ON p.rail_ref = pa.rail_ref WHERE pa.rail_type = {{string}} AND p.payment_time >= {{timestamp}} AND p.payment_time < {{timestamp}} GROUP BY pa.rail_type\",\n      \"tables\": [\n        \"payment_attributes\",\n        \"payments\"\n      ]\n    }\n  ],\n  \"context_mode\": \"none\",\n  \"guidance\": \"Use cognition as the primary reasoning path and adapt only grounded changed slots.\",\n  \"model_candidates\": [\n    \"bedrock_zai_glm_5_ap_south_1\"\n  ],\n  \"model_profile\": \"bedrock_zai_glm_5_ap_south_1\",\n  \"model_selection_policy\": \"default_profile\",\n  \"model_selection_reason\": \"Selected default model profile.\",\n  \"reason\": \"Reviewed cognition matched closely enough for slot adaptation without full context compilation.\",\n  \"route\": \"slot_adapt\"\n}",
+        "tools": [
+          "column_values",
+          "data_steward_subagent",
+          "execute_sql",
+          "sql_dry_run",
+          "sql_semantic_profile"
+        ]
+      }
+    },
+    {
+      "agent_name": "adaptive_primitive_supervisor_agent",
+      "created_at": "2026-07-14T06:52:33.644381+00:00",
+      "event_type": "middleware_context_checked",
+      "payload": {
+        "has_context": false,
+        "injected_count": 0,
+        "middleware": "_AdaptiveSubagentContextCarryMiddleware",
+        "subagent_context_carry": true
+      }
+    },
+    {
+      "agent_name": "adaptive_primitive_supervisor_agent",
+      "created_at": "2026-07-14T06:52:33.648143+00:00",
+      "event_type": "model_start",
+      "payload": {
+        "iteration": 1
+      }
+    },
+    {
+      "agent_name": "adaptive_primitive_supervisor_agent",
+      "created_at": "2026-07-14T06:52:35.997351+00:00",
+      "event_type": "model_message",
+      "payload": {
+        "iteration": 1,
+        "text_preview": "I'll supervise this analytics workflow end-to-end, adapting the matched cognition pattern for the current question.\n\n## Analysis\n\n**Matched Pattern:** Exact match (score 1.0) for \"What is payment success rate for UPI payments since 2026-01-01?\"\n\n**SQL Template:**\n```sql\nSELECT pa.rail_type, SUM(CASE WHEN p.payment_status = {{string}} THEN {{number}} ELSE {{number}} END)::DOUBLE / COUNT(*) AS psr, COUNT(*) AS attempts \nFROM payments p \nJOIN payment_attributes pa ON p.rail_ref = pa.rail_ref \nWHERE pa.rail_type = {{string}} AND p.payment_time >= {{string}} \nGROUP BY pa.rail_type\n```\n\n**Changed Slots to Adapt:**\n1. `rail_type` filter value: 'UPI'\n2. `payment_time` lower bound: '2026-01-01'\n3. `payment_status` success value: need to verify\n4. Success indicator values: need to verify (THEN/ELSE numbers)\n\nLet me probe the categorical values before constructing the SQL:",
+        "tool_calls": [
+          {
+            "args": {
+              "column_name": "rail_type",
+              "search_text": "UPI",
+              "table_name": "payment_attributes"
+            },
+            "id": "tooluse_2oLD7wRIFspgUf1eWiVFjl",
+            "name": "column_values"
+          },
+          {
+            "args": {
+              "column_name": "payment_status",
+              "table_name": "payments"
+            },
+            "id": "tooluse_Uc398QktpXQtdsRToMxywR",
+            "name": "column_values"
+          }
+        ],
+        "usage": {
+          "input_token_details": {
+            "cache_creation": 0,
+            "cache_read": 0
+          },
+          "input_tokens": 3285,
+          "output_tokens": 273,
+          "total_tokens": 3558
+        }
+      }
+    },
+    {
+      "agent_name": "adaptive_primitive_supervisor_agent",
+      "created_at": "2026-07-14T06:52:35.997391+00:00",
+      "event_type": "tool_call",
+      "payload": {
+        "args": {
+          "column_name": "rail_type",
+          "search_text": "UPI",
+          "table_name": "payment_attributes"
+        },
+        "id": "tooluse_2oLD7wRIFspgUf1eWiVFjl",
+        "name": "column_values"
+      }
+    },
+    {
+      "agent_name": "adaptive_primitive_supervisor_agent",
+      "created_at": "2026-07-14T06:52:36.002981+00:00",
+      "event_type": "tool_result",
+      "payload": {
+        "id": "tooluse_2oLD7wRIFspgUf1eWiVFjl",
+        "name": "column_values",
+        "preview": "{\"status\": \"ok\", \"table_name\": \"payment_attributes\", \"column_name\": \"rail_type\", \"search_text\": \"UPI\", \"values\": [{\"value\": \"UPI\", \"row_count\": 450}], \"value_count\": 1, \"guidance\": \"Use exact `value` strings from this result when writing SQL predicates.\"}",
+        "truncated": false
+      }
+    },
+    {
+      "agent_name": "adaptive_primitive_supervisor_agent",
+      "created_at": "2026-07-14T06:52:36.003073+00:00",
+      "event_type": "tool_call",
+      "payload": {
+        "args": {
+          "column_name": "payment_status",
+          "table_name": "payments"
+        },
+        "id": "tooluse_Uc398QktpXQtdsRToMxywR",
+        "name": "column_values"
+      }
+    },
+    {
+      "agent_name": "adaptive_primitive_supervisor_agent",
+      "created_at": "2026-07-14T06:52:36.007150+00:00",
+      "event_type": "tool_result",
+      "payload": {
+        "id": "tooluse_Uc398QktpXQtdsRToMxywR",
+        "name": "column_values",
+        "preview": "{\"status\": \"ok\", \"table_name\": \"payments\", \"column_name\": \"payment_status\", \"search_text\": null, \"values\": [{\"value\": \"SUCCESS\", \"row_count\": 14138}, {\"value\": \"FAILED\", \"row_count\": 2633}, {\"value\": \"AUTHORIZED\", \"row_count\": 868}, {\"value\": \"REFUNDED\", \"row_count\": 361}], \"value_count\": 4, \"guidance\": \"Use exact `value` strings from this result when writing SQL predicates.\"}",
+        "truncated": false
+      }
+    },
+    {
+      "agent_name": "adaptive_primitive_supervisor_agent",
+      "created_at": "2026-07-14T06:52:36.007203+00:00",
+      "event_type": "model_start",
+      "payload": {
+        "iteration": 2
+      }
+    },
+    {
+      "agent_name": "adaptive_primitive_supervisor_agent",
+      "created_at": "2026-07-14T06:52:37.970331+00:00",
+      "event_type": "model_message",
+      "payload": {
+        "iteration": 2,
+        "text_preview": "Perfect! Values verified:\n- `rail_type = 'UPI'` \u2713\n- `payment_status = 'SUCCESS'` for successful payments \u2713\n\n**Adapted SQL:**\n```sql\nSELECT \n  pa.rail_type, \n  SUM(CASE WHEN p.payment_status = 'SUCCESS' THEN 1 ELSE 0 END)::DOUBLE / COUNT(*) AS psr, \n  COUNT(*) AS attempts \nFROM payments p \nJOIN payment_attributes pa ON p.rail_ref = pa.rail_ref \nWHERE pa.rail_type = 'UPI' \n  AND p.payment_time >= '2026-01-01' \nGROUP BY pa.rail_type\n```\n\nNow running dry-run validation:",
+        "tool_calls": [
+          {
+            "args": {
+              "sql": "SELECT \n  pa.rail_type, \n  SUM(CASE WHEN p.payment_status = 'SUCCESS' THEN 1 ELSE 0 END)::DOUBLE / COUNT(*) AS psr, \n  COUNT(*) AS attempts \nFROM payments p \nJOIN payment_attributes pa ON p.rail_ref = pa.rail_ref \nWHERE pa.rail_type = 'UPI' \n  AND p.payment_time >= '2026-01-01' \nGROUP BY pa.rail_type"
+            },
+            "id": "tooluse_xx3M0N9E2L5imqfj4LoNxc",
+            "name": "sql_dry_run"
+          }
+        ],
+        "usage": {
+          "input_token_details": {
+            "cache_creation": 0,
+            "cache_read": 0
+          },
+          "input_tokens": 3776,
+          "output_tokens": 249,
+          "total_tokens": 4025
+        }
+      }
+    },
+    {
+      "agent_name": "adaptive_primitive_supervisor_agent",
+      "created_at": "2026-07-14T06:52:37.970403+00:00",
+      "event_type": "tool_call",
+      "payload": {
+        "args": {
+          "sql": "SELECT \n  pa.rail_type, \n  SUM(CASE WHEN p.payment_status = 'SUCCESS' THEN 1 ELSE 0 END)::DOUBLE / COUNT(*) AS psr, \n  COUNT(*) AS attempts \nFROM payments p \nJOIN payment_attributes pa ON p.rail_ref = pa.rail_ref \nWHERE pa.rail_type = 'UPI' \n  AND p.payment_time >= '2026-01-01' \nGROUP BY pa.rail_type"
+        },
+        "id": "tooluse_xx3M0N9E2L5imqfj4LoNxc",
+        "name": "sql_dry_run"
+      }
+    },
+    {
+      "agent_name": "adaptive_primitive_supervisor_agent",
+      "created_at": "2026-07-14T06:52:37.980203+00:00",
+      "event_type": "tool_result",
+      "payload": {
+        "id": "tooluse_xx3M0N9E2L5imqfj4LoNxc",
+        "name": "sql_dry_run",
+        "preview": "{\"status\": \"ok\", \"sql\": \"SELECT \\n  pa.rail_type, \\n  SUM(CASE WHEN p.payment_status = 'SUCCESS' THEN 1 ELSE 0 END)::DOUBLE / COUNT(*) AS psr, \\n  COUNT(*) AS attempts \\nFROM payments p \\nJOIN payment_attributes pa ON p.rail_ref = pa.rail_ref \\nWHERE pa.rail_type = 'UPI' \\n  AND p.payment_time >= '2026-01-01' \\nGROUP BY pa.rail_type\", \"explain_sql\": \"EXPLAIN SELECT \\n  pa.rail_type, \\n  SUM(CASE WHEN p.payment_status = 'SUCCESS' THEN 1 ELSE 0 END)::DOUBLE / COUNT(*) AS psr, \\n  COUNT(*) AS attempts \\nFROM payments p \\nJOIN payment_attributes pa ON p.rail_ref = pa.rail_ref \\nWHERE pa.rail_type = 'UPI' \\n  AND p.payment_time >= '2026-01-01' \\nGROUP BY pa.rail_type\", \"columns\": [\"explain_key\", \"explain_value\"], \"rows\": [{\"explain_key\": \"physical_plan\", \"explain_value\": \"\\u250c\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2510\\n\\u2502         PROJECTION        \\u2502\\n\\u2502    \\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500   \\u2502\\n\\u2502         rail_type         \\u2502\\n\\u2502            psr            \\u2502\\n\\u2502          attempts         \\u2502\\n\\u2502                           \\u2502\\n\\u2502         ~705 rows         \\u2502\\n\\u2514\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u252c\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2518\\n\\u250c\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2534\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2510\\n\\u2502       HASH_GROUP_BY       \\u2502\\n\\u2502    \\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500   \\u2502\\n\\u2502         Groups: #0        \\u2502\\n\\u2502                           \\u2502\\n\\u2502        Aggregates:\n...[truncated]",
+        "truncated": false
+      }
+    },
+    {
+      "agent_name": "adaptive_primitive_supervisor_agent",
+      "created_at": "2026-07-14T06:52:37.980310+00:00",
+      "event_type": "model_start",
+      "payload": {
+        "iteration": 3
+      }
+    },
+    {
+      "agent_name": "adaptive_primitive_supervisor_agent",
+      "created_at": "2026-07-14T06:52:42.224870+00:00",
+      "event_type": "model_message",
+      "payload": {
+        "iteration": 3,
+        "text_preview": "Dry-run passed. Now submitting to Data Steward for quality validation:",
+        "tool_calls": [
+          {
+            "args": {
+              "context": "Slot adaptation workflow with exact cognition match. No semantic changes to measure, grain, or joins. Only filter values adapted based on verified column values.",
+              "task": "Validate SQL Author packet for payment success rate query.\n\nUSER_QUESTION: What is payment success rate for UPI payments since 2026-01-01?\n\nMATCHED_COGNITION_PATTERN:\n- Question: \"What is payment success rate for UPI payments since 2026-01-01?\"\n- Score: 1.0 (exact match)\n- Source: sql_pattern\n- Review Status: approved\n- SQL Template: SELECT pa.rail_type, SUM(CASE WHEN p.payment_status = {{string}} THEN {{number}} ELSE {{number}} END)::DOUBLE / COUNT(*) AS psr, COUNT(*) AS attempts FROM payments p JOIN payment_attributes pa ON p.rail_ref = pa.rail_ref WHERE pa.rail_type = {{string}} AND p.payment_time >= {{string}} GROUP BY pa.rail_type\n\nINTENT_SIGNATURE:\n- Measure: payment_success_rate (PSR)\n- Dimensions: rail_type\n- Grain: rail_type\n- Filters: rail_type, payment_time\n- Time Window: rolling (since 2026-01-01)\n\nCHANGED_SLOTS:\n1. rail_type filter: 'UPI' (verified from column_values)\n2. payment_time lower bound: '2026-01-01'\n3. payment_status success value: 'SUCCESS' (verified from column_values)\n4. Success indicator: THEN 1 ELSE 0 (standard binary encoding)\n\nCANDIDATE_SQL:\nSELECT \n  pa.rail_type, \n  SUM(CASE WHEN p.payment_status = 'SUCCESS' THEN 1 ELSE 0 END)::DOUBLE / COUNT(*) AS psr, \n  COUNT(*) AS attempts \nFROM payments p \nJOIN payment_attributes pa ON p.rail_ref = pa.rail_ref \nWHERE pa.rail_type = 'UPI' \n  AND p.payment_time >= '2026-01-01' \nGROUP BY pa.rail_type\n\nDRY_RUN_EVIDENCE:\n- Status: ok\n- Physical plan shows: HASH_JOIN on rail_ref, filters applied correctly\n- Estimated rows: ~705 after aggregation\n- Columns: rail_type, psr, attempts\n\nVERIFICATION_CHECKS:\n\u2713 Measure preserved: PSR calculation (success_count / total_count)\n\u2713 Grain preserved: GROUP BY rail_type\n\u2713 Join preserved: payments JOIN payment_attributes ON rail_ref\n\u2713 Filter slots adapted: rail_type='UPI', payment_time>='2026-01-01'\n\u2713 Output shape preserved: rail_type, psr, attempts\n\u2713 Values verified: 'UPI' exists in rail_type, 'SUCCESS' exists in payment_status"
+            },
+            "id": "tooluse_7AQbOFiBI4N3v2OCRV2lsX",
+            "name": "data_steward_subagent"
+          }
+        ],
+        "usage": {
+          "input_token_details": {
+            "cache_creation": 0,
+            "cache_read": 0
+          },
+          "input_tokens": 7119,
+          "output_tokens": 594,
+          "total_tokens": 7713
+        }
+      }
+    },
+    {
+      "agent_name": "adaptive_primitive_supervisor_agent",
+      "created_at": "2026-07-14T06:52:42.224932+00:00",
+      "event_type": "tool_call",
+      "payload": {
+        "args": {
+          "context": "Slot adaptation workflow with exact cognition match. No semantic changes to measure, grain, or joins. Only filter values adapted based on verified column values.",
+          "task": "Validate SQL Author packet for payment success rate query.\n\nUSER_QUESTION: What is payment success rate for UPI payments since 2026-01-01?\n\nMATCHED_COGNITION_PATTERN:\n- Question: \"What is payment success rate for UPI payments since 2026-01-01?\"\n- Score: 1.0 (exact match)\n- Source: sql_pattern\n- Review Status: approved\n- SQL Template: SELECT pa.rail_type, SUM(CASE WHEN p.payment_status = {{string}} THEN {{number}} ELSE {{number}} END)::DOUBLE / COUNT(*) AS psr, COUNT(*) AS attempts FROM payments p JOIN payment_attributes pa ON p.rail_ref = pa.rail_ref WHERE pa.rail_type = {{string}} AND p.payment_time >= {{string}} GROUP BY pa.rail_type\n\nINTENT_SIGNATURE:\n- Measure: payment_success_rate (PSR)\n- Dimensions: rail_type\n- Grain: rail_type\n- Filters: rail_type, payment_time\n- Time Window: rolling (since 2026-01-01)\n\nCHANGED_SLOTS:\n1. rail_type filter: 'UPI' (verified from column_values)\n2. payment_time lower bound: '2026-01-01'\n3. payment_status success value: 'SUCCESS' (verified from column_values)\n4. Success indicator: THEN 1 ELSE 0 (standard binary encoding)\n\nCANDIDATE_SQL:\nSELECT \n  pa.rail_type, \n  SUM(CASE WHEN p.payment_status = 'SUCCESS' THEN 1 ELSE 0 END)::DOUBLE / COUNT(*) AS psr, \n  COUNT(*) AS attempts \nFROM payments p \nJOIN payment_attributes pa ON p.rail_ref = pa.rail_ref \nWHERE pa.rail_type = 'UPI' \n  AND p.payment_time >= '2026-01-01' \nGROUP BY pa.rail_type\n\nDRY_RUN_EVIDENCE:\n- Status: ok\n- Physical plan shows: HASH_JOIN on rail_ref, filters applied correctly\n- Estimated rows: ~705 after aggregation\n- Columns: rail_type, psr, attempts\n\nVERIFICATION_CHECKS:\n\u2713 Measure preserved: PSR calculation (success_count / total_count)\n\u2713 Grain preserved: GROUP BY rail_type\n\u2713 Join preserved: payments JOIN payment_attributes ON rail_ref\n\u2713 Filter slots adapted: rail_type='UPI', payment_time>='2026-01-01'\n\u2713 Output shape preserved: rail_type, psr, attempts\n\u2713 Values verified: 'UPI' exists in rail_type, 'SUCCESS' exists in payment_status"
+        },
+        "id": "tooluse_7AQbOFiBI4N3v2OCRV2lsX",
+        "name": "data_steward_subagent"
+      }
+    },
+    {
+      "agent_name": "adaptive_primitive_supervisor_agent",
+      "created_at": "2026-07-14T06:52:44.446236+00:00",
+      "event_type": "tool_result",
+      "payload": {
+        "id": "tooluse_7AQbOFiBI4N3v2OCRV2lsX",
+        "name": "data_steward_subagent",
+        "preview": "{\"status\": \"ok\", \"subagent\": \"data_steward_subagent\", \"stop_reason\": \"final\", \"iterations\": 6, \"output\": \"STEWARD_STATUS: PASS\\nISSUES:\\n- none\\nREQUIRED_ANALYST_CORRECTION:\\nnone\\nASSERTIONS_JSON:\\n[\\n  {\\n    \\\"check\\\": \\\"cognition_contract\\\",\\n    \\\"reason\\\": \\\"Candidate SQL preserves the learned contract from the approved cognition pattern. All structural elements match: measure expression (SUM(CASE...)/COUNT(*) for PSR), CASE logic (binary encoding for success), join path (payments JOIN payment_attributes ON rail_ref), GROUP BY grain (rail_type), and output shape (rail_type, psr, attempts). Filter slots are correctly adapted with verified values: rail_type='UPI', payment_time>='2026-01-01', and payment_status='SUCCESS'. No negative/exclusion logic was added or removed. The reference_diff confirms no missing filter slots, no added group by columns, and no structural changes. This is a valid slot_adapt with only explicitly grounded slot changes.\\\",\\n    \\\"repair_instruction\\\": \\\"\\\",\\n    \\\"status\\\": \\\"PASS\\\"\\n  },\\n  {\\n    \\\"check\\\": \\\"entity_grain\\\",\\n    \\\"reason\\\": \\\"The SQL correctly aggregates at the rail_type grain as specified in the intent signature. GROUP BY pa.rail_type matches the requested dimension and grain. The measure (PSR calculation) is computed correctly at this grain using SUM/COUNT aggregation. The rail_type filter is correctly applied in the WHERE clause rather than being incorrectly promoted to a grouping dimension. All structural evidence confirms the grain alignment.\\\",\\n    \\\"repair_instruction\\\": \\\"\\\",\\n    \\\"status\\\": \\\"PASS\\\"\\n  },\\n  {\\n    \\\"check\\\": \\\"clause_coverage\\\",\\n    \\\"reason\\\": \\\"All required intent clauses are represented in the SQL: (1) Measure 'payment_success_rate' is implemented via SUM(CASE...)/COUNT(*) calculation; (2) Dimension 'rail_type' is selected and used in GROUP BY; (3) Filters for 'rail_type=UPI' and 'payment_time>=2026-01-01' are present in WHERE clause; (4) Time window 'since 2026-01-01\n...[truncated]",
+        "truncated": true
+      }
+    },
+    {
+      "agent_name": "adaptive_primitive_supervisor_agent",
+      "created_at": "2026-07-14T06:52:44.446459+00:00",
+      "event_type": "model_start",
+      "payload": {
+        "iteration": 4
+      }
+    },
+    {
+      "agent_name": "adaptive_primitive_supervisor_agent",
+      "created_at": "2026-07-14T06:52:45.997228+00:00",
+      "event_type": "model_message",
+      "payload": {
+        "iteration": 4,
+        "text_preview": "Data Steward validation passed. Now executing the query:",
+        "tool_calls": [
+          {
+            "args": {
+              "sql": "SELECT \n  pa.rail_type, \n  SUM(CASE WHEN p.payment_status = 'SUCCESS' THEN 1 ELSE 0 END)::DOUBLE / COUNT(*) AS psr, \n  COUNT(*) AS attempts \nFROM payments p \nJOIN payment_attributes pa ON p.rail_ref = pa.rail_ref \nWHERE pa.rail_type = 'UPI' \n  AND p.payment_time >= '2026-01-01' \nGROUP BY pa.rail_type"
+            },
+            "id": "tooluse_NwXI8ZElYMaMTi7hOSS6Dw",
+            "name": "execute_sql"
+          }
+        ],
+        "usage": {
+          "input_token_details": {
+            "cache_creation": 0,
+            "cache_read": 0
+          },
+          "input_tokens": 10710,
+          "output_tokens": 115,
+          "total_tokens": 10825
+        }
+      }
+    },
+    {
+      "agent_name": "adaptive_primitive_supervisor_agent",
+      "created_at": "2026-07-14T06:52:45.997283+00:00",
+      "event_type": "tool_call",
+      "payload": {
+        "args": {
+          "sql": "SELECT \n  pa.rail_type, \n  SUM(CASE WHEN p.payment_status = 'SUCCESS' THEN 1 ELSE 0 END)::DOUBLE / COUNT(*) AS psr, \n  COUNT(*) AS attempts \nFROM payments p \nJOIN payment_attributes pa ON p.rail_ref = pa.rail_ref \nWHERE pa.rail_type = 'UPI' \n  AND p.payment_time >= '2026-01-01' \nGROUP BY pa.rail_type"
+        },
+        "id": "tooluse_NwXI8ZElYMaMTi7hOSS6Dw",
+        "name": "execute_sql"
+      }
+    },
+    {
+      "agent_name": "adaptive_primitive_supervisor_agent",
+      "created_at": "2026-07-14T06:52:46.051941+00:00",
+      "event_type": "tool_result",
+      "payload": {
+        "id": "tooluse_NwXI8ZElYMaMTi7hOSS6Dw",
+        "name": "execute_sql",
+        "preview": "{\"status\": \"ok\", \"sql\": \"SELECT \\n  pa.rail_type, \\n  SUM(CASE WHEN p.payment_status = 'SUCCESS' THEN 1 ELSE 0 END)::DOUBLE / COUNT(*) AS psr, \\n  COUNT(*) AS attempts \\nFROM payments p \\nJOIN payment_attributes pa ON p.rail_ref = pa.rail_ref \\nWHERE pa.rail_type = 'UPI' \\n  AND p.payment_time >= '2026-01-01' \\nGROUP BY pa.rail_type\", \"columns\": [\"rail_type\", \"psr\", \"attempts\"], \"rows\": [{\"rail_type\": \"UPI\", \"psr\": 0.7882001493651979, \"attempts\": 6695}], \"row_count\": 1, \"preview_row_count\": 1, \"total_row_count\": 1, \"result_profile\": {\"row_count\": 1, \"profiled_row_count\": 1, \"max_profiled_rows\": 10000, \"truncated\": false, \"columns\": [{\"name\": \"rail_type\", \"inferred_type\": \"string\", \"null_count_in_profile\": 0, \"non_null_count_in_profile\": 1, \"distinct_count_in_profile\": 1, \"top_values_in_profile\": [{\"value\": \"UPI\", \"count\": 1}]}, {\"name\": \"psr\", \"inferred_type\": \"number\", \"null_count_in_profile\": 0, \"non_null_count_in_profile\": 1, \"distinct_count_in_profile\": 1, \"numeric\": {\"min\": 0.7882001493651979, \"max\": 0.7882001493651979, \"avg\": 0.7882001493651979}, \"top_values_in_profile\": [{\"value\": 0.7882001493651979, \"count\": 1}]}, {\"name\": \"attempts\", \"inferred_type\": \"number\", \"null_count_in_profile\": 0, \"non_null_count_in_profile\": 1, \"distinct_count_in_profile\": 1, \"numeric\": {\"min\": 6695.0, \"max\": 6695.0, \"avg\": 6695.0}, \"top_values_in_profile\": [{\"value\": 6695, \"count\": 1}]}], \"sample_rows\": [{\"rail_type\": \"UPI\", \"psr\": 0.7882001493651979, \"attempts\": 6695}]}, \"result_artifact\": {\"artifact_id\": \"res_493fe57d4485474987555571bbdca9e7\", \"conversation_id\": \"default_conversation\", \"thread_id\": \"default_thread\", \"manifest_key\": \"query-results/fintech_schema/default_conversation/default_thread/2026/07/14/res_493fe57d4485474987555571bbdca9e7/manifest.json\", \"rows_key\": \"query-results/fintech_schema/default_conversation/default_thread/2026/07/14/res_493fe57d4485474987555571bbdca9e7/rows.jsonl\", \"profile_key\": \"query-results/fintech_schema/default_conversation/d\n...[truncated]",
+        "truncated": false
+      }
+    },
+    {
+      "agent_name": "adaptive_primitive_supervisor_agent",
+      "created_at": "2026-07-14T06:52:46.052014+00:00",
+      "event_type": "model_start",
+      "payload": {
+        "iteration": 5
+      }
+    },
+    {
+      "agent_name": "adaptive_primitive_supervisor_agent",
+      "created_at": "2026-07-14T06:52:48.693696+00:00",
+      "event_type": "model_message",
+      "payload": {
+        "iteration": 5,
+        "text_preview": "## Workflow Supervision Complete\n\n---\n\n**FINAL_STATUS:** PASS\n\n**ANSWER:**\n\nThe payment success rate for UPI payments since 2026-01-01 is **78.82%**.\n\n| Rail Type | Payment Success Rate | Total Attempts |\n|-----------|---------------------|----------------|\n| UPI | 0.7882 (78.82%) | 6,695 |\n\n---\n\n**SQL_USED:**\n```sql\nSELECT \n  pa.rail_type, \n  SUM(CASE WHEN p.payment_status = 'SUCCESS' THEN 1 ELSE 0 END)::DOUBLE / COUNT(*) AS psr, \n  COUNT(*) AS attempts \nFROM payments p \nJOIN payment_attributes pa ON p.rail_ref = pa.rail_ref \nWHERE pa.rail_type = 'UPI' \n  AND p.payment_time >= '2026-01-01' \nGROUP BY pa.rail_type\n```\n\n---\n\n**VERIFICATION:**\n- adaptive_route: slot_adapt\n- cognition: used (exact match, score 1.0)\n- context_compiler: skipped\n- steward: passed (6/6 assertions passed)\n- changed_slots: rail_type='UPI', payment_time>='2026-01-01', payment_status='SUCCESS'\n- dry_run: passed\n- execution: passed (1 row returned)\n\n**ASSUMPTIONS:**\n- None. All filter values verified from column_values before SQL construction.",
+        "tool_calls": [],
+        "usage": {
+          "input_token_details": {
+            "cache_creation": 0,
+            "cache_read": 0
+          },
+          "input_tokens": 11656,
+          "output_tokens": 296,
+          "total_tokens": 11952
+        }
+      }
+    },
+    {
+      "agent_name": "adaptive_primitive_supervisor_agent",
+      "created_at": "2026-07-14T06:52:48.693764+00:00",
+      "event_type": "agent_done",
+      "payload": {
+        "iteration": 5,
+        "output_preview": "## Workflow Supervision Complete\n\n---\n\n**FINAL_STATUS:** PASS\n\n**ANSWER:**\n\nThe payment success rate for UPI payments since 2026-01-01 is **78.82%**.\n\n| Rail Type | Payment Success Rate | Total Attempts |\n|-----------|---------------------|----------------|\n| UPI | 0.7882 (78.82%) | 6,695 |\n\n---\n\n**SQL_USED:**\n```sql\nSELECT \n  pa.rail_type, \n  SUM(CASE WHEN p.payment_status = 'SUCCESS' THEN 1 ELSE 0 END)::DOUBLE / COUNT(*) AS psr, \n  COUNT(*) AS attempts \nFROM payments p \nJOIN payment_attributes pa ON p.rail_ref = pa.rail_ref \nWHERE pa.rail_type = 'UPI' \n  AND p.payment_time >= '2026-01-01' \nGROUP BY pa.rail_type\n```\n\n---\n\n**VERIFICATION:**\n- adaptive_route: slot_adapt\n- cognition: used (exact match, score 1.0)\n- context_compiler: skipped\n- steward: passed (6/6 assertions passed)\n- changed_slots: rail_type='UPI', payment_time>='2026-01-01', payment_status='SUCCESS'\n- dry_run: passed\n- execution: passed (1 row returned)\n\n**ASSUMPTIONS:**\n- None. All filter values verified from column_values before SQL construction."
+      }
+    },
+    {
+      "agent_name": "supervisor_workflow",
+      "created_at": "2026-07-14T06:52:48.694257+00:00",
+      "event_type": "supervisor_done",
+      "payload": {
+        "output_preview": "## Workflow Supervision Complete\n\n---\n\n**FINAL_STATUS:** PASS\n\n**ANSWER:**\n\nThe payment success rate for UPI payments since 2026-01-01 is **78.82%**.\n\n| Rail Type | Payment Success Rate | Total Attempts |\n|-----------|---------------------|----------------|\n| UPI | 0.7882 (78.82%) | 6,695 |\n\n---\n\n**SQL_USED:**\n```sql\nSELECT \n  pa.rail_type, \n  SUM(CASE WHEN p.payment_status = 'SUCCESS' THEN 1 ELSE 0 END)::DOUBLE / COUNT(*) AS psr, \n  COUNT(*) AS attempts \nFROM payments p \nJOIN payment_attributes pa ON p.rail_ref = pa.rail_ref \nWHERE pa.rail_type = 'UPI' \n  AND p.payment_time >= '2026-01-01' \nGROUP BY pa.rail_type\n```\n\n---\n\n**VERIFICATION:**\n- adaptive_route: slot_adapt\n- cognition: used (exact match, score 1.0)\n- context_compiler: skipped\n- steward: passed (6/6 assertions passed)\n- changed_slots: rail_type='UPI', payment_time>='2026-01-01', payment_status='SUCCESS'\n- dry_run: passed\n- execution: passed (1 row returned)\n\n**ASSUMPTIONS:**\n- None. All filter values verified from column_values before SQL construction.",
+        "stop_reason": "final"
+      }
+    },
+    {
+      "agent_name": "adaptive_runtime",
+      "created_at": "2026-07-14T06:52:48.704954+00:00",
+      "event_type": "experience_candidate_written",
+      "payload": {
+        "candidate_key": "experience/candidates/fintech_schema/2026/07/14/exp_7e9d50f648ecef9e.json",
+        "review_status": "needs_review"
+      }
+    },
+    {
+      "agent_name": "adaptive_runtime",
+      "created_at": "2026-07-14T06:52:48.704986+00:00",
+      "event_type": "adaptive_done",
+      "payload": {
+        "route": "slot_adapt",
+        "stop_reason": "final"
+      }
+    }
+  ]
+}

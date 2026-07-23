@@ -1,0 +1,580 @@
+{
+  "iterations": 6,
+  "output_text": "FINAL_STATUS: PASS\n\nANSWER:\n10 customers\n\nSQL_USED:\n```sql\nSELECT COUNT(DISTINCT c.client_record) AS customer_count\nFROM clients c\nINNER JOIN client_profiles cp\n  ON c.current_client_profile_ref = cp.client_profile_record\nINNER JOIN addresses a\n  ON c.current_address_ref = a.address_record\nINNER JOIN calendar_days cd\n  ON c.first_sale_calendar_day_ref = cd.calendar_day_record\nWHERE cp.gender = 'F'\n  AND a.state = 'TX'\n  AND cd.year = 2003\n```\n\nVERIFICATION:\n- adaptive_route: cold_start\n- cognition: unavailable\n- context_compiler: used\n- dry_run: passed\n- execution: passed\n- steward_checks: all passed (entity_grain, clause_coverage, value_grounding, source_date_scope, join_fanout_null)\n\nASSUMPTIONS:\nNone",
+  "stop_reason": "final",
+  "trace_events": [
+    {
+      "agent_name": "adaptive_runtime",
+      "created_at": "2026-07-14T06:54:38.921225+00:00",
+      "event_type": "adaptive_start",
+      "payload": {
+        "has_clarification": false,
+        "has_previous_context": false,
+        "question": "Count current F customers from TX whose first sale year is 2003."
+      }
+    },
+    {
+      "agent_name": "adaptive_runtime",
+      "created_at": "2026-07-14T06:54:38.921254+00:00",
+      "event_type": "conversation_frame",
+      "payload": {
+        "changed_slots": {},
+        "confidence": "none",
+        "inherited_context": {},
+        "needs_clarification": false,
+        "notes": [],
+        "original_question": "Count current F customers from TX whose first sale year is 2003.",
+        "resolved_question": "Count current F customers from TX whose first sale year is 2003.",
+        "source": "identity",
+        "unresolved_followup_terms": [],
+        "user_clarifications": []
+      }
+    },
+    {
+      "agent_name": "adaptive_runtime",
+      "created_at": "2026-07-14T06:54:38.929750+00:00",
+      "event_type": "cognition_plan",
+      "payload": {
+        "context_mode": "full",
+        "match_count": 0,
+        "matches": [],
+        "model_candidates": [
+          "bedrock_zai_glm_5_ap_south_1"
+        ],
+        "model_profile": "bedrock_zai_glm_5_ap_south_1",
+        "model_selection_policy": "default_profile",
+        "model_selection_reason": "Selected default model profile.",
+        "reason": "No reviewed cognition matched the user question.",
+        "route": "cold_start",
+        "suppressed_match_count": 0,
+        "suppressed_matches": []
+      }
+    },
+    {
+      "agent_name": "adaptive_runtime",
+      "created_at": "2026-07-14T06:54:38.929767+00:00",
+      "event_type": "metric_definitions_selected",
+      "payload": {
+        "count": 0,
+        "metrics": []
+      }
+    },
+    {
+      "agent_name": "adaptive_runtime",
+      "created_at": "2026-07-14T06:54:38.929770+00:00",
+      "event_type": "adaptive_model_selected",
+      "payload": {
+        "candidate_profiles": [
+          "bedrock_zai_glm_5_ap_south_1"
+        ],
+        "model_profile": "bedrock_zai_glm_5_ap_south_1",
+        "policy": "default_profile",
+        "reason": "Selected default model profile.",
+        "route": "cold_start"
+      }
+    },
+    {
+      "agent_name": "adaptive_runtime",
+      "created_at": "2026-07-14T06:54:43.117566+00:00",
+      "event_type": "adaptive_tool_bundle",
+      "payload": {
+        "reason": "Cold start receives the full supervisor tool bundle.",
+        "route": "cold_start",
+        "tools": [
+          "intent_subagent",
+          "sql_author_subagent",
+          "data_steward_subagent",
+          "data_engineer_subagent",
+          "execute_sql",
+          "query_result_artifact",
+          "column_values",
+          "sql_dry_run",
+          "sql_semantic_profile",
+          "sql_sanity_probe"
+        ]
+      }
+    },
+    {
+      "agent_name": "supervisor_workflow",
+      "created_at": "2026-07-14T06:54:43.117701+00:00",
+      "event_type": "supervisor_start",
+      "payload": {
+        "context_question": null,
+        "has_clarification": false,
+        "has_previous_context": true,
+        "question": "Count current F customers from TX whose first sale year is 2003."
+      }
+    },
+    {
+      "agent_name": "supervisor_workflow",
+      "created_at": "2026-07-14T06:54:45.911174+00:00",
+      "event_type": "context_compiled",
+      "payload": {
+        "candidate_count": 24,
+        "intent_frame": {
+          "definition_required_terms": [],
+          "dimensions": [
+            "customer gender",
+            "customer state",
+            "first sale year"
+          ],
+          "entities": [
+            "customer",
+            "TX",
+            "gender"
+          ],
+          "filters": [
+            "gender = F",
+            "state = TX",
+            "first_sale_year = 2003"
+          ],
+          "measures": [
+            "customer count"
+          ],
+          "notes": [],
+          "search_queries": [
+            "count F customers TX first sale year 2003",
+            "female customers Texas initial purchase 2003"
+          ],
+          "source": "llm",
+          "time_windows": [
+            "first sale year 2003"
+          ]
+        },
+        "join_edge_count": 16,
+        "needs_clarification": false,
+        "pattern_count": 6,
+        "required_tables": [
+          "addresses",
+          "calendar_days",
+          "client_profiles",
+          "clients",
+          "mail_order_purchases",
+          "merchandise",
+          "online_purchases",
+          "online_refunds",
+          "store_purchases"
+        ],
+        "status": "ok",
+        "unresolved_terms": [],
+        "usage": {
+          "input_token_details": {
+            "cache_creation": 0,
+            "cache_read": 0,
+            "ephemeral_1h_input_tokens": 0,
+            "ephemeral_5m_input_tokens": 0
+          },
+          "input_tokens": 502,
+          "output_tokens": 239,
+          "total_tokens": 741
+        }
+      }
+    },
+    {
+      "agent_name": "adaptive_primitive_supervisor_agent",
+      "created_at": "2026-07-14T06:54:45.911467+00:00",
+      "event_type": "agent_start",
+      "payload": {
+        "has_context": false,
+        "task": "Supervise this analytics workflow end to end.\n\nUSER_QUESTION:\nCount current F customers from TX whose first sale year is 2003.\n\nCOMPILED_SEMANTIC_CONTEXT:\n{\n  \"assertions\": [\n    \"Treat SQL pattern assumptions as pattern-local evidence; apply them only when that pattern matches the final intent.\",\n    \"Use observed join edges unless the question requires a different relationship.\"\n  ],\n  \"candidate_cards\": [\n    {\n      \"description\": \"A system-generated numeric identifier that uniquely identifies each row in the addresses table. This is an internal record key used to join address data to clients, purchases, and refunds. It does not carry direct business meaning on its own.\",\n      \"id\": \"column:addresses.address_record\",\n      \"kind\": \"column\",\n      \"metadata\": {\n        \"column_name\": \"address_record\",\n        \"role\": \"unknown\",\n        \"table_grain\": \"One row per unique address\",\n        \"table_name\": \"addresses\"\n      },\n      \"name\": \"address_record\",\n      \"sql_ref\": \"addresses.address_record\"\n    },\n    {\n      \"description\": \"The two-letter US state abbreviation for the client's address, such as TX, GA, or VA. Covers all 50 US states plus Washington DC. Used for state-level geographic segmentation and regional sales analysis. A small percentage of records have no state on file.\",\n      \"id\": \"column:addresses.state\",\n      \"kind\": \"column\",\n      \"metadata\": {\n        \"column_name\": \"state\",\n        \"role\": \"unknown\",\n        \"table_grain\": \"One row per unique address\",\n        \"table_name\": \"addresses\"\n      },\n      \"name\": \"state\",\n      \"sql_ref\": \"addresses.state\"\n    },\n    {\n      \"description\": \"A system-generated numeric identifier that uniquely identifies each row in the calendar_days table. This is an internal record key used to join date dimension data to fact tables such as purchases, refunds, and stock levels. It does not represent a human-readable date.\",\n      \"id\": \"column:calendar_days.calendar_day_record\",\n      \"kind\": \"column\",\n      \"metadata\": {\n        \"column_name\": \"calendar_day_record\",\n        \"role\": \"unknown\",\n        \"table_grain\": \"One row per calendar day\",\n        \"table_name\": \"calendar_days\"\n      },\n      \"name\": \"calendar_day_record\",\n      \"sql_ref\": \"calendar_days.calendar_day_record\"\n    },\n    {\n      \"description\": \"The four-digit calendar year associated with the date, ranging from 1900 to 2100. Used for annual reporting, year-over-year comparisons, and filtering data to specific years.\",\n      \"id\": \"column:calendar_days.year\",\n      \"kind\": \"column\",\n      \"metadata\": {\n        \"column_name\": \"year\",\n        \"role\": \"unknown\",\n        \"table_grain\": \"One row per calendar day\",\n        \"table_name\": \"calendar_days\"\n      },\n      \"name\": \"year\",\n      \"sql_ref\": \"calendar_days.year\"\n    },\n    {\n      \"description\": \"A system-generated numeric identifier that uniquely identifies each row in the client_profiles table. This is an internal record key used to link demographic profile data to client records and purchase or refund transactions. It does not carry direct business meaning on its own.\",\n      \"id\": \"column:client_profiles.client_profile_record\",\n      \"kind\": \"column\",\n      \"metadata\": {\n        \"column_name\": \"client_profile_record\",\n        \"role\": \"unknown\",\n        \"table_grain\": \"One row per unique demographic segment combination\",\n        \"table_name\": \"client_profiles\"\n      },\n      \"name\": \"client_profile_record\",\n      \"sql_ref\": \"client_profiles.client_profile_record\"\n    },\n    {\n      \"description\": \"Indicates the gender of the client associated with this demographic profile. Values are 'M' (male) and 'F' (female), distributed equally across the dataset. Used for gender-based segmentation of purchasing behavior, campaign targeting, and revenue analysis.\",\n      \"id\": \"column:client_profiles.gender\",\n      \"kind\": \"column\",\n      \"metadata\": {\n        \"column_name\": \"gender\",\n        \"role\": \"unknown\",\n        \"table_grain\": \"One row per unique demographic segment combination\",\n        \"table_name\": \"client_profiles\"\n      },\n      \"name\": \"gender\",\n      \"sql_ref\": \"client_profiles.gender\"\n    },\n    {\n      \"description\": \"A unique numeric identifier assigned to each client row in the system. This is an internal record key used to join the clients table to other tables. Business users should use client_code as the customer-facing identifier. Every client has exactly one client_record value with no nulls.\",\n      \"id\": \"column:clients.client_record\",\n      \"kind\": \"column\",\n      \"metadata\": {\n        \"column_name\": \"client_record\",\n        \"role\": \"unknown\",\n        \"table_grain\": \"One row per customer account\",\n        \"table_name\": \"clients\"\n      },\n      \"name\": \"client_record\",\n      \"sql_ref\": \"clients.client_record\"\n    },\n    {\n      \"description\": \"A reference to the client's active address record in the addresses table. The address provides city, state, ZIP, county, and country details used for geographic analysis of the customer base. All clients have an address linked with no missing values.\",\n      \"id\": \"column:clients.current_address_ref\",\n      \"kind\": \"column\",\n      \"metadata\": {\n        \"column_name\": \"current_address_ref\",\n        \"role\": \"unknown\",\n        \"table_grain\": \"One row per customer account\",\n        \"table_name\": \"clients\"\n      },\n      \"name\": \"current_address_ref\",\n      \"sql_ref\": \"clients.current_address_ref\"\n    },\n    {\n      \"description\": \"A reference to the client's currently active demographic profile in the client_profiles table. The profile captures segments such as gender, marital status, education level, credit rating, and purchase estimate. Approximately 3.4% of clients have no profile linked (null). This field enables demographic segmentation of customers for marketing and analytics.\",\n      \"id\": \"column:clients.current_client_profile_ref\",\n      \"kind\": \"column\",\n      \"metadata\": {\n        \"column_name\": \"current_client_profile_ref\",\n        \"role\": \"unknown\",\n        \"table_grain\": \"One row per customer account\",\n        \"table_name\": \"clients\"\n      },\n      \"name\": \"current_client_profile_ref\",\n      \"sql_ref\": \"clients.current_client_profile_ref\"\n    },\n    {\n      \"description\": \"A reference to the calendar_days table identifying the date of the customer's very first purchase or sale. This is a key customer tenure metric used for cohort analysis, loyalty tracking, and understanding customer acquisition timing. Approximately 3.5% of clients have no first sale date recorded (null), likely indicating customers who have not yet made a purchase.\",\n      \"id\": \"column:clients.first_sale_calendar_day_ref\",\n      \"kind\": \"column\",\n      \"metadata\": {\n        \"column_name\": \"first_sale_calendar_day_ref\",\n        \"role\": \"unknown\",\n        \"table_grain\": \"One row per customer account\",\n        \"table_name\": \"clients\"\n      },\n      \"name\": \"first_sale_calendar_day_ref\",\n      \"sql_ref\": \"clients.first_sale_calendar_day_ref\"\n    },\n    {\n      \"description\": \"This table contains demographic profile records used to classify individual shoppers into segments for analysis. Each record captures a combination of demographic attributes: gender (male or female), marital status (single, married, divorced, widowed, or unknown), education level (ranging from primary through advanced degree), an estimated annual purchase amount, credit rating (Good, Low Risk, High Risk, or Unknown), and counts of total dependents, employed dependents, and dependents in college. With nearly 1.9 million rows, this table represents a large set of demographic combinations. Client records link to their current active profile via a reference key. These segments are used to analyze purchasing behavior, revenue, and campaign response across different customer groups.\",\n      \"id\": \"table:client_profiles\",\n      \"kind\": \"table\",\n      \"metadata\": {\n        \"grain\": \"One row per unique demographic segment combination\"\n      },\n      \"name\": \"client_profiles\",\n      \"sql_ref\": null\n    },\n    {\n      \"description\": \"The clients table is the central record for every shopper or customer account in the business. Each row represents one person and links to their current mailing address, demographic profile, and household profile. The table also captures key tenure milestones such as the date of the customer's first purchase and first shipment, along with personal details like name, salutation, date of birth, birth country, email address, and a preferred-customer flag. It serves as the starting point for customer segmentation, loyalty analysis, lifetime value reporting, and cross-channel purchase history.\",\n      \"id\": \"table:clients\",\n      \"kind\": \"table\",\n      \"metadata\": {\n        \"grain\": \"One row per customer account\"\n      },\n      \"name\": \"clients\",\n      \"sql_ref\": null\n    },\n    {\n      \"description\": \"This table provides a comprehensive date dimension covering every calendar day from 1900 through 2100. Each row represents a single date and includes attributes for standard calendar reporting (year, quarter, month, week, day of week, day of month) as well as fiscal calendar equivalents (fiscal year, fiscal quarter sequence, fiscal week sequence). It also includes flags and indicators for holidays, weekends, days following a holiday, first and last days of the month, and whether a date falls within the current day, week, month, quarter, or year. Cross-period comparison fields such as same day last year and same day last quarter support year-over-year and quarter-over-quarter trend analysis. This table is referenced by purchase, refund, stock level, and campaign tables to enable time-based reporting.\",\n      \"id\": \"table:calendar_days\",\n      \"kind\": \"table\",\n      \"metadata\": {\n        \"grain\": \"One row per calendar day\"\n      },\n      \"name\": \"calendar_days\",\n      \"sql_ref\": null\n    },\n    {\n      \"description\": \"This table describes individual pages within printed catalogs or mailers distributed to customers. Each record represents one page within a specific mailer issue and includes the mailer number (which catalog edition) and the page number within that mailer. Date references indicate when the mailer was active\\u2014its start and end calendar days\\u2014allowing analysis of which catalog editions drove purchases or returns during a given period. The department field categorizes the page by merchandise department, though the current data shows a placeholder value, suggesting this field may not yet be fully populated. The description field provides a free-text summary of the page content. The type field classifies the mailer cadence as monthly, quarterly, or bi-annual, which is useful for understanding promotion frequency and seasonality. This table is used as a dimension in mail-order purchase and refund analysis to connect transactions back to the specific catalog page that influenced the sale or return.\",\n      \"id\": \"table:mailer_pages\",\n      \"kind\": \"table\",\n      \"metadata\": {\n        \"grain\": \"One row per page within a mailer issue\"\n      },\n      \"name\": \"mailer_pages\",\n      \"sql_ref\": null\n    },\n    {\n      \"description\": \"A reference to the calendar_days table identifying the date on which the customer received their very first shipment. This is a customer tenure indicator useful for cohort analysis and understanding how long a customer has been receiving orders. Approximately 3.4% of clients have no first shipping date recorded (null), likely indicating customers who have not yet received a shipment.\",\n      \"id\": \"column:clients.first_shipping_calendar_day_ref\",\n      \"kind\": \"column\",\n      \"metadata\": {\n        \"column_name\": \"first_shipping_calendar_day_ref\",\n        \"role\": \"unknown\",\n        \"table_grain\": \"One row per customer account\",\n        \"table_name\": \"clients\"\n      },\n      \"name\": \"first_shipping_calendar_day_ref\",\n      \"sql_ref\": \"clients.first_shipping_calendar_day_ref\"\n    },\n    {\n      \"description\": \"This field references the client_profiles table and captures the demographic segment (gender, marital status, education, credit rating, etc.) associated with the billing client at the time of the order. It enables segmentation of mail-order revenue and order volume by customer demographics. Because client profiles can change over time, this field preserves the profile that was active at the point of purchase.\",\n      \"id\": \"column:mail_order_purchases.billing_client_profile_ref\",\n      \"kind\": \"column\",\n      \"metadata\": {\n        \"column_name\": \"billing_client_profile_ref\",\n        \"role\": \"unknown\",\n        \"table_grain\": \"One row per line item per mail-order transaction\",\n        \"table_name\": \"mail_order_purchases\"\n      },\n      \"name\": \"billing_client_profile_ref\",\n      \"sql_ref\": \"mail_order_purchases.billing_client_profile_ref\"\n    },\n    {\n      \"description\": \"Links to the clients table to identify the shopper whose account was charged in the original online purchase and who is the recipient of the refund. This may differ from the returning client if someone other than the original buyer submitted the return. Approximately 4.4% of rows have no value recorded.\",\n      \"id\": \"column:online_refunds.refunded_client_ref\",\n      \"kind\": \"column\",\n      \"metadata\": {\n        \"column_name\": \"refunded_client_ref\",\n        \"role\": \"unknown\",\n        \"table_grain\": \"One row per returned line item from an online order\",\n        \"table_name\": \"online_refunds\"\n      },\n      \"name\": \"refunded_client_ref\",\n      \"sql_ref\": \"online_refunds.refunded_client_ref\"\n    },\n    {\n      \"description\": \"The total customer payment for this purchase line including shipping or delivery charges, but before tax is added. Calculated as net_paid plus extended_delivery_cost. Useful for analyzing the combined impact of product pricing and delivery fees on the total amount customers pay.\",\n      \"id\": \"column:online_purchases.net_paid_with_delivery\",\n      \"kind\": \"column\",\n      \"metadata\": {\n        \"column_name\": \"net_paid_with_delivery\",\n        \"role\": \"unknown\",\n        \"table_grain\": \"One row per line item per online order\",\n        \"table_name\": \"online_purchases\"\n      },\n      \"name\": \"net_paid_with_delivery\",\n      \"sql_ref\": \"online_purchases.net_paid_with_delivery\"\n    },\n    {\n      \"description\": \"This table stores the physical and mailing addresses associated with clients. Each record represents a unique address and includes full street details, city, county, state, ZIP code, country, timezone offset, and the type of dwelling (apartment, condo, or single family). It is used to support geographic segmentation and regional analysis of customers across purchases, refunds, and marketing activity. All addresses in this dataset are located in the United States. The table links to client records, billing addresses, and shipping addresses across the store, online, and mail-order purchase channels.\",\n      \"id\": \"table:addresses\",\n      \"kind\": \"table\",\n      \"metadata\": {\n        \"grain\": \"One row per unique address\"\n      },\n      \"name\": \"addresses\",\n      \"sql_ref\": null\n    },\n    {\n      \"description\": \"The retail price at which the product is currently offered for sale to customers. Prices range from $0.09 to $99.99 across the catalog. This field reflects the list price for the active version of the product record and can be compared to wholesale_cost to assess margin. A small number of records have a null price.\",\n      \"id\": \"column:merchandise.current_price\",\n      \"kind\": \"column\",\n      \"metadata\": {\n        \"column_name\": \"current_price\",\n        \"role\": \"unknown\",\n        \"table_grain\": \"One row per product version (slowly changing)\",\n        \"table_name\": \"merchandise\"\n      },\n      \"name\": \"current_price\",\n      \"sql_ref\": \"merchandise.current_price\"\n    },\n    {\n      \"description\": \"Links the billing customer to their demographic segment record in the client_profiles table, capturing attributes such as gender, marital status, education, and credit rating as they were at the time of the sale. Enables segmentation of online revenue by customer demographics.\",\n      \"id\": \"column:online_purchases.billi\n...[truncated]\n\nPREVIOUS_SUPERVISOR_CONTEXT:\nCOGNITION_PLAN:\n{\n  \"cognition_matches\": [],\n  \"context_mode\": \"full\",\n  \"guidance\": \"No usable cognition was found; use the normal context compiler path.\",\n  \"model_candidates\": [\n    \"bedrock_zai_glm_5_ap_south_1\"\n  ],\n  \"model_profile\": \"bedrock_zai_glm_5_ap_south_1\",\n  \"model_selection_policy\": \"default_profile\",\n  \"model_selection_reason\": \"Selected default model profile.\",\n  \"reason\": \"No reviewed cognition matched the user question.\",\n  \"route\": \"cold_start\"\n}",
+        "tools": [
+          "column_values",
+          "data_engineer_subagent",
+          "data_steward_subagent",
+          "execute_sql",
+          "intent_subagent",
+          "query_result_artifact",
+          "sql_author_subagent",
+          "sql_dry_run",
+          "sql_sanity_probe",
+          "sql_semantic_profile"
+        ]
+      }
+    },
+    {
+      "agent_name": "adaptive_primitive_supervisor_agent",
+      "created_at": "2026-07-14T06:54:45.911488+00:00",
+      "event_type": "middleware_context_checked",
+      "payload": {
+        "has_context": false,
+        "injected_count": 0,
+        "middleware": "_AdaptiveSubagentContextCarryMiddleware",
+        "subagent_context_carry": true
+      }
+    },
+    {
+      "agent_name": "adaptive_primitive_supervisor_agent",
+      "created_at": "2026-07-14T06:54:45.920142+00:00",
+      "event_type": "model_start",
+      "payload": {
+        "iteration": 1
+      }
+    },
+    {
+      "agent_name": "adaptive_primitive_supervisor_agent",
+      "created_at": "2026-07-14T06:54:47.123299+00:00",
+      "event_type": "model_message",
+      "payload": {
+        "iteration": 1,
+        "text_preview": "I'll supervise this analytics workflow end-to-end, starting with intent capture and proceeding through SQL authoring, validation, and execution.",
+        "tool_calls": [
+          {
+            "args": {
+              "context": "COMPILED_SEMANTIC_CONTEXT available with clients, addresses, calendar_days, client_profiles tables. Key columns: clients.current_address_ref -> addresses, clients.first_sale_calendar_day_ref -> calendar_days, addresses.state, calendar_days.year.",
+              "task": "Count current F customers from TX whose first sale year is 2003."
+            },
+            "id": "tooluse_en0Z39RBsVn6NDUs0dxhJy",
+            "name": "intent_subagent"
+          }
+        ],
+        "usage": {
+          "input_token_details": {
+            "cache_creation": 0,
+            "cache_read": 0
+          },
+          "input_tokens": 5547,
+          "output_tokens": 105,
+          "total_tokens": 5652
+        }
+      }
+    },
+    {
+      "agent_name": "adaptive_primitive_supervisor_agent",
+      "created_at": "2026-07-14T06:54:47.123349+00:00",
+      "event_type": "tool_call",
+      "payload": {
+        "args": {
+          "context": "COMPILED_SEMANTIC_CONTEXT available with clients, addresses, calendar_days, client_profiles tables. Key columns: clients.current_address_ref -> addresses, clients.first_sale_calendar_day_ref -> calendar_days, addresses.state, calendar_days.year.",
+          "task": "Count current F customers from TX whose first sale year is 2003."
+        },
+        "id": "tooluse_en0Z39RBsVn6NDUs0dxhJy",
+        "name": "intent_subagent"
+      }
+    },
+    {
+      "agent_name": "adaptive_primitive_supervisor_agent",
+      "created_at": "2026-07-14T06:54:50.477343+00:00",
+      "event_type": "tool_result",
+      "payload": {
+        "id": "tooluse_en0Z39RBsVn6NDUs0dxhJy",
+        "name": "intent_subagent",
+        "preview": "{\"status\": \"ok\", \"subagent\": \"intent_subagent\", \"stop_reason\": \"final\", \"iterations\": 1, \"output\": \"INTENT_STATUS: OK\\nINTENT_SUMMARY:\\n- measure: Count of current F customers\\n- grain: Individual client records\\n- filters: Customer type = 'F', address state = 'TX', first sale year = 2003\\n- time_windows: Not applicable (point-in-time current status)\\n- exclusions: None requested\\n- requested_output: Single count value\\n\\nCLAUSE_BINDINGS:\\n- clause: \\\"current F customers\\\"\\n  action_or_entity: Client records with current customer type 'F'\\n  table_scope: clients (resolved)\\n  date_scope: Not applicable\\n  status: resolved\\n- clause: \\\"from TX\\\"\\n  action_or_entity: Current address location\\n  table_scope: clients \\u2192 addresses (resolved via clients.current_address_ref)\\n  date_scope: Not applicable\\n  status: resolved\\n- clause: \\\"whose first sale year is 2003\\\"\\n  action_or_entity: First sale date attribute\\n  table_scope: clients \\u2192 calendar_days (resolved via clients.first_sale_calendar_day_ref)\\n  date_scope: calendar_days.year = 2003 (resolved)\\n  status: resolved\\n\\nBUSINESS_TERMS:\\n- term: F customers\\n  status: DEFINED\\n  definition: Customer type 'F' stored in clients table\\n  source: COMPILED_SEMANTIC_CONTEXT\\n- term: current\\n  status: DEFINED\\n  definition: Current address relationship via clients.current_address_ref\\n  source: COMPILED_SEMANTIC_CONTEXT\\n- term: first sale year\\n  status: DEFINED\\n  definition: Year derived from clients.first_sale_calendar_day_ref \\u2192 calendar_days.year\\n  source: COMPILED_SEMANTIC_CONTEXT\\n\\nGROUNDED_MAPPINGS:\\n- \\\"F customers\\\" -> clients.customer_type = 'F' (COMPILED_SEMANTIC_CONTEXT)\\n- \\\"from TX\\\" -> addresses.state = 'TX' (COMPILED_SEMANTIC_CONTEXT)\\n- \\\"first sale year\\\" -> calendar_days.year (COMPILED_SEMANTIC_CONTEXT)\\n- \\\"current address\\\" -> clients.current_address_ref \\u2192 addresses (COMPILED_SEMANTIC_CONTEXT)\\n\\nUNRESOLVED_TERMS:\\nNone\\n\\nCONTEXT_USED:\\n- patterns: none\\n- candi\n...[truncated]",
+        "truncated": false
+      }
+    },
+    {
+      "agent_name": "adaptive_primitive_supervisor_agent",
+      "created_at": "2026-07-14T06:54:50.477400+00:00",
+      "event_type": "model_start",
+      "payload": {
+        "iteration": 2
+      }
+    },
+    {
+      "agent_name": "adaptive_primitive_supervisor_agent",
+      "created_at": "2026-07-14T06:54:51.279665+00:00",
+      "event_type": "model_message",
+      "payload": {
+        "iteration": 2,
+        "text_preview": "",
+        "tool_calls": [
+          {
+            "args": {
+              "context": "Supervise this analytics workflow end to end.\n\nUSER_QUESTION:\nCount current F customers from TX whose first sale year is 2003.\n\nCOMPILED_SEMANTIC_CONTEXT:\n{\n  \"assertions\": [\n    \"Treat SQL pattern assumptions as pattern-local evidence; apply them only when that pattern matches the final intent.\",\n    \"Use observed join edges unless the question requires a different relationship.\"\n  ],\n  \"candidate_cards\": [\n    {\n      \"description\": \"A system-generated numeric identifier that uniquely identifies each row in the addresses table. This is an internal record key used to join address data to clients, purchases, and refunds. It does not carry direct business meaning on its own.\",\n      \"id\": \"column:addresses.address_record\",\n      \"kind\": \"column\",\n      \"metadata\": {\n        \"column_name\": \"address_record\",\n        \"role\": \"unknown\",\n        \"table_grain\": \"One row per unique address\",\n        \"table_name\": \"addresses\"\n      },\n      \"name\": \"address_record\",\n      \"sql_ref\": \"addresses.address_record\"\n    },\n    {\n      \"description\": \"The two-letter US state abbreviation for the client's address, such as TX, GA, or VA. Covers all 50 US states plus Washington DC. Used for state-level geographic segmentation and regional sales analysis. A small percentage of records have no state on file.\",\n      \"id\": \"column:addresses.state\",\n      \"kind\": \"column\",\n      \"metadata\": {\n        \"column_name\": \"state\",\n        \"role\": \"unknown\",\n        \"table_grain\": \"One row per unique address\",\n        \"table_name\": \"addresses\"\n      },\n      \"name\": \"state\",\n      \"sql_ref\": \"addresses.state\"\n    },\n    {\n      \"description\": \"A system-generated numeric identifier that uniquely identifies each row in the calendar_days table. This is an internal record key used to join date dimension data to fact tables such as purchases, refunds, and stock levels. It does not represent a human-readable date.\",\n      \"id\": \"column:calendar_days.calendar_day_record\",\n      \"kind\": \"column\",\n      \"metadata\": {\n        \"column_name\": \"calendar_day_record\",\n        \"role\": \"unknown\",\n        \"table_grain\": \"One row per calendar day\",\n        \"table_name\": \"calendar_days\"\n      },\n      \"name\": \"calendar_day_record\",\n      \"sql_ref\": \"calendar_days.calendar_day_record\"\n    },\n    {\n      \"description\": \"The four-digit calendar year associated with the date, ranging from 1900 to 2100. Used for annual reporting, year-over-year comparisons, and filtering data to specific years.\",\n      \"id\": \"column:calendar_days.year\",\n      \"kind\": \"column\",\n      \"metadata\": {\n        \"column_name\": \"year\",\n        \"role\": \"unknown\",\n        \"table_grain\": \"One row per calendar day\",\n        \"table_name\": \"calendar_days\"\n      },\n      \"name\": \"year\",\n      \"sql_ref\": \"calendar_days.year\"\n    },\n    {\n      \"description\": \"A system-generated numeric identifier that uniquely identifies each row in the client_profiles table. This is an internal record key used to link demographic profile data to client records and purchase or refund transactions. It does not carry direct business meaning on its own.\",\n      \"id\": \"column:client_profiles.client_profile_record\",\n      \"kind\": \"column\",\n      \"metadata\": {\n        \"column_name\": \"client_profile_record\",\n        \"role\": \"unknown\",\n        \"table_grain\": \"One row per unique demographic segment combination\",\n        \"table_name\": \"client_profiles\"\n      },\n      \"name\": \"client_profile_record\",\n      \"sql_ref\": \"client_profiles.client_profile_record\"\n    },\n    {\n      \"description\": \"Indicates the gender of the client associated with this demographic profile. Values are 'M' (male) and 'F' (female), distributed equally across the dataset. Used for gender-based segmentation of purchasing behavior, campaign targeting, and revenue analysis.\",\n      \"id\": \"column:client_profiles.gender\",\n      \"kind\": \"column\",\n      \"metadata\": {\n        \"column_name\": \"gender\",\n        \"role\": \"unknown\",\n        \"table_grain\": \"One row per unique demographic segment combination\",\n        \"table_name\": \"client_profiles\"\n      },\n      \"name\": \"gender\",\n      \"sql_ref\": \"client_profiles.gender\"\n    },\n    {\n      \"description\": \"A unique numeric identifier assigned to each client row in the system. This is an internal record key used to join the clients table to other tables. Business users should use client_code as the customer-facing identifier. Every client has exactly one client_record value with no nulls.\",\n      \"id\": \"column:clients.client_record\",\n      \"kind\": \"column\",\n      \"metadata\": {\n        \"column_name\": \"client_record\",\n        \"role\": \"unknown\",\n        \"table_grain\": \"One row per customer account\",\n        \"table_name\": \"clients\"\n      },\n      \"name\": \"client_record\",\n      \"sql_ref\": \"clients.client_record\"\n    },\n    {\n      \"description\": \"A reference to the client's active address record in the addresses table. The address provides city, state, ZIP, county, and country details used for geographic analysis of the customer base. All clients have an address linked with no missing values.\",\n      \"id\": \"column:clients.current_address_ref\",\n      \"kind\": \"column\",\n      \"metadata\": {\n        \"column_name\": \"current_address_ref\",\n        \"role\": \"unknown\",\n        \"table_grain\": \"One row per customer account\",\n        \"table_name\": \"clients\"\n      },\n      \"name\": \"current_address_ref\",\n      \"sql_ref\": \"clients.current_address_ref\"\n    },\n    {\n      \"description\": \"A reference to the client's currently active demographic profile in the client_profiles table. The profile captures segments such as gender, marital status, education level, credit rating, and purchase estimate. Approximately 3.4% of clients have no profile linked (null). This field enables demographic segmentation of customers for marketing and analytics.\",\n      \"id\": \"column:clients.current_client_profile_ref\",\n      \"kind\": \"column\",\n      \"metadata\": {\n        \"column_name\": \"current_client_profile_ref\",\n        \"role\": \"unknown\",\n        \"table_grain\": \"One row per customer account\",\n        \"table_name\": \"clients\"\n      },\n      \"name\": \"current_client_profile_ref\",\n      \"sql_ref\": \"clients.current_client_profile_ref\"\n    },\n    {\n      \"description\": \"A reference to the calendar_days table identifying the date of the customer's very first purchase or sale. This is a key customer tenure metric used for cohort analysis, loyalty tracking, and understanding customer acquisition timing. Approximately 3.5% of clients have no first sale date recorded (null), likely indicating customers who have not yet made a purchase.\",\n      \"id\": \"column:clients.first_sale_calendar_day_ref\",\n      \"kind\": \"column\",\n      \"metadata\": {\n        \"column_name\": \"first_sale_calendar_day_ref\",\n        \"role\": \"unknown\",\n        \"table_grain\": \"One row per customer account\",\n        \"table_name\": \"clients\"\n      },\n      \"name\": \"first_sale_calendar_day_ref\",\n      \"sql_ref\": \"clients.first_sale_calendar_day_ref\"\n    },\n    {\n      \"description\": \"This table contains demographic profile records used to classify individual shoppers into segments for analysis. Each record captures a combination of demographic attributes: gender (male or female), marital status (single, married, divorced, widowed, or unknown), education level (ranging from primary through advanced degree), an estimated annual purchase amount, credit rating (Good, Low Risk, High Risk, or Unknown), and counts of total dependents, employed dependents, and dependents in college. With nearly 1.9 million rows, this table represents a large set of demographic combinations. Client records link to their current active profile via a reference key. These segments are used to analyze purchasing behavior, revenue, and campaign response across different customer groups.\",\n      \"id\": \"table:client_profiles\",\n      \"kind\": \"table\",\n      \"metadata\": {\n        \"grain\": \"One row per unique demographic segment combination\"\n      },\n      \"name\": \"client_profiles\",\n      \"sql_ref\": null\n    },\n    {\n      \"description\": \"The clients table is the central record for every shopper or customer account in the business. Each row represents one person and links to their current mailing address, demographic profile, and household profile. The table also captures key tenure milestones such as the date of the customer's first purchase and first shipment, along with personal details like name, salutation, date of birth, birth country, email address, and a preferred-customer flag. It serves as the starting point for customer segmentation, loyalty analysis, lifetime value reporting, and cross-channel purchase history.\",\n      \"id\": \"table:clients\",\n      \"kind\": \"table\",\n      \"metadata\": {\n        \"grain\": \"One row per customer account\"\n      },\n      \"name\": \"clients\",\n      \"sql_ref\": null\n    },\n    {\n      \"description\": \"This table provides a comprehensive date dimension covering every calendar day from 1900 through 2100. Each row represents a single date and includes attributes for standard calendar reporting (year, quarter, month, week, day of week, day of month) as well as fiscal calendar equivalents (fiscal year, fiscal quarter sequence, fiscal week sequence). It also includes flags and indicators for holidays, weekends, days following a holiday, first and last days of the month, and whether a date falls within the current day, week, month, quarter, or year. Cross-period comparison fields such as same day last year and same day last quarter support year-over-year and quarter-over-quarter trend analysis. This table is referenced by purchase, refund, stock level, and campaign tables to enable time-based reporting.\",\n      \"id\": \"table:calendar_days\",\n      \"kind\": \"table\",\n      \"metadata\": {\n        \"grain\": \"One row per calendar day\"\n      },\n      \"name\": \"calendar_days\",\n      \"sql_ref\": null\n    },\n    {\n      \"description\": \"This table describes individual pages within printed catalogs or mailers distributed to customers. Each record represents one page within a specific mailer issue and includes the mailer number (which catalog edition) and the page number within that mailer. Date references indicate when the mailer was active\\u2014its start and end calendar days\\u2014allowing analysis of which catalog editions drove purchases or returns during a given period. The department field categorizes the page by merchandise department, though the current data shows a placeholder value, suggesting this field may not yet be fully populated. The description field provides a free-text summary of the page content. The type field classifies the mailer cadence as monthly, quarterly, or bi-annual, which is useful for understanding promotion frequency and seasonality. This table is used as a dimension in mail-order purchase and refund analysis to connect transactions back to the specific catalog page that influenced the sale or return.\",\n      \"id\": \"table:mailer_pages\",\n      \"kind\": \"table\",\n      \"metadata\": {\n        \"grain\": \"One row per page within a mailer issue\"\n      },\n      \"name\": \"mailer_pages\",\n      \"sql_ref\": null\n    },\n    {\n      \"description\": \"A reference to the calendar_days table identifying the date on which the customer received their very first shipment. This is a customer tenure indicator useful for cohort analysis and understanding how long a customer has been receiving orders. Approximately 3.4% of clients have no first shipping date recorded (null), likely indicating customers who have not yet received a shipment.\",\n      \"id\": \"column:clients.first_shipping_calendar_day_ref\",\n      \"kind\": \"column\",\n      \"metadata\": {\n        \"column_name\": \"first_shipping_calendar_day_ref\",\n        \"role\": \"unknown\",\n        \"table_grain\": \"One row per customer account\",\n        \"table_name\": \"clients\"\n      },\n      \"name\": \"first_shipping_calendar_day_ref\",\n      \"sql_ref\": \"clients.first_shipping_calendar_day_ref\"\n    },\n    {\n      \"description\": \"This field references the client_profiles table and captures the demographic segment (gender, marital status, education, credit rating, etc.) associated with the billing client at the time of the order. It enables segmentation of mail-order revenue and order volume by customer demographics. Because client profiles can change over time, this field preserves the profile that was active at the point of purchase.\",\n      \"id\": \"column:mail_order_purchases.billing_client_profile_ref\",\n      \"kind\": \"column\",\n      \"metadata\": {\n        \"column_name\": \"billing_client_profile_ref\",\n        \"role\": \"unknown\",\n        \"table_grain\": \"One row per line item per mail-order transaction\",\n        \"table_name\": \"mail_order_purchases\"\n      },\n      \"name\": \"billing_client_profile_ref\",\n      \"sql_ref\": \"mail_order_purchases.billing_client_profile_ref\"\n    },\n    {\n      \"description\": \"Links to the clients table to identify the shopper whose account was charged in the original online purchase and who is the recipient of the refund. This may differ from the returning client if someone other than the original buyer submitted the return. Approximately 4.4% of rows have no value recorded.\",\n      \"id\": \"column:online_refunds.refunded_client_ref\",\n      \"kind\": \"column\",\n      \"metadata\": {\n        \"column_name\": \"refunded_client_ref\",\n        \"role\": \"unknown\",\n        \"table_grain\": \"One row per returned line item from an online order\",\n        \"table_name\": \"online_refunds\"\n      },\n      \"name\": \"refunded_client_ref\",\n      \"sql_ref\": \"online_refunds.refunded_client_ref\"\n    },\n    {\n      \"description\": \"The total customer payment for this purchase line including shipping or delivery charges, but before tax is added. Calculated as net_paid plus extended_delivery_cost. Useful for analyzing the combined impact of product pricing and delivery fees on the total amount customers pay.\",\n      \"id\": \"column:online_purchases.net_paid_with_delivery\",\n      \"kind\": \"column\",\n      \"metadata\": {\n        \"column_name\": \"net_paid_with_delivery\",\n        \"role\": \"unknown\",\n        \"table_grain\": \"One row per line item per online order\",\n        \"table_name\": \"online_purchases\"\n      },\n      \"name\": \"net_paid_with_delivery\",\n      \"sql_ref\": \"online_purchases.net_paid_with_delivery\"\n    },\n    {\n      \"description\": \"This table stores the physical and mailing addresses associated with clients. Each record represents a unique address and includes full street details, city, county, state, ZIP code, country, timezone offset, and the type of dwelling (apartment, condo, or single family). It is used to support geographic segmentation and regional analysis of customers across purchases, refunds, and marketing activity. All addresses in this dataset are located in the United States. The table links to client records, billing addresses, and shipping addresses across the store, online, and mail-order purchase channels.\",\n      \"id\": \"table:addresses\",\n      \"kind\": \"table\",\n      \"metadata\": {\n        \"grain\": \"One row per unique address\"\n      },\n      \"name\": \"addresses\",\n      \"sql_ref\": null\n    },\n    {\n      \"description\": \"The retail price at which the product is currently offered for sale to customers. Prices range from $0.09 to $99.99 across the catalog. This field reflects the list price for the active version of the product record and can be compared to wholesale_cost to assess margin. A small number of records have a null price.\",\n      \"id\": \"column:merchandise.current_price\",\n      \"kind\": \"column\",\n      \"metadata\": {\n        \"column_name\": \"current_price\",\n        \"role\": \"unknown\",\n        \"table_grain\": \"One row per product version (slowly changing)\",\n        \"table_name\": \"merchandise\"\n      },\n      \"name\": \"current_price\",\n      \"sql_ref\": \"merchandise.current_price\"\n    },\n    {\n      \"description\": \"Links the billing customer to their demographic segment record in the client_profiles table, capturing attributes such as gender, marital status, education, and credit rating as they were at the time of the sale. Enables segmentation of online revenue by customer demographics.\",\n      \"id\": \"column:online_purchases.billi\n...[truncated]\n\nPREVIOUS_SUPERVISOR_CONTEXT:\nCOGNITION_PLAN:\n{\n  \"cognition_matches\": [],\n  \"context_mode\": \"full\",\n  \"guidance\": \"No usable cognition was found; use the normal context compiler path.\",\n  \"model_candidates\": [\n    \"bedrock_zai_glm_5_ap_south_1\"\n  ],\n  \"model_profile\": \"bedrock_zai_glm_5_ap_south_1\",\n  \"model_selection_policy\": \"default_profile\",\n  \"model_selection_reason\": \"Selected default model profile.\",\n  \"reason\": \"No reviewed cognition matched the user question.\",\n  \"route\": \"cold_start\"\n}",
+              "task": "Count current F customers from TX whose first sale year is 2003."
+            },
+            "id": "tooluse_yq2paNcADjhYRzNjeXZdW9",
+            "name": "intent_subagent"
+          }
+        ],
+        "usage": {
+          "input_token_details": {
+            "cache_creation": 0,
+            "cache_read": 0
+          },
+          "input_tokens": 6899,
+          "output_tokens": 26,
+          "total_tokens": 6925
+        }
+      }
+    },
+    {
+      "agent_name": "adaptive_primitive_supervisor_agent",
+      "created_at": "2026-07-14T06:54:51.279700+00:00",
+      "event_type": "tool_call",
+      "payload": {
+        "args": {
+          "context": "Supervise this analytics workflow end to end.\n\nUSER_QUESTION:\nCount current F customers from TX whose first sale year is 2003.\n\nCOMPILED_SEMANTIC_CONTEXT:\n{\n  \"assertions\": [\n    \"Treat SQL pattern assumptions as pattern-local evidence; apply them only when that pattern matches the final intent.\",\n    \"Use observed join edges unless the question requires a different relationship.\"\n  ],\n  \"candidate_cards\": [\n    {\n      \"description\": \"A system-generated numeric identifier that uniquely identifies each row in the addresses table. This is an internal record key used to join address data to clients, purchases, and refunds. It does not carry direct business meaning on its own.\",\n      \"id\": \"column:addresses.address_record\",\n      \"kind\": \"column\",\n      \"metadata\": {\n        \"column_name\": \"address_record\",\n        \"role\": \"unknown\",\n        \"table_grain\": \"One row per unique address\",\n        \"table_name\": \"addresses\"\n      },\n      \"name\": \"address_record\",\n      \"sql_ref\": \"addresses.address_record\"\n    },\n    {\n      \"description\": \"The two-letter US state abbreviation for the client's address, such as TX, GA, or VA. Covers all 50 US states plus Washington DC. Used for state-level geographic segmentation and regional sales analysis. A small percentage of records have no state on file.\",\n      \"id\": \"column:addresses.state\",\n      \"kind\": \"column\",\n      \"metadata\": {\n        \"column_name\": \"state\",\n        \"role\": \"unknown\",\n        \"table_grain\": \"One row per unique address\",\n        \"table_name\": \"addresses\"\n      },\n      \"name\": \"state\",\n      \"sql_ref\": \"addresses.state\"\n    },\n    {\n      \"description\": \"A system-generated numeric identifier that uniquely identifies each row in the calendar_days table. This is an internal record key used to join date dimension data to fact tables such as purchases, refunds, and stock levels. It does not represent a human-readable date.\",\n      \"id\": \"column:calendar_days.calendar_day_record\",\n      \"kind\": \"column\",\n      \"metadata\": {\n        \"column_name\": \"calendar_day_record\",\n        \"role\": \"unknown\",\n        \"table_grain\": \"One row per calendar day\",\n        \"table_name\": \"calendar_days\"\n      },\n      \"name\": \"calendar_day_record\",\n      \"sql_ref\": \"calendar_days.calendar_day_record\"\n    },\n    {\n      \"description\": \"The four-digit calendar year associated with the date, ranging from 1900 to 2100. Used for annual reporting, year-over-year comparisons, and filtering data to specific years.\",\n      \"id\": \"column:calendar_days.year\",\n      \"kind\": \"column\",\n      \"metadata\": {\n        \"column_name\": \"year\",\n        \"role\": \"unknown\",\n        \"table_grain\": \"One row per calendar day\",\n        \"table_name\": \"calendar_days\"\n      },\n      \"name\": \"year\",\n      \"sql_ref\": \"calendar_days.year\"\n    },\n    {\n      \"description\": \"A system-generated numeric identifier that uniquely identifies each row in the client_profiles table. This is an internal record key used to link demographic profile data to client records and purchase or refund transactions. It does not carry direct business meaning on its own.\",\n      \"id\": \"column:client_profiles.client_profile_record\",\n      \"kind\": \"column\",\n      \"metadata\": {\n        \"column_name\": \"client_profile_record\",\n        \"role\": \"unknown\",\n        \"table_grain\": \"One row per unique demographic segment combination\",\n        \"table_name\": \"client_profiles\"\n      },\n      \"name\": \"client_profile_record\",\n      \"sql_ref\": \"client_profiles.client_profile_record\"\n    },\n    {\n      \"description\": \"Indicates the gender of the client associated with this demographic profile. Values are 'M' (male) and 'F' (female), distributed equally across the dataset. Used for gender-based segmentation of purchasing behavior, campaign targeting, and revenue analysis.\",\n      \"id\": \"column:client_profiles.gender\",\n      \"kind\": \"column\",\n      \"metadata\": {\n        \"column_name\": \"gender\",\n        \"role\": \"unknown\",\n        \"table_grain\": \"One row per unique demographic segment combination\",\n        \"table_name\": \"client_profiles\"\n      },\n      \"name\": \"gender\",\n      \"sql_ref\": \"client_profiles.gender\"\n    },\n    {\n      \"description\": \"A unique numeric identifier assigned to each client row in the system. This is an internal record key used to join the clients table to other tables. Business users should use client_code as the customer-facing identifier. Every client has exactly one client_record value with no nulls.\",\n      \"id\": \"column:clients.client_record\",\n      \"kind\": \"column\",\n      \"metadata\": {\n        \"column_name\": \"client_record\",\n        \"role\": \"unknown\",\n        \"table_grain\": \"One row per customer account\",\n        \"table_name\": \"clients\"\n      },\n      \"name\": \"client_record\",\n      \"sql_ref\": \"clients.client_record\"\n    },\n    {\n      \"description\": \"A reference to the client's active address record in the addresses table. The address provides city, state, ZIP, county, and country details used for geographic analysis of the customer base. All clients have an address linked with no missing values.\",\n      \"id\": \"column:clients.current_address_ref\",\n      \"kind\": \"column\",\n      \"metadata\": {\n        \"column_name\": \"current_address_ref\",\n        \"role\": \"unknown\",\n        \"table_grain\": \"One row per customer account\",\n        \"table_name\": \"clients\"\n      },\n      \"name\": \"current_address_ref\",\n      \"sql_ref\": \"clients.current_address_ref\"\n    },\n    {\n      \"description\": \"A reference to the client's currently active demographic profile in the client_profiles table. The profile captures segments such as gender, marital status, education level, credit rating, and purchase estimate. Approximately 3.4% of clients have no profile linked (null). This field enables demographic segmentation of customers for marketing and analytics.\",\n      \"id\": \"column:clients.current_client_profile_ref\",\n      \"kind\": \"column\",\n      \"metadata\": {\n        \"column_name\": \"current_client_profile_ref\",\n        \"role\": \"unknown\",\n        \"table_grain\": \"One row per customer account\",\n        \"table_name\": \"clients\"\n      },\n      \"name\": \"current_client_profile_ref\",\n      \"sql_ref\": \"clients.current_client_profile_ref\"\n    },\n    {\n      \"description\": \"A reference to the calendar_days table identifying the date of the customer's very first purchase or sale. This is a key customer tenure metric used for cohort analysis, loyalty tracking, and understanding customer acquisition timing. Approximately 3.5% of clients have no first sale date recorded (null), likely indicating customers who have not yet made a purchase.\",\n      \"id\": \"column:clients.first_sale_calendar_day_ref\",\n      \"kind\": \"column\",\n      \"metadata\": {\n        \"column_name\": \"first_sale_calendar_day_ref\",\n        \"role\": \"unknown\",\n        \"table_grain\": \"One row per customer account\",\n        \"table_name\": \"clients\"\n      },\n      \"name\": \"first_sale_calendar_day_ref\",\n      \"sql_ref\": \"clients.first_sale_calendar_day_ref\"\n    },\n    {\n      \"description\": \"This table contains demographic profile records used to classify individual shoppers into segments for analysis. Each record captures a combination of demographic attributes: gender (male or female), marital status (single, married, divorced, widowed, or unknown), education level (ranging from primary through advanced degree), an estimated annual purchase amount, credit rating (Good, Low Risk, High Risk, or Unknown), and counts of total dependents, employed dependents, and dependents in college. With nearly 1.9 million rows, this table represents a large set of demographic combinations. Client records link to their current active profile via a reference key. These segments are used to analyze purchasing behavior, revenue, and campaign response across different customer groups.\",\n      \"id\": \"table:client_profiles\",\n      \"kind\": \"table\",\n      \"metadata\": {\n        \"grain\": \"One row per unique demographic segment combination\"\n      },\n      \"name\": \"client_profiles\",\n      \"sql_ref\": null\n    },\n    {\n      \"description\": \"The clients table is the central record for every shopper or customer account in the business. Each row represents one person and links to their current mailing address, demographic profile, and household profile. The table also captures key tenure milestones such as the date of the customer's first purchase and first shipment, along with personal details like name, salutation, date of birth, birth country, email address, and a preferred-customer flag. It serves as the starting point for customer segmentation, loyalty analysis, lifetime value reporting, and cross-channel purchase history.\",\n      \"id\": \"table:clients\",\n      \"kind\": \"table\",\n      \"metadata\": {\n        \"grain\": \"One row per customer account\"\n      },\n      \"name\": \"clients\",\n      \"sql_ref\": null\n    },\n    {\n      \"description\": \"This table provides a comprehensive date dimension covering every calendar day from 1900 through 2100. Each row represents a single date and includes attributes for standard calendar reporting (year, quarter, month, week, day of week, day of month) as well as fiscal calendar equivalents (fiscal year, fiscal quarter sequence, fiscal week sequence). It also includes flags and indicators for holidays, weekends, days following a holiday, first and last days of the month, and whether a date falls within the current day, week, month, quarter, or year. Cross-period comparison fields such as same day last year and same day last quarter support year-over-year and quarter-over-quarter trend analysis. This table is referenced by purchase, refund, stock level, and campaign tables to enable time-based reporting.\",\n      \"id\": \"table:calendar_days\",\n      \"kind\": \"table\",\n      \"metadata\": {\n        \"grain\": \"One row per calendar day\"\n      },\n      \"name\": \"calendar_days\",\n      \"sql_ref\": null\n    },\n    {\n      \"description\": \"This table describes individual pages within printed catalogs or mailers distributed to customers. Each record represents one page within a specific mailer issue and includes the mailer number (which catalog edition) and the page number within that mailer. Date references indicate when the mailer was active\\u2014its start and end calendar days\\u2014allowing analysis of which catalog editions drove purchases or returns during a given period. The department field categorizes the page by merchandise department, though the current data shows a placeholder value, suggesting this field may not yet be fully populated. The description field provides a free-text summary of the page content. The type field classifies the mailer cadence as monthly, quarterly, or bi-annual, which is useful for understanding promotion frequency and seasonality. This table is used as a dimension in mail-order purchase and refund analysis to connect transactions back to the specific catalog page that influenced the sale or return.\",\n      \"id\": \"table:mailer_pages\",\n      \"kind\": \"table\",\n      \"metadata\": {\n        \"grain\": \"One row per page within a mailer issue\"\n      },\n      \"name\": \"mailer_pages\",\n      \"sql_ref\": null\n    },\n    {\n      \"description\": \"A reference to the calendar_days table identifying the date on which the customer received their very first shipment. This is a customer tenure indicator useful for cohort analysis and understanding how long a customer has been receiving orders. Approximately 3.4% of clients have no first shipping date recorded (null), likely indicating customers who have not yet received a shipment.\",\n      \"id\": \"column:clients.first_shipping_calendar_day_ref\",\n      \"kind\": \"column\",\n      \"metadata\": {\n        \"column_name\": \"first_shipping_calendar_day_ref\",\n        \"role\": \"unknown\",\n        \"table_grain\": \"One row per customer account\",\n        \"table_name\": \"clients\"\n      },\n      \"name\": \"first_shipping_calendar_day_ref\",\n      \"sql_ref\": \"clients.first_shipping_calendar_day_ref\"\n    },\n    {\n      \"description\": \"This field references the client_profiles table and captures the demographic segment (gender, marital status, education, credit rating, etc.) associated with the billing client at the time of the order. It enables segmentation of mail-order revenue and order volume by customer demographics. Because client profiles can change over time, this field preserves the profile that was active at the point of purchase.\",\n      \"id\": \"column:mail_order_purchases.billing_client_profile_ref\",\n      \"kind\": \"column\",\n      \"metadata\": {\n        \"column_name\": \"billing_client_profile_ref\",\n        \"role\": \"unknown\",\n        \"table_grain\": \"One row per line item per mail-order transaction\",\n        \"table_name\": \"mail_order_purchases\"\n      },\n      \"name\": \"billing_client_profile_ref\",\n      \"sql_ref\": \"mail_order_purchases.billing_client_profile_ref\"\n    },\n    {\n      \"description\": \"Links to the clients table to identify the shopper whose account was charged in the original online purchase and who is the recipient of the refund. This may differ from the returning client if someone other than the original buyer submitted the return. Approximately 4.4% of rows have no value recorded.\",\n      \"id\": \"column:online_refunds.refunded_client_ref\",\n      \"kind\": \"column\",\n      \"metadata\": {\n        \"column_name\": \"refunded_client_ref\",\n        \"role\": \"unknown\",\n        \"table_grain\": \"One row per returned line item from an online order\",\n        \"table_name\": \"online_refunds\"\n      },\n      \"name\": \"refunded_client_ref\",\n      \"sql_ref\": \"online_refunds.refunded_client_ref\"\n    },\n    {\n      \"description\": \"The total customer payment for this purchase line including shipping or delivery charges, but before tax is added. Calculated as net_paid plus extended_delivery_cost. Useful for analyzing the combined impact of product pricing and delivery fees on the total amount customers pay.\",\n      \"id\": \"column:online_purchases.net_paid_with_delivery\",\n      \"kind\": \"column\",\n      \"metadata\": {\n        \"column_name\": \"net_paid_with_delivery\",\n        \"role\": \"unknown\",\n        \"table_grain\": \"One row per line item per online order\",\n        \"table_name\": \"online_purchases\"\n      },\n      \"name\": \"net_paid_with_delivery\",\n      \"sql_ref\": \"online_purchases.net_paid_with_delivery\"\n    },\n    {\n      \"description\": \"This table stores the physical and mailing addresses associated with clients. Each record represents a unique address and includes full street details, city, county, state, ZIP code, country, timezone offset, and the type of dwelling (apartment, condo, or single family). It is used to support geographic segmentation and regional analysis of customers across purchases, refunds, and marketing activity. All addresses in this dataset are located in the United States. The table links to client records, billing addresses, and shipping addresses across the store, online, and mail-order purchase channels.\",\n      \"id\": \"table:addresses\",\n      \"kind\": \"table\",\n      \"metadata\": {\n        \"grain\": \"One row per unique address\"\n      },\n      \"name\": \"addresses\",\n      \"sql_ref\": null\n    },\n    {\n      \"description\": \"The retail price at which the product is currently offered for sale to customers. Prices range from $0.09 to $99.99 across the catalog. This field reflects the list price for the active version of the product record and can be compared to wholesale_cost to assess margin. A small number of records have a null price.\",\n      \"id\": \"column:merchandise.current_price\",\n      \"kind\": \"column\",\n      \"metadata\": {\n        \"column_name\": \"current_price\",\n        \"role\": \"unknown\",\n        \"table_grain\": \"One row per product version (slowly changing)\",\n        \"table_name\": \"merchandise\"\n      },\n      \"name\": \"current_price\",\n      \"sql_ref\": \"merchandise.current_price\"\n    },\n    {\n      \"description\": \"Links the billing customer to their demographic segment record in the client_profiles table, capturing attributes such as gender, marital status, education, and credit rating as they were at the time of the sale. Enables segmentation of online revenue by customer demographics.\",\n      \"id\": \"column:online_purchases.billi\n...[truncated]\n\nPREVIOUS_SUPERVISOR_CONTEXT:\nCOGNITION_PLAN:\n{\n  \"cognition_matches\": [],\n  \"context_mode\": \"full\",\n  \"guidance\": \"No usable cognition was found; use the normal context compiler path.\",\n  \"model_candidates\": [\n    \"bedrock_zai_glm_5_ap_south_1\"\n  ],\n  \"model_profile\": \"bedrock_zai_glm_5_ap_south_1\",\n  \"model_selection_policy\": \"default_profile\",\n  \"model_selection_reason\": \"Selected default model profile.\",\n  \"reason\": \"No reviewed cognition matched the user question.\",\n  \"route\": \"cold_start\"\n}",
+          "task": "Count current F customers from TX whose first sale year is 2003."
+        },
+        "id": "tooluse_yq2paNcADjhYRzNjeXZdW9",
+        "name": "intent_subagent"
+      }
+    },
+    {
+      "agent_name": "adaptive_primitive_supervisor_agent",
+      "created_at": "2026-07-14T06:54:51.279733+00:00",
+      "event_type": "middleware_tool_args_updated",
+      "payload": {
+        "changed_keys": [
+          "context"
+        ],
+        "has_context": true,
+        "id": "tooluse_yq2paNcADjhYRzNjeXZdW9",
+        "name": "intent_subagent"
+      }
+    },
+    {
+      "agent_name": "adaptive_primitive_supervisor_agent",
+      "created_at": "2026-07-14T06:55:03.314447+00:00",
+      "event_type": "tool_result",
+      "payload": {
+        "id": "tooluse_yq2paNcADjhYRzNjeXZdW9",
+        "name": "intent_subagent",
+        "preview": "{\"status\": \"ok\", \"subagent\": \"intent_subagent\", \"stop_reason\": \"final\", \"iterations\": 7, \"output\": \"```\\nINTENT_STATUS: OK\\nINTENT_SUMMARY:\\n- measure: Count of distinct customer accounts\\n- grain: One row per customer account (clients table grain)\\n- filters: Current gender = 'F', current state = 'TX', first sale year = 2003\\n- time_windows: First sale year 2003 (historical cohort filter, not rolling)\\n- exclusions: Clients with null first_sale_calendar_day_ref, null current_client_profile_ref, or null current_address_ref are implicitly excluded by join/filter logic\\n- requested_output: Single scalar count\\n\\nCLAUSE_BINDINGS:\\n- clause: \\\"current F customers\\\"\\n  action_or_entity: Customer accounts with current demographic profile showing gender = 'F'\\n  table_scope: clients (primary) JOIN client_profiles (via clients.current_client_profile_ref)\\n  date_scope: Current profile snapshot (no date filter; uses current active profile)\\n  status: resolved\\n- clause: \\\"from TX\\\"\\n  action_or_entity: Customer accounts with current address in Texas\\n  table_scope: clients (primary) JOIN addresses (via clients.current_address_ref)\\n  date_scope: Current address snapshot (no date filter; uses current active address)\\n  status: resolved\\n- clause: \\\"first sale year is 2003\\\"\\n  action_or_entity: Customer accounts whose first purchase occurred in calendar year 2003\\n  table_scope: clients (primary) JOIN calendar_days (via clients.first_sale_calendar_day_ref)\\n  date_scope: calendar_days.year = 2003\\n  status: resolved\\n\\nBUSINESS_TERMS:\\n- term: current\\n  status: DEFINED\\n  definition: Uses the active/snapshot reference columns on the client record (current_client_profile_ref, current_address_ref) rather than historical or transaction-time values\\n  source: schema evidence (column descriptions reference \\\"current\\\" and \\\"active\\\" profile/address links)\\n- term: F\\n  status: DEFINED\\n  definition: Gender value 'F' representing female customers in client_profil\n...[truncated]",
+        "truncated": true
+      }
+    },
+    {
+      "agent_name": "adaptive_primitive_supervisor_agent",
+      "created_at": "2026-07-14T06:55:03.314720+00:00",
+      "event_type": "model_start",
+      "payload": {
+        "iteration": 3
+      }
+    },
+    {
+      "agent_name": "adaptive_primitive_supervisor_agent",
+      "created_at": "2026-07-14T06:55:07.119559+00:00",
+      "event_type": "model_message",
+      "payload": {
+        "iteration": 3,
+        "text_preview": "",
+        "tool_calls": [
+          {
+            "args": {
+              "context": "INTENT_STATUS: OK\nINTENT_SUMMARY:\n- measure: Count of distinct customer accounts\n- grain: One row per customer account (clients table grain)\n- filters: Current gender = 'F', current state = 'TX', first sale year = 2003\n- time_windows: First sale year 2003 (historical cohort filter, not rolling)\n- exclusions: Clients with null first_sale_calendar_day_ref, null current_client_profile_ref, or null current_address_ref are implicitly excluded by join/filter logic\n- requested_output: Single scalar count\n\nCLAUSE_BINDINGS:\n- clause: \"current F customers\"\n  action_or_entity: Customer accounts with current demographic profile showing gender = 'F'\n  table_scope: clients (primary) JOIN client_profiles (via clients.current_client_profile_ref)\n  date_scope: Current profile snapshot (no date filter; uses current active profile)\n  status: resolved\n- clause: \"from TX\"\n  action_or_entity: Customer accounts with current address in Texas\n  table_scope: clients (primary) JOIN addresses (via clients.current_address_ref)\n  date_scope: Current address snapshot (no date filter; uses current active address)\n  status: resolved\n- clause: \"first sale year is 2003\"\n  action_or_entity: Customer accounts whose first purchase occurred in calendar year 2003\n  table_scope: clients (primary) JOIN calendar_days (via clients.first_sale_calendar_day_ref)\n  date_scope: calendar_days.year = 2003\n  status: resolved\n\nGROUNDED_MAPPINGS:\n- \"F\" -> client_profiles.gender = 'F'\n- \"TX\" -> addresses.state = 'TX'\n- \"first sale year 2003\" -> calendar_days.year = 2003 via clients.first_sale_calendar_day_ref JOIN\n- \"current\" -> clients.current_client_profile_ref, clients.current_address_ref\n\nData availability verified:\n- calendar_days has 365 rows for year 2003\n- 214 clients have first sale year 2003\n- 7,799 clients have TX addresses\n- 960,400 client_profiles have gender = 'F'",
+              "task": "Write safe read-only SQL to count current F customers from TX whose first sale year is 2003."
+            },
+            "id": "tooluse_1o5VDk8hU3QIkT0v4ReJ5H",
+            "name": "sql_author_subagent"
+          }
+        ],
+        "usage": {
+          "input_token_details": {
+            "cache_creation": 0,
+            "cache_read": 0
+          },
+          "input_tokens": 13954,
+          "output_tokens": 477,
+          "total_tokens": 14431
+        }
+      }
+    },
+    {
+      "agent_name": "adaptive_primitive_supervisor_agent",
+      "created_at": "2026-07-14T06:55:07.119619+00:00",
+      "event_type": "tool_call",
+      "payload": {
+        "args": {
+          "context": "INTENT_STATUS: OK\nINTENT_SUMMARY:\n- measure: Count of distinct customer accounts\n- grain: One row per customer account (clients table grain)\n- filters: Current gender = 'F', current state = 'TX', first sale year = 2003\n- time_windows: First sale year 2003 (historical cohort filter, not rolling)\n- exclusions: Clients with null first_sale_calendar_day_ref, null current_client_profile_ref, or null current_address_ref are implicitly excluded by join/filter logic\n- requested_output: Single scalar count\n\nCLAUSE_BINDINGS:\n- clause: \"current F customers\"\n  action_or_entity: Customer accounts with current demographic profile showing gender = 'F'\n  table_scope: clients (primary) JOIN client_profiles (via clients.current_client_profile_ref)\n  date_scope: Current profile snapshot (no date filter; uses current active profile)\n  status: resolved\n- clause: \"from TX\"\n  action_or_entity: Customer accounts with current address in Texas\n  table_scope: clients (primary) JOIN addresses (via clients.current_address_ref)\n  date_scope: Current address snapshot (no date filter; uses current active address)\n  status: resolved\n- clause: \"first sale year is 2003\"\n  action_or_entity: Customer accounts whose first purchase occurred in calendar year 2003\n  table_scope: clients (primary) JOIN calendar_days (via clients.first_sale_calendar_day_ref)\n  date_scope: calendar_days.year = 2003\n  status: resolved\n\nGROUNDED_MAPPINGS:\n- \"F\" -> client_profiles.gender = 'F'\n- \"TX\" -> addresses.state = 'TX'\n- \"first sale year 2003\" -> calendar_days.year = 2003 via clients.first_sale_calendar_day_ref JOIN\n- \"current\" -> clients.current_client_profile_ref, clients.current_address_ref\n\nData availability verified:\n- calendar_days has 365 rows for year 2003\n- 214 clients have first sale year 2003\n- 7,799 clients have TX addresses\n- 960,400 client_profiles have gender = 'F'",
+          "task": "Write safe read-only SQL to count current F customers from TX whose first sale year is 2003."
+        },
+        "id": "tooluse_1o5VDk8hU3QIkT0v4ReJ5H",
+        "name": "sql_author_subagent"
+      }
+    },
+    {
+      "agent_name": "adaptive_primitive_supervisor_agent",
+      "created_at": "2026-07-14T06:55:12.938453+00:00",
+      "event_type": "tool_result",
+      "payload": {
+        "id": "tooluse_1o5VDk8hU3QIkT0v4ReJ5H",
+        "name": "sql_author_subagent",
+        "preview": "{\"status\": \"ok\", \"subagent\": \"sql_author_subagent\", \"stop_reason\": \"final\", \"iterations\": 3, \"output\": \"SQL_AUTHOR_STATUS: OK\\nINTERPRETATION:\\n- chosen meaning: Count of distinct customer accounts matching three criteria: current gender = 'F', current address state = 'TX', and first sale calendar year = 2003\\n- grain: One row per customer account (clients table grain), aggregated to a single scalar count\\n- ambiguity: None - all filters are explicitly grounded in the approved intent\\n- grounded mappings: 'F' -> client_profiles.gender = 'F', 'TX' -> addresses.state = 'TX', 'first sale year 2003' -> calendar_days.year = 2003\\n\\nCONTEXT_USED:\\n- patterns: none\\n- tables: clients, client_profiles, addresses, calendar_days\\n- columns: clients.client_record, clients.current_client_profile_ref, clients.current_address_ref, clients.first_sale_calendar_day_ref, client_profiles.client_profile_record, client_profiles.gender, addresses.address_record, addresses.state, calendar_days.calendar_day_record, calendar_days.year\\n\\nFINAL_SQL:\\n```sql\\nSELECT COUNT(DISTINCT c.client_record) AS customer_count\\nFROM clients c\\nINNER JOIN client_profiles cp\\n  ON c.current_client_profile_ref = cp.client_profile_record\\nINNER JOIN addresses a\\n  ON c.current_address_ref = a.address_record\\nINNER JOIN calendar_days cd\\n  ON c.first_sale_calendar_day_ref = cd.calendar_day_record\\nWHERE cp.gender = 'F'\\n  AND a.state = 'TX'\\n  AND cd.year = 2003\\n```\\n\\nDRY_RUN:\\npassed\\n\\nVALUE_PROBES:\\n- 'F' (gender) and 'TX' (state) used directly from approved intent grounded mappings\\n- 2003 (year) used directly from approved intent\\n\\nNULL_SENSITIVE_CHECKS:\\n- INNER JOINs implicitly exclude clients with null current_client_profile_ref, null current_address_ref, or null first_sale_calendar_day_ref (per approved intent exclusions)\\n- COUNT(DISTINCT c.client_record) ensures each customer counted once regardless of potential row multiplication from joins\\n\\nGRAIN_JOIN_CHECKS:\\n- clients is\n...[truncated]",
+        "truncated": false
+      }
+    },
+    {
+      "agent_name": "adaptive_primitive_supervisor_agent",
+      "created_at": "2026-07-14T06:55:12.938756+00:00",
+      "event_type": "model_start",
+      "payload": {
+        "iteration": 4
+      }
+    },
+    {
+      "agent_name": "adaptive_primitive_supervisor_agent",
+      "created_at": "2026-07-14T06:55:17.447894+00:00",
+      "event_type": "model_message",
+      "payload": {
+        "iteration": 4,
+        "text_preview": "",
+        "tool_calls": [
+          {
+            "args": {
+              "context": "USER_QUESTION: Count current F customers from TX whose first sale year is 2003.\n\nINTENT_STATUS: OK\nINTENT_SUMMARY:\n- measure: Count of distinct customer accounts\n- grain: One row per customer account (clients table grain)\n- filters: Current gender = 'F', current state = 'TX', first sale year = 2003\n- exclusions: Clients with null first_sale_calendar_day_ref, null current_client_profile_ref, or null current_address_ref are implicitly excluded by join/filter logic\n\nSQL_AUTHOR_STATUS: OK\nFINAL_SQL:\n```sql\nSELECT COUNT(DISTINCT c.client_record) AS customer_count\nFROM clients c\nINNER JOIN client_profiles cp\n  ON c.current_client_profile_ref = cp.client_profile_record\nINNER JOIN addresses a\n  ON c.current_address_ref = a.address_record\nINNER JOIN calendar_days cd\n  ON c.first_sale_calendar_day_ref = cd.calendar_day_record\nWHERE cp.gender = 'F'\n  AND a.state = 'TX'\n  AND cd.year = 2003\n```\n\nDRY_RUN: passed\n\nData availability verified:\n- calendar_days has 365 rows for year 2003\n- 214 clients have first sale year 2003\n- 7,799 clients have TX addresses\n- 960,400 client_profiles have gender = 'F'",
+              "task": "Validate the SQL Author packet for semantic correctness, grain safety, and business alignment."
+            },
+            "id": "tooluse_ZhZ39AkgWKONc2Lxj3Dv5Z",
+            "name": "data_steward_subagent"
+          }
+        ],
+        "usage": {
+          "input_token_details": {
+            "cache_creation": 0,
+            "cache_read": 0
+          },
+          "input_tokens": 16994,
+          "output_tokens": 310,
+          "total_tokens": 17304
+        }
+      }
+    },
+    {
+      "agent_name": "adaptive_primitive_supervisor_agent",
+      "created_at": "2026-07-14T06:55:17.447955+00:00",
+      "event_type": "tool_call",
+      "payload": {
+        "args": {
+          "context": "USER_QUESTION: Count current F customers from TX whose first sale year is 2003.\n\nINTENT_STATUS: OK\nINTENT_SUMMARY:\n- measure: Count of distinct customer accounts\n- grain: One row per customer account (clients table grain)\n- filters: Current gender = 'F', current state = 'TX', first sale year = 2003\n- exclusions: Clients with null first_sale_calendar_day_ref, null current_client_profile_ref, or null current_address_ref are implicitly excluded by join/filter logic\n\nSQL_AUTHOR_STATUS: OK\nFINAL_SQL:\n```sql\nSELECT COUNT(DISTINCT c.client_record) AS customer_count\nFROM clients c\nINNER JOIN client_profiles cp\n  ON c.current_client_profile_ref = cp.client_profile_record\nINNER JOIN addresses a\n  ON c.current_address_ref = a.address_record\nINNER JOIN calendar_days cd\n  ON c.first_sale_calendar_day_ref = cd.calendar_day_record\nWHERE cp.gender = 'F'\n  AND a.state = 'TX'\n  AND cd.year = 2003\n```\n\nDRY_RUN: passed\n\nData availability verified:\n- calendar_days has 365 rows for year 2003\n- 214 clients have first sale year 2003\n- 7,799 clients have TX addresses\n- 960,400 client_profiles have gender = 'F'",
+          "task": "Validate the SQL Author packet for semantic correctness, grain safety, and business alignment."
+        },
+        "id": "tooluse_ZhZ39AkgWKONc2Lxj3Dv5Z",
+        "name": "data_steward_subagent"
+      }
+    },
+    {
+      "agent_name": "adaptive_primitive_supervisor_agent",
+      "created_at": "2026-07-14T06:55:19.225098+00:00",
+      "event_type": "tool_result",
+      "payload": {
+        "id": "tooluse_ZhZ39AkgWKONc2Lxj3Dv5Z",
+        "name": "data_steward_subagent",
+        "preview": "{\"status\": \"ok\", \"subagent\": \"data_steward_subagent\", \"stop_reason\": \"final\", \"iterations\": 6, \"output\": \"STEWARD_STATUS: PASS\\nISSUES:\\n- none\\nREQUIRED_ANALYST_CORRECTION:\\nnone\\nASSERTIONS_JSON:\\n[\\n  {\\n    \\\"check\\\": \\\"cognition_contract\\\",\\n    \\\"reason\\\": \\\"No COGNITION_PLAN, learned SQL pattern, or LEARNED_SEMANTIC_ASSERTIONS present in packet. Check is not applicable. SQL aligns with stated intent: COUNT(DISTINCT) measure, correct joins to client_profiles (gender='F'), addresses (state='TX'), and calendar_days (year=2003), with no GROUP BY preserving single-row grain as specified.\\\",\\n    \\\"repair_instruction\\\": \\\"\\\",\\n    \\\"status\\\": \\\"PASS\\\"\\n  },\\n  {\\n    \\\"check\\\": \\\"entity_grain\\\",\\n    \\\"reason\\\": \\\"The SQL correctly aggregates at the requested business entity grain. The intent specifies 'Count of distinct customer accounts' at 'one row per customer account (clients table grain)'. The SQL uses COUNT(DISTINCT c.client_record), which counts unique client records from the clients table, matching the requested grain. All filters (gender = 'F', state = 'TX', first sale year = 2003) are correctly applied as WHERE predicates rather than grouping dimensions, preserving the single-row aggregate output as intended.\\\",\\n    \\\"repair_instruction\\\": \\\"No repair needed. The SQL grain aligns with the approved intent.\\\",\\n    \\\"status\\\": \\\"PASS\\\"\\n  },\\n  {\\n    \\\"check\\\": \\\"clause_coverage\\\",\\n    \\\"reason\\\": \\\"All required intent clauses are represented in the SQL: measure (COUNT DISTINCT on client_record), filters (gender = 'F', state = 'TX', year = 2003), grain (single row result at clients table grain), and implicit exclusions via INNER JOINs on profile, address, and calendar day references. No missing or contradictory clauses detected.\\\",\\n    \\\"repair_instruction\\\": \\\"\\\",\\n    \\\"status\\\": \\\"PASS\\\"\\n  },\\n  {\\n    \\\"check\\\": \\\"value_grounding\\\",\\n    \\\"reason\\\": \\\"All SQL literals are grounded by the approved intent and verified by data avail\n...[truncated]",
+        "truncated": true
+      }
+    },
+    {
+      "agent_name": "adaptive_primitive_supervisor_agent",
+      "created_at": "2026-07-14T06:55:19.225438+00:00",
+      "event_type": "model_start",
+      "payload": {
+        "iteration": 5
+      }
+    },
+    {
+      "agent_name": "adaptive_primitive_supervisor_agent",
+      "created_at": "2026-07-14T06:55:21.115902+00:00",
+      "event_type": "model_message",
+      "payload": {
+        "iteration": 5,
+        "text_preview": "",
+        "tool_calls": [
+          {
+            "args": {
+              "sql": "SELECT COUNT(DISTINCT c.client_record) AS customer_count\nFROM clients c\nINNER JOIN client_profiles cp\n  ON c.current_client_profile_ref = cp.client_profile_record\nINNER JOIN addresses a\n  ON c.current_address_ref = a.address_record\nINNER JOIN calendar_days cd\n  ON c.first_sale_calendar_day_ref = cd.calendar_day_record\nWHERE cp.gender = 'F'\n  AND a.state = 'TX'\n  AND cd.year = 2003"
+            },
+            "id": "tooluse_xrlCMHMRgsSAu5cWHWLoKU",
+            "name": "execute_sql"
+          }
+        ],
+        "usage": {
+          "input_token_details": {
+            "cache_creation": 0,
+            "cache_read": 0
+          },
+          "input_tokens": 20262,
+          "output_tokens": 105,
+          "total_tokens": 20367
+        }
+      }
+    },
+    {
+      "agent_name": "adaptive_primitive_supervisor_agent",
+      "created_at": "2026-07-14T06:55:21.115954+00:00",
+      "event_type": "tool_call",
+      "payload": {
+        "args": {
+          "sql": "SELECT COUNT(DISTINCT c.client_record) AS customer_count\nFROM clients c\nINNER JOIN client_profiles cp\n  ON c.current_client_profile_ref = cp.client_profile_record\nINNER JOIN addresses a\n  ON c.current_address_ref = a.address_record\nINNER JOIN calendar_days cd\n  ON c.first_sale_calendar_day_ref = cd.calendar_day_record\nWHERE cp.gender = 'F'\n  AND a.state = 'TX'\n  AND cd.year = 2003"
+        },
+        "id": "tooluse_xrlCMHMRgsSAu5cWHWLoKU",
+        "name": "execute_sql"
+      }
+    },
+    {
+      "agent_name": "adaptive_primitive_supervisor_agent",
+      "created_at": "2026-07-14T06:55:21.190969+00:00",
+      "event_type": "tool_result",
+      "payload": {
+        "id": "tooluse_xrlCMHMRgsSAu5cWHWLoKU",
+        "name": "execute_sql",
+        "preview": "{\"status\": \"ok\", \"sql\": \"SELECT COUNT(DISTINCT c.client_record) AS customer_count\\nFROM clients c\\nINNER JOIN client_profiles cp\\n  ON c.current_client_profile_ref = cp.client_profile_record\\nINNER JOIN addresses a\\n  ON c.current_address_ref = a.address_record\\nINNER JOIN calendar_days cd\\n  ON c.first_sale_calendar_day_ref = cd.calendar_day_record\\nWHERE cp.gender = 'F'\\n  AND a.state = 'TX'\\n  AND cd.year = 2003\", \"columns\": [\"customer_count\"], \"rows\": [{\"customer_count\": 10}], \"row_count\": 1, \"preview_row_count\": 1, \"total_row_count\": 1, \"result_profile\": {\"row_count\": 1, \"profiled_row_count\": 1, \"max_profiled_rows\": 10000, \"truncated\": false, \"columns\": [{\"name\": \"customer_count\", \"inferred_type\": \"number\", \"null_count_in_profile\": 0, \"non_null_count_in_profile\": 1, \"distinct_count_in_profile\": 1, \"numeric\": {\"min\": 10.0, \"max\": 10.0, \"avg\": 10.0}, \"top_values_in_profile\": [{\"value\": 10, \"count\": 1}]}], \"sample_rows\": [{\"customer_count\": 10}]}, \"result_artifact\": {\"artifact_id\": \"res_5aa3a32788be4a2992ba70c9f92a47f6\", \"conversation_id\": \"default_conversation\", \"thread_id\": \"default_thread\", \"manifest_key\": \"query-results/retail_analytics/default_conversation/default_thread/2026/07/14/res_5aa3a32788be4a2992ba70c9f92a47f6/manifest.json\", \"rows_key\": \"query-results/retail_analytics/default_conversation/default_thread/2026/07/14/res_5aa3a32788be4a2992ba70c9f92a47f6/rows.jsonl\", \"profile_key\": \"query-results/retail_analytics/default_conversation/default_thread/2026/07/14/res_5aa3a32788be4a2992ba70c9f92a47f6/profile.json\", \"sql_key\": \"query-results/retail_analytics/default_conversation/default_thread/2026/07/14/res_5aa3a32788be4a2992ba70c9f92a47f6/sql.sql\", \"stored_row_count\": 1, \"total_row_count\": 1, \"truncated\": false}}",
+        "truncated": false
+      }
+    },
+    {
+      "agent_name": "adaptive_primitive_supervisor_agent",
+      "created_at": "2026-07-14T06:55:21.191000+00:00",
+      "event_type": "model_start",
+      "payload": {
+        "iteration": 6
+      }
+    },
+    {
+      "agent_name": "adaptive_primitive_supervisor_agent",
+      "created_at": "2026-07-14T06:55:23.516710+00:00",
+      "event_type": "model_message",
+      "payload": {
+        "iteration": 6,
+        "text_preview": "FINAL_STATUS: PASS\n\nANSWER:\n10 customers\n\nSQL_USED:\n```sql\nSELECT COUNT(DISTINCT c.client_record) AS customer_count\nFROM clients c\nINNER JOIN client_profiles cp\n  ON c.current_client_profile_ref = cp.client_profile_record\nINNER JOIN addresses a\n  ON c.current_address_ref = a.address_record\nINNER JOIN calendar_days cd\n  ON c.first_sale_calendar_day_ref = cd.calendar_day_record\nWHERE cp.gender = 'F'\n  AND a.state = 'TX'\n  AND cd.year = 2003\n```\n\nVERIFICATION:\n- adaptive_route: cold_start\n- cognition: unavailable\n- context_compiler: used\n- dry_run: passed\n- execution: passed\n- steward_checks: all passed (entity_grain, clause_coverage, value_grounding, source_date_scope, join_fanout_null)\n\nASSUMPTIONS:\nNone",
+        "tool_calls": [],
+        "usage": {
+          "input_token_details": {
+            "cache_creation": 0,
+            "cache_read": 0
+          },
+          "input_tokens": 20965,
+          "output_tokens": 182,
+          "total_tokens": 21147
+        }
+      }
+    },
+    {
+      "agent_name": "adaptive_primitive_supervisor_agent",
+      "created_at": "2026-07-14T06:55:23.516760+00:00",
+      "event_type": "agent_done",
+      "payload": {
+        "iteration": 6,
+        "output_preview": "FINAL_STATUS: PASS\n\nANSWER:\n10 customers\n\nSQL_USED:\n```sql\nSELECT COUNT(DISTINCT c.client_record) AS customer_count\nFROM clients c\nINNER JOIN client_profiles cp\n  ON c.current_client_profile_ref = cp.client_profile_record\nINNER JOIN addresses a\n  ON c.current_address_ref = a.address_record\nINNER JOIN calendar_days cd\n  ON c.first_sale_calendar_day_ref = cd.calendar_day_record\nWHERE cp.gender = 'F'\n  AND a.state = 'TX'\n  AND cd.year = 2003\n```\n\nVERIFICATION:\n- adaptive_route: cold_start\n- cognition: unavailable\n- context_compiler: used\n- dry_run: passed\n- execution: passed\n- steward_checks: all passed (entity_grain, clause_coverage, value_grounding, source_date_scope, join_fanout_null)\n\nASSUMPTIONS:\nNone"
+      }
+    },
+    {
+      "agent_name": "supervisor_workflow",
+      "created_at": "2026-07-14T06:55:23.517544+00:00",
+      "event_type": "supervisor_done",
+      "payload": {
+        "output_preview": "FINAL_STATUS: PASS\n\nANSWER:\n10 customers\n\nSQL_USED:\n```sql\nSELECT COUNT(DISTINCT c.client_record) AS customer_count\nFROM clients c\nINNER JOIN client_profiles cp\n  ON c.current_client_profile_ref = cp.client_profile_record\nINNER JOIN addresses a\n  ON c.current_address_ref = a.address_record\nINNER JOIN calendar_days cd\n  ON c.first_sale_calendar_day_ref = cd.calendar_day_record\nWHERE cp.gender = 'F'\n  AND a.state = 'TX'\n  AND cd.year = 2003\n```\n\nVERIFICATION:\n- adaptive_route: cold_start\n- cognition: unavailable\n- context_compiler: used\n- dry_run: passed\n- execution: passed\n- steward_checks: all passed (entity_grain, clause_coverage, value_grounding, source_date_scope, join_fanout_null)\n\nASSUMPTIONS:\nNone",
+        "stop_reason": "final"
+      }
+    },
+    {
+      "agent_name": "adaptive_runtime",
+      "created_at": "2026-07-14T06:55:23.526232+00:00",
+      "event_type": "experience_candidate_written",
+      "payload": {
+        "candidate_key": "experience/candidates/retail_analytics/2026/07/14/exp_951f3e373529d985.json",
+        "review_status": "needs_review"
+      }
+    },
+    {
+      "agent_name": "adaptive_runtime",
+      "created_at": "2026-07-14T06:55:23.526254+00:00",
+      "event_type": "adaptive_done",
+      "payload": {
+        "route": "cold_start",
+        "stop_reason": "final"
+      }
+    }
+  ]
+}

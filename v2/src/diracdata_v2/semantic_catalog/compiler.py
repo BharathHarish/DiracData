@@ -111,6 +111,7 @@ class SemanticCatalogCompiler:
                 "reranked_card_count": len(ranked_cards),
                 "required_tables": sorted(required_tables),
                 "intent_frame": _runtime_intent_frame(frame, unresolved_terms=unresolved),
+                "intent_extractor_usage": _intent_extractor_usage(self.intent_extractor),
                 **recall["retrieval"],
             },
         )
@@ -436,10 +437,11 @@ def _has_explicit_definition(term: str, selected_cards: list[dict[str, Any]]) ->
 
 
 def _has_catalog_support(term: str, selected_cards: list[dict[str, Any]]) -> bool:
-    term_tokens = set(tokenize(term))
-    if not term_tokens:
+    token_groups = [_token_variants(token) for token in tokenize(term)]
+    token_groups = [group for group in token_groups if group]
+    if not token_groups:
         return False
-    required_overlap = len(term_tokens) if len(term_tokens) <= 2 else max(2, len(term_tokens) // 2)
+    required_groups = token_groups if len(token_groups) <= 2 else token_groups[:-1]
     for card in selected_cards:
         searchable = " ".join(
             [
@@ -451,9 +453,30 @@ def _has_catalog_support(term: str, selected_cards: list[dict[str, Any]]) -> boo
                 " ".join(map(str, card.get("metadata", {}).get("columns", []))),
             ]
         )
-        if len(term_tokens & set(tokenize(searchable))) >= required_overlap:
+        searchable_tokens = _expanded_tokens(searchable)
+        if all(group & searchable_tokens for group in required_groups):
             return True
     return False
+
+
+def _expanded_tokens(value: str) -> set[str]:
+    tokens = set(tokenize(value))
+    expanded = set(tokens)
+    for token in tokens:
+        if "_" in token:
+            expanded.update(part for part in token.split("_") if part)
+        if len(token) > 3 and token.endswith("s"):
+            expanded.add(token[:-1])
+    return expanded
+
+
+def _token_variants(token: str) -> set[str]:
+    variants = {token}
+    if "_" in token:
+        variants.update(part for part in token.split("_") if part)
+    if len(token) > 3 and token.endswith("s"):
+        variants.add(token[:-1])
+    return variants
 
 
 def _resolved_terms(
@@ -590,6 +613,11 @@ def _intent_frame(
             notes=(f"intent_extractor_failed:{type(exc).__name__}",),
             source="deterministic_fallback",
         )
+
+
+def _intent_extractor_usage(extractor: IntentFrameExtractor) -> dict[str, Any]:
+    usage = getattr(extractor, "last_usage", {})
+    return dict(usage) if isinstance(usage, dict) else {}
 
 
 def _catalog_summary(catalog: dict[str, Any]) -> dict[str, Any]:

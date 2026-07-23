@@ -53,10 +53,12 @@ class LLMIntentFrameExtractor:
 
     def __init__(self, *, model: Any) -> None:
         self._model = model
+        self.last_usage: dict[str, Any] = {}
 
     def extract(self, question: str, *, catalog_summary: dict[str, Any] | None = None) -> QueryIntentFrame:
         from langchain_core.messages import HumanMessage, SystemMessage
 
+        self.last_usage = {}
         response = self._model.invoke(
             [
                 SystemMessage(content=_SYSTEM_PROMPT),
@@ -72,6 +74,7 @@ class LLMIntentFrameExtractor:
                 ),
             ]
         )
+        self.last_usage = _usage_metadata(response)
         payload = _loads_json_object(_message_text(response))
         return QueryIntentFrame(
             search_queries=tuple(_strings(payload.get("search_queries"))) or tuple(_phrase_queries(question)),
@@ -107,6 +110,10 @@ Rules:
 - Preserve negation, thresholds, and time constraints.
 - Search queries should include the whole intent plus focused entity phrases.
 - Mark definition_required_terms only when a phrase needs organization-specific SQL semantics before execution.
+- A definition_required_term BLOCKS the question from being answered at all, so the bar is high: mark a term only if you genuinely could not proceed without the user choosing between materially different business definitions. Default to NOT marking.
+- If a SEMANTIC BRIEF is supplied, treat it as the schema's declared model: any term it answers (grain and its dedupe rule, canonical joins, role defaults, value domains, pitfalls) is DEFINED. Do not mark it. A grain/fan-out caution belongs in notes, not definition_required_terms -- the author is told how to handle it.
+- A declared DEFAULT is an answer, not a candidate. If the brief names a default (e.g. a default role/party/address for a relationship), that term is DEFINED: use the default and put it in notes. Never mark a term just to "confirm" a default the brief already declares -- asking the user to confirm what the model already says is over-asking.
+- Prefer answering with the declared default and disclosing the assumption over blocking the user with a question.
 - Do not mark ordinary schema entities, places, dates, product names, or categorical values as definition-required.
 - Do not mark join relationships, ranking instructions, ordinary filters, or metric phrases as definition-required just because they need SQL planning.
 - Do not mark narrative/report-shaping requests such as asking for a summary, explanation, or insights as definition-required unless they introduce an undefined metric, comparison baseline, or cohort rule that changes SQL.
@@ -157,6 +164,20 @@ def _message_text(message: Any) -> str:
                 parts.append(str(item))
         return "\n".join(part for part in parts if part)
     return str(content)
+
+
+def _usage_metadata(message: Any) -> dict[str, Any]:
+    usage = getattr(message, "usage_metadata", None)
+    if isinstance(usage, dict):
+        return dict(usage)
+    response_metadata = getattr(message, "response_metadata", None)
+    if not isinstance(response_metadata, dict):
+        return {}
+    for key in ("token_usage", "usage", "usage_metadata"):
+        value = response_metadata.get(key)
+        if isinstance(value, dict):
+            return dict(value)
+    return {}
 
 
 def _definition_terms(value: Any) -> list[dict[str, str]]:

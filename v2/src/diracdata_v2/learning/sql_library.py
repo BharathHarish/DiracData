@@ -13,6 +13,8 @@ from typing import Any, Protocol
 
 from diracdata_v2.semantic_catalog.sql_analysis import analyze_sql_references
 
+REVIEWABLE_STATUSES = {"approved", "needs_review", "rejected"}
+
 
 class PatternGenerator(Protocol):
     """LLM adapter used to translate SQL templates into NL pattern metadata."""
@@ -254,6 +256,7 @@ def mine_nl_sql_pair_templates(
         templates[key] = {
             "template": _one_line(row.get("template") or row.get("source_template")) or _template_name(tables=tables, columns=columns),
             "sql": normalized,
+            "final_sql": " ".join(sql.strip().rstrip(";").split()),
             "source": "nl_sql_pair",
             "review_status": _one_line(row.get("review_status")) or review_status,
             "tables": tables,
@@ -302,6 +305,8 @@ def build_self_play_templates(
             "tables": [table],
             "columns": [column_ref],
             "role": role,
+            "canonical_question": _self_play_question(table=table, column=column, role=role),
+            "paraphrases": _self_play_paraphrases(table=table, column=column, role=role),
             "validation": validation,
         }
     return entries
@@ -319,7 +324,7 @@ def build_sql_patterns(
     pattern_entries = {
         entry_id: entry
         for entry_id, entry in entries.items()
-        if entry.get("source") in {"query_history", "nl_sql_pair"}
+        if _entry_can_be_pattern(entry)
     }
     selected = list(pattern_entries.items())[: max(0, limit)]
     if not selected:
@@ -344,6 +349,103 @@ def build_sql_patterns(
             continue
         patterns[pattern_id] = _heuristic_pattern(entry_id=entry_id, entry=entry)
     return dict(sorted(patterns.items()))
+
+
+def review_sql_library_entries(
+    document: dict[str, Any],
+    *,
+    status: str,
+    reviewer: str = "cli",
+    note: str = "",
+    entry_ids: list[str] | None = None,
+    source: str | None = "self_play",
+    all_entries: bool = False,
+    current_status: str | None = None,
+    validation_status: str | None = None,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Return a SQL library copy with selected entries reviewed.
+
+    This function only changes review metadata. It does not infer whether an
+    entry is semantically good; the caller is the reviewer.
+    """
+
+    if status not in REVIEWABLE_STATUSES:
+        raise ValueError(f"status must be one of {sorted(REVIEWABLE_STATUSES)}")
+    if not all_entries and not entry_ids:
+        raise ValueError("provide entry_ids or all_entries=True")
+
+    now = datetime.now(UTC).isoformat()
+    requested_ids = set(entry_ids or [])
+    updated = dict(document)
+    entries = {str(entry_id): dict(entry) for entry_id, entry in _dict(document.get("entries")).items()}
+    selected: list[str] = []
+    missing_ids = sorted(requested_ids - set(entries))
+
+    for entry_id, entry in entries.items():
+        if not all_entries and entry_id not in requested_ids:
+            continue
+        if source is not None and entry.get("source") != source:
+            continue
+        if current_status is not None and entry.get("review_status") != current_status:
+            continue
+        if validation_status is not None and _dict(entry.get("validation")).get("status") != validation_status:
+            continue
+        entry["review_status"] = status
+        entry["reviewed_at"] = now
+        entry["reviewed_by"] = reviewer
+        if note:
+            entry["review_note"] = note
+        selected.append(entry_id)
+
+    updated["entries"] = dict(sorted(entries.items()))
+    updated["updated_at"] = now
+    review_summary = {
+        "status": status,
+        "reviewer": reviewer,
+        "note": note,
+        "source": source,
+        "current_status": current_status,
+        "validation_status": validation_status,
+        "selected_count": len(selected),
+        "selected_entry_ids": selected,
+        "missing_entry_ids": missing_ids,
+    }
+    updated["last_review"] = review_summary
+    return updated, review_summary
+
+
+def rebuild_sql_library_patterns(
+    document: dict[str, Any],
+    *,
+    schema_graph: dict[str, Any],
+    generator: PatternGenerator | None = None,
+    batch_size: int = 20,
+    limit: int | None = None,
+) -> dict[str, Any]:
+    """Return a SQL library copy with patterns rebuilt from eligible entries."""
+
+    updated = dict(document)
+    entries = _dict(document.get("entries"))
+    effective_limit = len(entries) if limit is None else max(0, limit)
+    patterns = build_sql_patterns(
+        entries=entries,
+        schema_graph=schema_graph,
+        generator=generator,
+        batch_size=max(1, batch_size),
+        limit=effective_limit,
+    )
+    updated["patterns"] = patterns
+    updated["updated_at"] = datetime.now(UTC).isoformat()
+    updated["pattern_summary"] = {
+        "pattern_count": len(patterns),
+        "eligible_entry_count": sum(1 for entry in entries.values() if _entry_can_be_pattern(entry)),
+        "approved_self_play_pattern_count": sum(
+            1
+            for pattern in patterns.values()
+            if pattern.get("source") == "self_play" and pattern.get("review_status") == "approved"
+        ),
+    }
+    return updated
 
 
 def _generate_patterns_batch(
@@ -452,8 +554,21 @@ def _normalize_pattern(
         "tables": list(entry.get("tables", [])),
         "columns": list(entry.get("columns", [])),
         "sql_template": str(entry.get("sql") or ""),
+        "final_sql": str(entry.get("final_sql") or ""),
         "source_entry_ids": [entry_id],
     }
+
+
+def _entry_can_be_pattern(entry: dict[str, Any]) -> bool:
+    source = entry.get("source")
+    if source in {"query_history", "nl_sql_pair"}:
+        return True
+    if source != "self_play":
+        return False
+    if entry.get("review_status") != "approved":
+        return False
+    validation = _dict(entry.get("validation"))
+    return validation.get("status") == "passed"
 
 
 def _heuristic_pattern(*, entry_id: str, entry: dict[str, Any]) -> dict[str, Any]:
@@ -470,6 +585,7 @@ def _heuristic_pattern(*, entry_id: str, entry: dict[str, Any]) -> dict[str, Any
         "tables": list(entry.get("tables", [])),
         "columns": list(entry.get("columns", [])),
         "sql_template": str(entry.get("sql") or ""),
+        "final_sql": str(entry.get("final_sql") or ""),
         "source_entry_ids": [entry_id],
     }
 
@@ -587,15 +703,42 @@ def _self_play_sql(*, table: str, column: str, role: str, data_root: Path, schem
     )
 
 
+def _self_play_question(*, table: str, column: str, role: str) -> str:
+    if role == "measure":
+        return f"Profile numeric values in {table}.{column}."
+    if role == "time":
+        return f"Count records by month using {table}.{column}."
+    if role in {"identifier", "join_key"} or column.endswith("_ref"):
+        return f"Profile key coverage for {table}.{column}."
+    return f"Show value distribution for {table}.{column}."
+
+
+def _self_play_paraphrases(*, table: str, column: str, role: str) -> list[str]:
+    base = f"{table}.{column}"
+    if role == "measure":
+        return [f"Summarize numeric distribution for {base}.", f"Check non-null and total values for {base}."]
+    if role == "time":
+        return [f"Analyze monthly record counts using {base}."]
+    if role in {"identifier", "join_key"} or column.endswith("_ref"):
+        return [f"Check distinct and non-null key counts for {base}."]
+    return [f"List the most common values for {base}.", f"Understand categorical distribution for {base}."]
+
+
 def _parquet_path(*, data_root: Path, schema: str, table: str) -> Path:
-    parquet_root = data_root / schema / "parquet"
-    direct = parquet_root / f"{table}.parquet"
-    if direct.exists():
-        return direct
-    matches = sorted(parquet_root.rglob(f"{table}.parquet"))
-    if matches:
-        return matches[0]
-    return direct
+    candidates = [
+        data_root / schema / "parquet" / f"{table}.parquet",
+        data_root / "parquet" / f"{table}.parquet",
+        data_root / f"{table}.parquet",
+    ]
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    for root in [data_root / schema / "parquet", data_root / "parquet", data_root]:
+        if root.exists():
+            matches = sorted(root.rglob(f"{table}.parquet"))
+            if matches:
+                return matches[0]
+    return candidates[0]
 
 
 def _validate_sql(con: Any, sql: str) -> dict[str, Any]:
@@ -699,6 +842,10 @@ def _valid_column_ref(ref: str, table_columns: dict[str, list[str]]) -> bool:
         return False
     table, column = ref.split(".", 1)
     return column in table_columns.get(table, [])
+
+
+def _dict(value: Any) -> dict[str, Any]:
+    return value if isinstance(value, dict) else {}
 
 
 def _row_join_edges(row: dict[str, str], *, table_columns: dict[str, list[str]]) -> list[dict[str, Any]]:

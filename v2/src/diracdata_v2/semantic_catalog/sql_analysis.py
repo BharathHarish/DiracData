@@ -40,24 +40,29 @@ class SQLReferenceAnalysis:
     parser: str
 
 
-def analyze_sql_references(sql: str, table_columns: dict[str, list[str]]) -> SQLReferenceAnalysis:
+def analyze_sql_references(
+    sql: str, table_columns: dict[str, list[str]], *, dialect: str = "duckdb"
+) -> SQLReferenceAnalysis:
     """Extract schema-scoped tables, columns, and equality join pairs.
 
     The function is intentionally conservative: only references that validate
-    against the supplied table/column map are returned.
+    against the supplied table/column map are returned. ``dialect`` is the
+    sqlglot read dialect (defaults to DuckDB; set from ``settings.sql_dialect``).
     """
 
     try:
-        return _analyze_with_sqlglot(sql=sql, table_columns=table_columns)
+        return _analyze_with_sqlglot(sql=sql, table_columns=table_columns, dialect=dialect)
     except Exception:  # noqa: BLE001
         return _analyze_with_regex(sql=sql, table_columns=table_columns)
 
 
-def _analyze_with_sqlglot(sql: str, table_columns: dict[str, list[str]]) -> SQLReferenceAnalysis:
+def _analyze_with_sqlglot(
+    sql: str, table_columns: dict[str, list[str]], *, dialect: str = "duckdb"
+) -> SQLReferenceAnalysis:
     import sqlglot
     from sqlglot import expressions as exp
 
-    expression = sqlglot.parse_one(sql, read="duckdb")
+    expression = sqlglot.parse_one(sql, read=dialect)
     aliases = _sqlglot_aliases(expression=expression, table_columns=table_columns)
     tables = set(aliases.values())
     columns: set[str] = set()
@@ -109,6 +114,13 @@ def _column_ref(*, column: Any, aliases: dict[str, str], table_columns: dict[str
     qualifier = str(column.table or "").lower()
     column_name = str(column.name or "")
     if not qualifier:
+        query_tables = sorted(set(aliases.values()))
+        if len(query_tables) == 1:
+            table = query_tables[0]
+            column_lookup = {item.lower(): item for item in table_columns.get(table, [])}
+            actual_column = column_lookup.get(column_name.lower())
+            if actual_column:
+                return f"{table}.{actual_column}"
         return _unqualified_column_ref(column_name=column_name, table_columns=table_columns)
     table = aliases.get(qualifier)
     if table is None:

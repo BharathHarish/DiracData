@@ -9,15 +9,37 @@ from pathlib import Path
 
 @dataclass(frozen=True)
 class V2Settings:
-    catalog: str = "fintech_pod"
+    catalog: str = "default_catalog"
     database: str = "analytics"
-    schema: str = "fintech_schema"
+    schema: str = "default_schema"
     sql_dialect: str = "duckdb"
+    sql_engine: str = "duckdb"
     agent_model_profile: str = "anthropic_haiku_45"
     agent_llm_provider: str = "anthropic"
     agent_llm_model: str = "claude-haiku-4-5-20251001"
     agent_llm_max_tokens: int = 8192
     agent_llm_temperature: float = 0.0
+    # Determinism floor (R1). When on (default), sampling temperature is pinned to 0.0
+    # for EVERY stage regardless of agent_llm_temperature, so a future default drift
+    # cannot silently reintroduce sampling. This is the floor, not the whole fix:
+    # on providers that are nondeterministic even at temp 0 (e.g. MoE on Bedrock) the
+    # run-to-run stability gains come from stable routing + recipe recall, not here.
+    deterministic_sampling: bool = True
+    # Optional decode seed, passed only to providers that support it (OpenAI). Providers
+    # without a seed knob (Anthropic, Bedrock Converse) ignore it silently.
+    agent_llm_seed: int | None = None
+    # Token streaming. Off by default (buffered, deterministic for evals/tests). When on,
+    # chat models are built with disable_streaming=False so model.stream() yields real
+    # incremental chunks (model_delta / reasoning_delta events).
+    stream_tokens: bool = False
+    # Agentic memory. When on: verified runs are captured to a durable queue for async
+    # consolidation, and the SQL author can look up consolidated facts (value mappings,
+    # join rules) to avoid re-deriving them. Off by default (no behavior change).
+    memory_enabled: bool = False
+    memory_queue_path: str = ".diracdata/memory/queue.db"
+    memory_prefix: str = "memory"
+    llm_timeout_seconds: int | None = 120
+    llm_max_retries: int = 1
     anthropic_api_key: str | None = None
     anthropic_base_url: str = "https://api.anthropic.com"
     openai_api_key: str | None = None
@@ -26,6 +48,20 @@ class V2Settings:
     bedrock_region: str | None = None
     aws_region: str = "us-east-1"
     agent_sql_max_rows: int = 100
+    conversation_id: str = "default_conversation"
+    thread_id: str = "default_thread"
+    thread_store_prefix: str = "conversation-threads"
+    thread_context_max_chars: int = 8000
+    thread_context_max_turns: int = 5
+    thread_summary_enabled: bool = True
+    thread_summary_input_token_threshold: int = 30000
+    thread_summary_max_tokens: int = 1200
+    conversation_resolver_mode: str = "identity"
+    conversation_resolver_model_profile: str = "anthropic_haiku_45"
+    conversation_resolver_max_context_chars: int = 8000
+    result_artifacts_enabled: bool = True
+    result_artifact_max_rows: int = 10000
+    result_artifact_prefix: str = "query-results"
     agent_column_values_max_values: int = 100
     agent_todo_planning_enabled: bool = True
     agent_recursion_limit: int = 20
@@ -33,15 +69,27 @@ class V2Settings:
     primitive_subagent_max_iterations: int = 6
     primitive_max_tool_result_chars: int = 12000
     primitive_workflow_mode: str = "gated"
+    primitive_steward_micro_checks_enabled: bool = True
+    primitive_steward_assertion_context_chars: int = 24000
+    primitive_steward_semantic_assertion_max: int = 8
+    # Optional cheaper model for the steward's focused checks (model routing).
+    steward_model_profile: str | None = None
+    adaptive_require_steward_before_execute: bool = True
+    adaptive_cognition_mode: str = "agentic"
+    adaptive_cognition_model_profile: str | None = None
+    adaptive_cognition_max_iterations: int = 4
+    adaptive_cognition_max_tool_result_chars: int = 12000
     context_compiler_mode: str = "agentic"
     context_compiler_model_profile: str = "anthropic_haiku_45"
     context_compiler_max_cards: int = 24
     context_compiler_max_patterns: int = 6
     data_root: Path = Path("v2/data")
     metadata_descriptions_path: Path = Path("v2/context/metadata_descriptions.json")
-    schema_ast_path: Path = Path("v2/learning/artifacts/fintech_schema_ast_v2_20260609/schema_ast.json")
-    sql_library_path: Path = Path("v2/learning/artifacts/fintech_sql_library_v2_20260609/sql_library.json")
+    schema_ast_path: Path = Path("v2/learning/artifacts/schema_ast.json")
+    sql_library_path: Path = Path("v2/learning/artifacts/sql_library.json")
+    metrics_path: Path | None = None
     semantic_catalog_path: Path | None = None
+    semantic_assertions_path: Path | None = None
     retrieval_documents_path: Path | None = None
     column_embeddings_path: Path | None = None
     nl_sql_pair_paths: tuple[Path, ...] = ()
@@ -61,15 +109,24 @@ def settings_from_env(env_file: str | Path | None = ".env") -> V2Settings:
     if env_file is not None:
         load_dotenv(env_file)
     return V2Settings(
-        catalog=os.environ.get("DIRACDATA_CATALOG", "fintech_pod"),
+        catalog=os.environ.get("DIRACDATA_CATALOG", "default_catalog"),
         database=os.environ.get("DIRACDATA_DATABASE", "analytics"),
-        schema=os.environ.get("DIRACDATA_SCHEMA", "fintech_schema"),
+        schema=os.environ.get("DIRACDATA_SCHEMA", "default_schema"),
         sql_dialect=os.environ.get("DIRACDATA_SQL_DIALECT", "duckdb"),
+        sql_engine=os.environ.get("DIRACDATA_SQL_ENGINE", "duckdb"),
         agent_model_profile=os.environ.get("DIRACDATA_AGENT_MODEL_PROFILE", "anthropic_haiku_45"),
         agent_llm_provider=os.environ.get("DIRACDATA_AGENT_LLM_PROVIDER", "anthropic"),
         agent_llm_model=os.environ.get("DIRACDATA_AGENT_LLM_MODEL", "claude-haiku-4-5-20251001"),
         agent_llm_max_tokens=_int_env("DIRACDATA_AGENT_LLM_MAX_TOKENS", 8192),
         agent_llm_temperature=_float_env("DIRACDATA_AGENT_LLM_TEMPERATURE", 0.0),
+        deterministic_sampling=_bool_env("DIRACDATA_DETERMINISTIC_SAMPLING", True),
+        agent_llm_seed=_optional_int_env("DIRACDATA_AGENT_LLM_SEED", default=None),
+        stream_tokens=_bool_env("DIRACDATA_STREAM_TOKENS", False),
+        memory_enabled=_bool_env("DIRACDATA_MEMORY_ENABLED", False),
+        memory_queue_path=os.environ.get("DIRACDATA_MEMORY_QUEUE_PATH", ".diracdata/memory/queue.db"),
+        memory_prefix=os.environ.get("DIRACDATA_MEMORY_PREFIX", "memory"),
+        llm_timeout_seconds=_optional_int_env("DIRACDATA_LLM_TIMEOUT_SECONDS", default=120),
+        llm_max_retries=_int_env("DIRACDATA_LLM_MAX_RETRIES", 1),
         anthropic_api_key=os.environ.get("DIRACDATA_ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_API_KEY"),
         anthropic_base_url=os.environ.get("DIRACDATA_ANTHROPIC_BASE_URL", "https://api.anthropic.com"),
         openai_api_key=os.environ.get("DIRACDATA_OPENAI_API_KEY") or os.environ.get("OPENAI_API_KEY"),
@@ -85,6 +142,23 @@ def settings_from_env(env_file: str | Path | None = ".env") -> V2Settings:
         bedrock_region=os.environ.get("DIRACDATA_BEDROCK_REGION") or os.environ.get("AWS_REGION"),
         aws_region=os.environ.get("DIRACDATA_AWS_REGION", os.environ.get("AWS_REGION", "us-east-1")),
         agent_sql_max_rows=_int_env("DIRACDATA_AGENT_SQL_MAX_ROWS", 100),
+        conversation_id=os.environ.get("DIRACDATA_CONVERSATION_ID", "default_conversation"),
+        thread_id=os.environ.get("DIRACDATA_THREAD_ID", "default_thread"),
+        thread_store_prefix=os.environ.get("DIRACDATA_THREAD_STORE_PREFIX", "conversation-threads"),
+        thread_context_max_chars=_int_env("DIRACDATA_THREAD_CONTEXT_MAX_CHARS", 8000),
+        thread_context_max_turns=_int_env("DIRACDATA_THREAD_CONTEXT_MAX_TURNS", 5),
+        thread_summary_enabled=_bool_env("DIRACDATA_THREAD_SUMMARY_ENABLED", True),
+        thread_summary_input_token_threshold=_int_env("DIRACDATA_THREAD_SUMMARY_INPUT_TOKEN_THRESHOLD", 30000),
+        thread_summary_max_tokens=_int_env("DIRACDATA_THREAD_SUMMARY_MAX_TOKENS", 1200),
+        conversation_resolver_mode=os.environ.get("DIRACDATA_CONVERSATION_RESOLVER_MODE", "identity"),
+        conversation_resolver_model_profile=os.environ.get(
+            "DIRACDATA_CONVERSATION_RESOLVER_MODEL_PROFILE",
+            "anthropic_haiku_45",
+        ),
+        conversation_resolver_max_context_chars=_int_env("DIRACDATA_CONVERSATION_RESOLVER_MAX_CONTEXT_CHARS", 8000),
+        result_artifacts_enabled=_bool_env("DIRACDATA_RESULT_ARTIFACTS_ENABLED", True),
+        result_artifact_max_rows=_int_env("DIRACDATA_RESULT_ARTIFACT_MAX_ROWS", 10000),
+        result_artifact_prefix=os.environ.get("DIRACDATA_RESULT_ARTIFACT_PREFIX", "query-results"),
         agent_column_values_max_values=_int_env("DIRACDATA_AGENT_COLUMN_VALUES_MAX_VALUES", 100),
         agent_todo_planning_enabled=_bool_env("DIRACDATA_AGENT_TODO_PLANNING_ENABLED", True),
         agent_recursion_limit=_int_env("DIRACDATA_AGENT_RECURSION_LIMIT", 20),
@@ -92,6 +166,18 @@ def settings_from_env(env_file: str | Path | None = ".env") -> V2Settings:
         primitive_subagent_max_iterations=_int_env("DIRACDATA_PRIMITIVE_SUBAGENT_MAX_ITERATIONS", 6),
         primitive_max_tool_result_chars=_int_env("DIRACDATA_PRIMITIVE_MAX_TOOL_RESULT_CHARS", 12000),
         primitive_workflow_mode=os.environ.get("DIRACDATA_PRIMITIVE_WORKFLOW_MODE", "gated"),
+        primitive_steward_micro_checks_enabled=_bool_env("DIRACDATA_PRIMITIVE_STEWARD_MICRO_CHECKS_ENABLED", True),
+        primitive_steward_assertion_context_chars=_int_env("DIRACDATA_PRIMITIVE_STEWARD_ASSERTION_CONTEXT_CHARS", 24000),
+        primitive_steward_semantic_assertion_max=_int_env("DIRACDATA_PRIMITIVE_STEWARD_SEMANTIC_ASSERTION_MAX", 8),
+        steward_model_profile=os.environ.get("DIRACDATA_STEWARD_MODEL_PROFILE") or None,
+        adaptive_require_steward_before_execute=os.environ.get(
+            "DIRACDATA_ADAPTIVE_REQUIRE_STEWARD_BEFORE_EXECUTE", "true"
+        ).strip().lower()
+        not in {"false", "0", "no"},
+        adaptive_cognition_mode=os.environ.get("DIRACDATA_ADAPTIVE_COGNITION_MODE", "agentic"),
+        adaptive_cognition_model_profile=os.environ.get("DIRACDATA_ADAPTIVE_COGNITION_MODEL_PROFILE") or None,
+        adaptive_cognition_max_iterations=_int_env("DIRACDATA_ADAPTIVE_COGNITION_MAX_ITERATIONS", 4),
+        adaptive_cognition_max_tool_result_chars=_int_env("DIRACDATA_ADAPTIVE_COGNITION_MAX_TOOL_RESULT_CHARS", 12000),
         context_compiler_mode=os.environ.get("DIRACDATA_CONTEXT_COMPILER_MODE", "agentic"),
         context_compiler_model_profile=os.environ.get(
             "DIRACDATA_CONTEXT_COMPILER_MODEL_PROFILE",
@@ -109,16 +195,18 @@ def settings_from_env(env_file: str | Path | None = ".env") -> V2Settings:
         schema_ast_path=Path(
             os.environ.get(
                 "DIRACDATA_V2_SCHEMA_AST_PATH",
-                "v2/learning/artifacts/fintech_schema_ast_v2_20260609/schema_ast.json",
+                "v2/learning/artifacts/schema_ast.json",
             )
         ),
         sql_library_path=Path(
             os.environ.get(
                 "DIRACDATA_V2_SQL_LIBRARY_PATH",
-                "v2/learning/artifacts/fintech_sql_library_v2_20260609/sql_library.json",
+                "v2/learning/artifacts/sql_library.json",
             )
         ),
+        metrics_path=_optional_path_env("DIRACDATA_V2_METRICS_PATH"),
         semantic_catalog_path=_optional_path_env("DIRACDATA_V2_SEMANTIC_CATALOG_PATH"),
+        semantic_assertions_path=_optional_path_env("DIRACDATA_V2_SEMANTIC_ASSERTIONS_PATH"),
         retrieval_documents_path=_optional_path_env("DIRACDATA_V2_RETRIEVAL_DOCUMENTS_PATH"),
         column_embeddings_path=_optional_path_env("DIRACDATA_V2_COLUMN_EMBEDDINGS_PATH"),
         nl_sql_pair_paths=_path_tuple_env("DIRACDATA_V2_NL_SQL_PAIR_PATHS"),
@@ -154,9 +242,9 @@ def _int_env(key: str, default: int) -> int:
     return default if value is None or value == "" else int(value)
 
 
-def _optional_int_env(key: str) -> int | None:
+def _optional_int_env(key: str, *, default: int | None = None) -> int | None:
     value = os.environ.get(key)
-    return int(value) if value else None
+    return int(value) if value else default
 
 
 def _float_env(key: str, default: float) -> float:

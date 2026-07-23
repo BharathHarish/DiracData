@@ -1,0 +1,53 @@
+row_type,case_id,category,difficulty,question,pass,failure_type,expected_output,actual_output,expected_sql,actual_sql,expected_tables,actual_tables,expected_columns,actual_columns,expected_row_count,actual_row_count,expected_result_hash,actual_result_hash,comparison_mode,stop_reason,route,model_profile,input_tokens,output_tokens,total_tokens,reasoning_tokens,tool_call_count,trace_path,notes,total_cases,passed_cases,failed_cases,pass_rate
+summary,__summary__,,,0/3 cases passed,False,has_failures,,,,,,,,,,,,,,,"{""cold_start"": 3}","{""bedrock_zai_glm_5_ap_south_1"": 3}",202018,4531,206549,0,13,,"{""avg_total_tokens"": 68849.67, ""avg_total_tokens_on_passed"": 0, ""failed_cases"": 3, ""failure_types"": {""result_hash_mismatch"": 3}, ""pass_rate"": 0.0, ""passed_cases"": 0, ""total_cases"": 3}",3,0,3,0.0
+case,gold_001,customer,easy,Count current F customers from TX whose first sale year is 2001.,False,result_hash_mismatch,"{""columns"": [""gender"", ""state"", ""year"", ""customers""], ""comparison_mode"": ""unordered_rows"", ""preview_row_count"": 1, ""result_hash"": ""e6af37c74a6a2d7d46914265eb2557d7bcdd58fd6ad40156a472974e723003e9"", ""row_count"": 1, ""rows"": [[""F"", ""TX"", 2001, 369]], ""scalar"": null, ""truncated"": false}","{""columns"": [""client_count""], ""comparison_mode"": ""unordered_rows"", ""preview_row_count"": 1, ""result_hash"": ""64adba60f656489a9441a14d28edb60444b93f535cce2c5ba5f6623a5243dc66"", ""row_count"": 1, ""rows"": [[369]], ""scalar"": 369, ""truncated"": false}","SELECT cp.gender, a.state, cd.year, COUNT(DISTINCT c.client_record) AS customers
+        FROM clients c
+        JOIN client_profiles cp ON c.current_client_profile_ref = cp.client_profile_record
+        JOIN addresses a ON c.current_address_ref = a.address_record
+        JOIN calendar_days cd ON c.first_sale_calendar_day_ref = cd.calendar_day_record
+        WHERE cp.gender = 'F' AND a.state = 'TX' AND cd.year = 2001
+        GROUP BY cp.gender, a.state, cd.year","SELECT COUNT(DISTINCT c.client_record) AS client_count
+FROM clients c
+INNER JOIN client_profiles cp
+  ON c.current_client_profile_ref = cp.client_profile_record
+INNER JOIN addresses a
+  ON c.current_address_ref = a.address_record
+INNER JOIN calendar_days cd
+  ON c.first_sale_calendar_day_ref = cd.calendar_day_record
+WHERE cp.gender = 'F'
+  AND a.state = 'TX'
+  AND cd.year = 2001",addresses;calendar_days;client_profiles;clients,addresses;calendar_days;client_profiles;clients,addresses.address_record;addresses.state;calendar_days.calendar_day_record;calendar_days.year;client_profiles.client_profile_record;client_profiles.gender;clients.client_record;clients.current_address_ref;clients.current_client_profile_ref;clients.first_sale_calendar_day_ref,addresses.address_record;addresses.state;calendar_days.calendar_day_record;calendar_days.year;client_profiles.client_profile_record;client_profiles.gender;clients.client_record;clients.current_address_ref;clients.current_client_profile_ref;clients.first_sale_calendar_day_ref,1,1,e6af37c74a6a2d7d46914265eb2557d7bcdd58fd6ad40156a472974e723003e9,64adba60f656489a9441a14d28edb60444b93f535cce2c5ba5f6623a5243dc66,unordered_rows,final,cold_start,bedrock_zai_glm_5_ap_south_1,62689,1490,64179,0,4,v2/data/eval_runs/retail_strengthened/traces/gold_001.json,"{""result_comparison"": {""actual_hash"": ""64adba60f656489a9441a14d28edb60444b93f535cce2c5ba5f6623a5243dc66"", ""actual_row_count"": 1, ""comparison_mode"": ""unordered_rows"", ""expected_hash"": ""e6af37c74a6a2d7d46914265eb2557d7bcdd58fd6ad40156a472974e723003e9"", ""expected_row_count"": 1, ""passed"": false, ""reason"": ""result_hash_mismatch""}, ""semantic_contract"": {""actual_predicates"": [""addresses.state|eq|'TX'"", ""calendar_days.year|eq|2001"", ""client_profiles.gender|eq|'F'""], ""expected_predicates"": [""addresses.state|eq|'TX'"", ""calendar_days.year|eq|2001"", ""client_profiles.gender|eq|'F'""], ""issues"": [{""added"": [], ""missing"": [""a.state"", ""cd.year"", ""cp.gender""], ""type"": ""group_by_mismatch""}], ""passed"": false}}",,,,
+case,gold_002,customer,easy,Count current F customers from TX whose first sale year is 2002.,False,result_hash_mismatch,"{""columns"": [""gender"", ""state"", ""year"", ""customers""], ""comparison_mode"": ""unordered_rows"", ""preview_row_count"": 1, ""result_hash"": ""956a2968716ef845c4a237985460a8445ce8f300e6d1fb5b354d3ea846abec2c"", ""row_count"": 1, ""rows"": [[""F"", ""TX"", 2002, 344]], ""scalar"": null, ""truncated"": false}","{""columns"": [""customer_count""], ""comparison_mode"": ""unordered_rows"", ""preview_row_count"": 1, ""result_hash"": ""b43f524f8feae9219d9a42f5c16e1e80b3a6b8d92726464b092ceac6d0dc6806"", ""row_count"": 1, ""rows"": [[344]], ""scalar"": 344, ""truncated"": false}","SELECT cp.gender, a.state, cd.year, COUNT(DISTINCT c.client_record) AS customers
+        FROM clients c
+        JOIN client_profiles cp ON c.current_client_profile_ref = cp.client_profile_record
+        JOIN addresses a ON c.current_address_ref = a.address_record
+        JOIN calendar_days cd ON c.first_sale_calendar_day_ref = cd.calendar_day_record
+        WHERE cp.gender = 'F' AND a.state = 'TX' AND cd.year = 2002
+        GROUP BY cp.gender, a.state, cd.year","SELECT COUNT(DISTINCT c.client_record) AS customer_count
+FROM clients c
+INNER JOIN client_profiles cp
+  ON c.current_client_profile_ref = cp.client_profile_record
+INNER JOIN addresses a
+  ON c.current_address_ref = a.address_record
+INNER JOIN calendar_days cd
+  ON c.first_sale_calendar_day_ref = cd.calendar_day_record
+WHERE cp.gender = 'F'
+  AND a.state = 'TX'
+  AND cd.year = 2002",addresses;calendar_days;client_profiles;clients,addresses;calendar_days;client_profiles;clients,addresses.address_record;addresses.state;calendar_days.calendar_day_record;calendar_days.year;client_profiles.client_profile_record;client_profiles.gender;clients.client_record;clients.current_address_ref;clients.current_client_profile_ref;clients.first_sale_calendar_day_ref,addresses.address_record;addresses.state;calendar_days.calendar_day_record;calendar_days.year;client_profiles.client_profile_record;client_profiles.gender;clients.client_record;clients.current_address_ref;clients.current_client_profile_ref;clients.first_sale_calendar_day_ref,1,1,956a2968716ef845c4a237985460a8445ce8f300e6d1fb5b354d3ea846abec2c,b43f524f8feae9219d9a42f5c16e1e80b3a6b8d92726464b092ceac6d0dc6806,unordered_rows,final,cold_start,bedrock_zai_glm_5_ap_south_1,54206,1597,55803,0,4,v2/data/eval_runs/retail_strengthened/traces/gold_002.json,"{""result_comparison"": {""actual_hash"": ""b43f524f8feae9219d9a42f5c16e1e80b3a6b8d92726464b092ceac6d0dc6806"", ""actual_row_count"": 1, ""comparison_mode"": ""unordered_rows"", ""expected_hash"": ""956a2968716ef845c4a237985460a8445ce8f300e6d1fb5b354d3ea846abec2c"", ""expected_row_count"": 1, ""passed"": false, ""reason"": ""result_hash_mismatch""}, ""semantic_contract"": {""actual_predicates"": [""addresses.state|eq|'TX'"", ""calendar_days.year|eq|2002"", ""client_profiles.gender|eq|'F'""], ""expected_predicates"": [""addresses.state|eq|'TX'"", ""calendar_days.year|eq|2002"", ""client_profiles.gender|eq|'F'""], ""issues"": [{""added"": [], ""missing"": [""a.state"", ""cd.year"", ""cp.gender""], ""type"": ""group_by_mismatch""}], ""passed"": false}}",,,,
+case,gold_003,customer,easy,Count current F customers from TX whose first sale year is 2003.,False,result_hash_mismatch,"{""columns"": [""gender"", ""state"", ""year"", ""customers""], ""comparison_mode"": ""unordered_rows"", ""preview_row_count"": 1, ""result_hash"": ""1e24dd583a8a285103945e39e7f1138ac957718bda3851ddaaa782a6dd88df51"", ""row_count"": 1, ""rows"": [[""F"", ""TX"", 2003, 10]], ""scalar"": null, ""truncated"": false}","{""columns"": [""customer_count""], ""comparison_mode"": ""unordered_rows"", ""preview_row_count"": 1, ""result_hash"": ""7b3aed9c75013cb8c3d832f9958a7927c94d208495d3b7594daab995dc8a98e6"", ""row_count"": 1, ""rows"": [[10]], ""scalar"": 10, ""truncated"": false}","SELECT cp.gender, a.state, cd.year, COUNT(DISTINCT c.client_record) AS customers
+        FROM clients c
+        JOIN client_profiles cp ON c.current_client_profile_ref = cp.client_profile_record
+        JOIN addresses a ON c.current_address_ref = a.address_record
+        JOIN calendar_days cd ON c.first_sale_calendar_day_ref = cd.calendar_day_record
+        WHERE cp.gender = 'F' AND a.state = 'TX' AND cd.year = 2003
+        GROUP BY cp.gender, a.state, cd.year","SELECT COUNT(DISTINCT c.client_record) AS customer_count
+FROM clients c
+INNER JOIN client_profiles cp
+  ON c.current_client_profile_ref = cp.client_profile_record
+INNER JOIN addresses a
+  ON c.current_address_ref = a.address_record
+INNER JOIN calendar_days cd
+  ON c.first_sale_calendar_day_ref = cd.calendar_day_record
+WHERE cp.gender = 'F'
+  AND a.state = 'TX'
+  AND cd.year = 2003",addresses;calendar_days;client_profiles;clients,addresses;calendar_days;client_profiles;clients,addresses.address_record;addresses.state;calendar_days.calendar_day_record;calendar_days.year;client_profiles.client_profile_record;client_profiles.gender;clients.client_record;clients.current_address_ref;clients.current_client_profile_ref;clients.first_sale_calendar_day_ref,addresses.address_record;addresses.state;calendar_days.calendar_day_record;calendar_days.year;client_profiles.client_profile_record;client_profiles.gender;clients.client_record;clients.current_address_ref;clients.current_client_profile_ref;clients.first_sale_calendar_day_ref,1,1,1e24dd583a8a285103945e39e7f1138ac957718bda3851ddaaa782a6dd88df51,7b3aed9c75013cb8c3d832f9958a7927c94d208495d3b7594daab995dc8a98e6,unordered_rows,final,cold_start,bedrock_zai_glm_5_ap_south_1,85123,1444,86567,0,5,v2/data/eval_runs/retail_strengthened/traces/gold_003.json,"{""result_comparison"": {""actual_hash"": ""7b3aed9c75013cb8c3d832f9958a7927c94d208495d3b7594daab995dc8a98e6"", ""actual_row_count"": 1, ""comparison_mode"": ""unordered_rows"", ""expected_hash"": ""1e24dd583a8a285103945e39e7f1138ac957718bda3851ddaaa782a6dd88df51"", ""expected_row_count"": 1, ""passed"": false, ""reason"": ""result_hash_mismatch""}, ""semantic_contract"": {""actual_predicates"": [""addresses.state|eq|'TX'"", ""calendar_days.year|eq|2003"", ""client_profiles.gender|eq|'F'""], ""expected_predicates"": [""addresses.state|eq|'TX'"", ""calendar_days.year|eq|2003"", ""client_profiles.gender|eq|'F'""], ""issues"": [{""added"": [], ""missing"": [""a.state"", ""cd.year"", ""cp.gender""], ""type"": ""group_by_mismatch""}], ""passed"": false}}",,,,

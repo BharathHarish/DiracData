@@ -15,7 +15,7 @@ class QueryResult:
 
 
 class DuckDBEngine:
-    def __init__(self, *, data_root: Path, schema_name: str = "fintech_schema") -> None:
+    def __init__(self, *, data_root: Path, schema_name: str = "default_schema") -> None:
         try:
             import duckdb
         except ImportError as exc:
@@ -42,6 +42,19 @@ class DuckDBEngine:
             rows = self._con.execute(f"DESCRIBE {_identifier(table_name)}").fetchall()
         return [str(row[0]) for row in rows]
 
+    def describe_columns(self, table_name: str) -> list[dict[str, str]]:
+        if table_name not in self._tables:
+            return []
+        with self._lock:
+            rows = self._con.execute(f"DESCRIBE {_identifier(table_name)}").fetchall()
+        return [
+            {
+                "column_name": str(row[0]),
+                "column_type": str(row[1]),
+            }
+            for row in rows
+        ]
+
     def query(self, sql: str, max_rows: int) -> QueryResult:
         clean_sql = sql.strip().rstrip(";")
         if clean_sql.lower().startswith("explain"):
@@ -53,6 +66,13 @@ class DuckDBEngine:
             columns = [column[0] for column in cursor.description or []]
             rows = cursor.fetchmany(int(max_rows))
         return QueryResult(columns=columns, rows=rows)
+
+    def count_rows(self, sql: str) -> int:
+        clean_sql = sql.strip().rstrip(";")
+        count_sql = f"SELECT COUNT(*) AS row_count FROM ({clean_sql}) AS diracdata_v2_count_query"
+        with self._lock:
+            row = self._con.execute(count_sql).fetchone()
+        return int(row[0]) if row else 0
 
 
 def _sql_string(value: str) -> str:

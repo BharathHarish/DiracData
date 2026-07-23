@@ -1,0 +1,9 @@
+case_id,question,expect_sql_contains,expect_sql_not_contains,expect_status,notes
+brief_001,count all male customers from California,"gender = 'M'|gender='M';state = 'CA'|state='CA'",,PASS,value grounding: male->M and California->CA come from the brief
+brief_002,count the distinct male customers from California who ever made an online purchase,billing_client_ref;COUNT(DISTINCT,online_purchases.client_ref,PASS,role default (billing) + fan-out dedupe both declared in the brief
+brief_003,how many distinct customers made an online purchase in 2002,billing_client_ref;COUNT(DISTINCT,,PASS,fan-out over a line-grain fact must dedupe
+brief_004,count male customers from Texas,"gender = 'M'|gender='M';state = 'TX'|state='TX'",,PASS,slot change; value domain reused
+brief_005,count all female customers from New York,"gender = 'F'|gender='F';state = 'NY'|state='NY'",,PASS,gender domain is F/M per the brief
+brief_006,count distinct customers who made a store purchase,store_purchases;COUNT(DISTINCT,,PASS,different fact table; grain rule still applies
+brief_007,count online purchases in 2002 by household income band,income_range;calendar_days,,PASS,multi-hop path clients->household_profiles->income_ranges declared
+brief_008,how many customers are marked as preferred customers,preferred_client_flag;'Y',,PASS,value domain Y/N is in the brief

@@ -46,6 +46,71 @@ class RetrievalDocument:
     metadata: dict[str, Any] | None = None
 
 
+@dataclass(frozen=True)
+class Bm25Index:
+    """Precomputed BM25+ index over a fixed corpus.
+
+    Tokenization and document-frequency are computed once at ``build`` time so
+    per-query scoring is O(query_terms x docs) instead of re-tokenizing the whole
+    corpus on every call.
+    """
+
+    doc_ids: tuple[str, ...]
+    frequencies: tuple[dict[str, int], ...]
+    lengths: tuple[int, ...]
+    df: dict[str, int]
+    avgdl: float
+    n_docs: int
+
+    @classmethod
+    def build(cls, documents: list[RetrievalDocument]) -> "Bm25Index":
+        doc_ids: list[str] = []
+        frequencies: list[dict[str, int]] = []
+        lengths: list[int] = []
+        df: dict[str, int] = {}
+        for document in documents:
+            freq: dict[str, int] = {}
+            for token in tokenize(document.text):
+                freq[token] = freq.get(token, 0) + 1
+            doc_ids.append(document.id)
+            frequencies.append(freq)
+            lengths.append(sum(freq.values()))
+            for token in freq:
+                df[token] = df.get(token, 0) + 1
+        avgdl = (sum(lengths) / len(lengths)) if lengths else 0.0
+        return cls(
+            doc_ids=tuple(doc_ids),
+            frequencies=tuple(frequencies),
+            lengths=tuple(lengths),
+            df=df,
+            avgdl=avgdl,
+            n_docs=len(doc_ids),
+        )
+
+    def score(self, query: str, *, k1: float = 1.2, b: float = 0.75, delta: float = 1.0) -> list[tuple[str, float]]:
+        query_terms = tokenize(query)
+        if not query_terms or self.n_docs == 0:
+            return []
+        n_docs = max(1, self.n_docs)
+        scores: list[tuple[str, float]] = []
+        for doc_id, frequencies, length in zip(self.doc_ids, self.frequencies, self.lengths, strict=False):
+            if not frequencies:
+                continue
+            dl = max(1, length)
+            score = 0.0
+            for term in query_terms:
+                tf = frequencies.get(term, 0)
+                if not tf:
+                    continue
+                idf = math.log((n_docs + 1) / (self.df.get(term, 0) + 0.5))
+                denom = tf + k1 * (1 - b + b * dl / max(self.avgdl, 1.0))
+                score += idf * ((tf * (k1 + 1)) / denom + delta)
+            if score:
+                scores.append((doc_id, score))
+        scores.sort(key=lambda item: (-item[1], item[0]))
+        return scores
+
+
 def hybrid_search(
     *,
     documents: list[RetrievalDocument],
@@ -56,9 +121,11 @@ def hybrid_search(
     embedding_model: str = DEFAULT_EMBEDDING_MODEL,
     local_files_only: bool = True,
     rrf_k: int = 60,
+    index: Bm25Index | None = None,
 ) -> dict[str, Any]:
     queries = _search_queries(query=query, search_terms=search_terms)
-    bm25_runs = [_bm25_rank(documents=documents, query=item) for item in queries]
+    bm25_index = index if index is not None else Bm25Index.build(documents)
+    bm25_runs = [bm25_index.score(item) for item in queries]
     vector_runs: list[list[tuple[str, float]]] = []
     vector_notes: list[str] = []
     if vector_rows:
@@ -157,40 +224,7 @@ def _search_queries(*, query: str, search_terms: list[str] | None) -> list[str]:
 
 
 def _bm25_rank(*, documents: list[RetrievalDocument], query: str) -> list[tuple[str, float]]:
-    query_terms = tokenize(query)
-    if not query_terms:
-        return []
-    tokenized = [(document, tokenize(document.text)) for document in documents]
-    lengths = {document.id: len(tokens) for document, tokens in tokenized}
-    avgdl = sum(lengths.values()) / len(lengths) if lengths else 0.0
-    df: dict[str, int] = {}
-    for _, tokens in tokenized:
-        for token in set(tokens):
-            df[token] = df.get(token, 0) + 1
-    scores: list[tuple[str, float]] = []
-    n_docs = max(1, len(documents))
-    k1 = 1.2
-    b = 0.75
-    delta = 1.0
-    for document, tokens in tokenized:
-        if not tokens:
-            continue
-        frequencies: dict[str, int] = {}
-        for token in tokens:
-            frequencies[token] = frequencies.get(token, 0) + 1
-        score = 0.0
-        dl = max(1, lengths[document.id])
-        for term in query_terms:
-            tf = frequencies.get(term, 0)
-            if not tf:
-                continue
-            idf = math.log((n_docs + 1) / (df.get(term, 0) + 0.5))
-            denom = tf + k1 * (1 - b + b * dl / max(avgdl, 1.0))
-            score += idf * ((tf * (k1 + 1)) / denom + delta)
-        if score:
-            scores.append((document.id, score))
-    scores.sort(key=lambda item: (-item[1], item[0]))
-    return scores
+    return Bm25Index.build(documents).score(query)
 
 
 def _vector_rank(

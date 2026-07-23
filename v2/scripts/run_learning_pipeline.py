@@ -32,6 +32,47 @@ def main() -> int:
     parser.add_argument("--learning-model-profile", default=None)
     parser.add_argument("--pattern-batch-size", type=int, default=20)
     parser.add_argument("--pattern-limit", type=int, default=80)
+    parser.add_argument("--disable-context-fabric", action="store_true")
+    parser.add_argument("--include-experiences", action="store_true")
+    parser.add_argument("--experience-prefix", default="experience/candidates")
+    parser.add_argument("--experience-limit", type=int, default=None)
+    parser.add_argument("--auto-approve-valid-self-play", action="store_true")
+    parser.add_argument("--self-play-limit", type=int, default=None)
+    parser.add_argument("--context-query-history-limit", type=int, default=None)
+    parser.add_argument("--context-nl-sql-pair-limit", type=int, default=None)
+    parser.add_argument("--disable-semantic-coverage", action="store_true")
+    parser.add_argument("--semantic-coverage-strict-agentic", action="store_true")
+    parser.add_argument("--self-play-gap-limit", type=int, default=50)
+    parser.add_argument("--enable-semantic-self-play-sql", action="store_true")
+    parser.add_argument("--semantic-self-play-sql-task-limit", type=int, default=20)
+    parser.add_argument("--semantic-self-play-sql-batch-size", type=int, default=25)
+    parser.add_argument("--semantic-self-play-sql-batch-limit", type=int, default=None)
+    parser.add_argument("--semantic-self-play-sql-repair-iterations", type=int, default=2)
+    parser.add_argument("--semantic-self-play-sql-validation-rows", type=int, default=5)
+    parser.add_argument("--semantic-self-play-sql-strict-agentic", action="store_true")
+    parser.add_argument("--profile-data", action="store_true")
+    parser.add_argument("--disable-semantic-pathways", action="store_true")
+    parser.add_argument("--pathway-batch-size", type=int, default=20)
+    parser.add_argument("--pathway-limit", type=int, default=None)
+    parser.add_argument("--disable-column-nuances", action="store_true")
+    parser.add_argument("--nuance-max-columns", type=int, default=40)
+    parser.add_argument("--nuance-max-values", type=int, default=20)
+    parser.add_argument("--nuance-batch-size", type=int, default=10)
+    parser.add_argument("--nuance-strict-agentic", action="store_true")
+    parser.add_argument("--disable-join-graph", action="store_true")
+    parser.add_argument("--join-max-tables", type=int, default=30)
+    parser.add_argument("--join-max-columns-per-table", type=int, default=16)
+    parser.add_argument("--join-max-candidate-edges", type=int, default=80)
+    parser.add_argument("--join-max-overlap-checks", type=int, default=800)
+    parser.add_argument("--join-sample-limit", type=int, default=1000)
+    parser.add_argument("--join-min-candidate-score", type=float, default=0.35)
+    parser.add_argument("--join-min-candidate-distinct-count", type=int, default=2)
+    parser.add_argument("--join-batch-size", type=int, default=8)
+    parser.add_argument("--join-strict-agentic", action="store_true")
+    parser.add_argument("--disable-semantic-assertions", action="store_true")
+    parser.add_argument("--assertion-limit", type=int, default=20)
+    parser.add_argument("--assertion-batch-size", type=int, default=6)
+    parser.add_argument("--assertion-strict-agentic", action="store_true")
     parser.add_argument(
         "--nl-sql-pairs",
         action="append",
@@ -85,6 +126,47 @@ def main() -> int:
             nl_sql_pair_paths=tuple(nl_sql_pair_paths),
             nl_sql_pair_limit=nl_sql_pair_limit,
             nl_sql_pair_review_status=args.nl_sql_pair_review_status,
+            enable_context_fabric=not args.disable_context_fabric,
+            include_experiences=args.include_experiences,
+            experience_prefix=args.experience_prefix,
+            experience_limit=args.experience_limit,
+            auto_approve_valid_self_play=args.auto_approve_valid_self_play,
+            self_play_limit=args.self_play_limit,
+            context_query_history_limit=args.context_query_history_limit,
+            context_nl_sql_pair_limit=args.context_nl_sql_pair_limit,
+            enable_semantic_coverage=not args.disable_semantic_coverage,
+            semantic_coverage_strict_agentic=args.semantic_coverage_strict_agentic,
+            self_play_gap_limit=args.self_play_gap_limit,
+            enable_semantic_self_play_sql=args.enable_semantic_self_play_sql,
+            semantic_self_play_sql_task_limit=args.semantic_self_play_sql_task_limit,
+            semantic_self_play_sql_batch_size=args.semantic_self_play_sql_batch_size,
+            semantic_self_play_sql_batch_limit=args.semantic_self_play_sql_batch_limit,
+            semantic_self_play_sql_repair_iterations=args.semantic_self_play_sql_repair_iterations,
+            semantic_self_play_sql_validation_rows=args.semantic_self_play_sql_validation_rows,
+            semantic_self_play_sql_strict_agentic=args.semantic_self_play_sql_strict_agentic,
+            profile_data=args.profile_data,
+            enable_semantic_pathways=not args.disable_semantic_pathways,
+            pathway_batch_size=args.pathway_batch_size,
+            pathway_limit=args.pathway_limit,
+            enable_column_nuances=not args.disable_column_nuances,
+            nuance_max_columns=args.nuance_max_columns,
+            nuance_max_values=args.nuance_max_values,
+            nuance_batch_size=args.nuance_batch_size,
+            nuance_strict_agentic=args.nuance_strict_agentic,
+            enable_join_graph=not args.disable_join_graph,
+            join_max_tables=args.join_max_tables,
+            join_max_columns_per_table=args.join_max_columns_per_table,
+            join_max_candidate_edges=args.join_max_candidate_edges,
+            join_max_overlap_checks=args.join_max_overlap_checks,
+            join_sample_limit=args.join_sample_limit,
+            join_min_candidate_score=args.join_min_candidate_score,
+            join_min_candidate_distinct_count=args.join_min_candidate_distinct_count,
+            join_batch_size=args.join_batch_size,
+            join_strict_agentic=args.join_strict_agentic,
+            enable_semantic_assertions=not args.disable_semantic_assertions,
+            assertion_limit=args.assertion_limit,
+            assertion_batch_size=args.assertion_batch_size,
+            assertion_strict_agentic=args.assertion_strict_agentic,
         ),
         object_store=object_store,
     )

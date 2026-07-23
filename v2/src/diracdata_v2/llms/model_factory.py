@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
@@ -80,36 +81,72 @@ class ChatModelFactory:
         return self.create_chat_model(profile_id=self.settings.agent_model_profile)
 
     def create_chat_model(self, *, profile_id: str | None = None) -> object:
-        profile = BUILT_IN_MODEL_PROFILES.get(profile_id or self.settings.agent_model_profile)
-        provider = profile.provider if profile else ModelProvider(self.settings.agent_llm_provider)
-        model = profile.model if profile else self.settings.agent_llm_model
-        max_tokens = min(self.settings.agent_llm_max_tokens, profile.max_tokens) if profile else self.settings.agent_llm_max_tokens
-        kwargs: dict[str, Any] = dict(profile.model_kwargs) if profile else {}
-        region_name = self.settings.bedrock_region or (profile.region_name if profile else None)
-        if provider == ModelProvider.ANTHROPIC:
-            kwargs["base_url"] = self.settings.anthropic_base_url
-            api_key = self.settings.anthropic_api_key
-        elif provider == ModelProvider.OPENAI:
-            api_key = self.settings.openai_api_key
-            if profile and profile.base_url:
-                kwargs["base_url"] = profile.base_url
-        elif provider == ModelProvider.BEDROCK_CONVERSE:
-            api_key = self.settings.bedrock_api_key
-            if region_name:
-                kwargs["region_name"] = region_name
-        else:
-            api_key = None
-        if api_key:
-            kwargs["api_key"] = api_key
+        provider, api_key, region_name, init_kwargs = build_model_init(
+            settings=self.settings, profile_id=profile_id
+        )
         _validate(provider=provider, api_key=api_key, region_name=region_name)
         with _provider_environment(settings=self.settings, provider=provider, api_key=api_key):
-            return init_chat_model(
-                model=model,
-                model_provider=provider.value,
-                max_tokens=max_tokens,
-                temperature=self.settings.agent_llm_temperature,
-                **kwargs,
+            return init_chat_model(**init_kwargs)
+
+
+def build_model_init(
+    *, settings: V2Settings, profile_id: str | None = None
+) -> tuple[ModelProvider, str | None, str | None, dict[str, Any]]:
+    """Assemble the kwargs passed to init_chat_model, as a pure function.
+
+    Kept separate from client construction so the determinism floor (R1) is
+    unit-testable without a live provider: the returned dict is exactly what the
+    model is built with, so a test can assert temperature is pinned and the seed is
+    only forwarded to providers that support it.
+    """
+
+    profile = BUILT_IN_MODEL_PROFILES.get(profile_id or settings.agent_model_profile)
+    provider = profile.provider if profile else ModelProvider(settings.agent_llm_provider)
+    model = profile.model if profile else settings.agent_llm_model
+    max_tokens = min(settings.agent_llm_max_tokens, profile.max_tokens) if profile else settings.agent_llm_max_tokens
+    kwargs: dict[str, Any] = dict(profile.model_kwargs) if profile else {}
+    region_name = settings.bedrock_region or (profile.region_name if profile else None)
+    if provider == ModelProvider.ANTHROPIC:
+        kwargs["base_url"] = settings.anthropic_base_url
+        api_key = settings.anthropic_api_key
+    elif provider == ModelProvider.OPENAI:
+        api_key = settings.openai_api_key
+        if profile and profile.base_url:
+            kwargs["base_url"] = profile.base_url
+    elif provider == ModelProvider.BEDROCK_CONVERSE:
+        api_key = settings.bedrock_api_key
+        if region_name:
+            kwargs["region_name"] = region_name
+        if settings.llm_timeout_seconds is not None:
+            kwargs["config"] = _bedrock_client_config(
+                timeout_seconds=settings.llm_timeout_seconds,
+                max_retries=settings.llm_max_retries,
             )
+    else:
+        api_key = None
+    if api_key:
+        kwargs["api_key"] = api_key
+    if settings.llm_timeout_seconds is not None:
+        kwargs["timeout"] = settings.llm_timeout_seconds
+    kwargs["max_retries"] = max(0, settings.llm_max_retries)
+    # Real token streaming is opt-in. ChatBedrockConverse defaults disable_streaming=True
+    # (buffers to a single chunk); flip it when stream_tokens is on so model.stream()
+    # yields incremental chunks. A profile may still pin its own value.
+    kwargs.setdefault("disable_streaming", not settings.stream_tokens)
+    # Determinism floor: when deterministic_sampling is on, pin temperature to 0.0 for
+    # every stage regardless of agent_llm_temperature drift. A decode seed is forwarded
+    # only to providers that actually honour one (OpenAI); others have no seed knob.
+    temperature = 0.0 if settings.deterministic_sampling else settings.agent_llm_temperature
+    if settings.agent_llm_seed is not None and provider == ModelProvider.OPENAI:
+        kwargs["seed"] = settings.agent_llm_seed
+    init_kwargs = dict(
+        model=model,
+        model_provider=provider.value,
+        max_tokens=max_tokens,
+        temperature=temperature,
+        **kwargs,
+    )
+    return provider, api_key, region_name, init_kwargs
 
 
 def agent_chat_model_from_settings(settings: V2Settings) -> object:
@@ -119,11 +156,23 @@ def agent_chat_model_from_settings(settings: V2Settings) -> object:
 class ChatCompletionClient:
     """Tiny completion adapter for learning steps that expect dict messages."""
 
-    def __init__(self, *, model: object) -> None:
+    def __init__(self, *, model: object, timeout_seconds: float | None = None) -> None:
         self._model = model
+        self._timeout_seconds = timeout_seconds
 
     def complete(self, messages: list[dict[str, str]]) -> str:
-        response = self._model.invoke(messages)
+        if self._timeout_seconds is None:
+            response = self._model.invoke(messages)
+            return _response_text(response)
+        executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="diracdata-llm-complete")
+        future = executor.submit(self._model.invoke, messages)
+        try:
+            response = future.result(timeout=self._timeout_seconds)
+        except FutureTimeoutError as exc:
+            future.cancel()
+            raise TimeoutError(f"LLM completion exceeded {self._timeout_seconds:g}s timeout") from exc
+        finally:
+            executor.shutdown(wait=False, cancel_futures=True)
         return _response_text(response)
 
 
@@ -133,7 +182,8 @@ def chat_completion_client_from_settings(
     profile_id: str | None = None,
 ) -> ChatCompletionClient:
     return ChatCompletionClient(
-        model=ChatModelFactory(settings=settings).create_chat_model(profile_id=profile_id)
+        model=ChatModelFactory(settings=settings).create_chat_model(profile_id=profile_id),
+        timeout_seconds=settings.llm_timeout_seconds,
     )
 
 
@@ -165,6 +215,20 @@ def _validate(*, provider: ModelProvider, api_key: str | None, region_name: str 
         raise ValueError(f"{provider.value} API key is required")
     if provider == ModelProvider.BEDROCK_CONVERSE and not region_name:
         raise ValueError("Bedrock region is required")
+
+
+def _bedrock_client_config(*, timeout_seconds: int, max_retries: int) -> object:
+    try:
+        from botocore.config import Config
+    except ImportError as exc:
+        raise RuntimeError("Bedrock Converse profiles require botocore") from exc
+    safe_timeout = max(1, timeout_seconds)
+    safe_retries = max(0, max_retries)
+    return Config(
+        connect_timeout=min(10, safe_timeout),
+        read_timeout=safe_timeout,
+        retries={"max_attempts": safe_retries + 1},
+    )
 
 
 @contextmanager

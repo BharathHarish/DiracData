@@ -68,6 +68,13 @@ class CatalogJoinEdge:
     review_status: CatalogReviewStatus = CatalogReviewStatus.OBSERVED
     observed_count: int = 1
     source_entry_ids: tuple[str, ...] = ()
+    # Enrichment from the mined join graph (context_fabric/join_miner). Optional so
+    # a catalog built without a join graph is unchanged.
+    evidence_type: str | None = None
+    relationship_type: str | None = None
+    grain_effect: str | None = None
+    confidence: float | None = None
+    default_behavior: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return _to_plain(self)

@@ -1,0 +1,5 @@
+case_id,question,expect_sql_contains,expect_sql_not_contains,expect_status,notes
+hard_001,count male customers from New York who shopped clothing online in 2002,,category = 'Men'|category='Men';category = 'Clothing'|category='Clothing',BLOCKED_OR_CLARIFY,"TRAP: no 'Clothing' category exists (apparel lives in merchandise.class). Correct behaviour is refuse/ask - NEVER silently map it to another category. Control silently answered with category='Men'."
+hard_002,count distinct customers who made an online purchase in the year 2002,calendar_days;COUNT(DISTINCT,fiscal_year,PASS,"TRAP: calendar_days has both year and fiscal_year; 'in 2002' defaults to calendar year."
+hard_003,count the customers who bought online in 2002,billing_client_ref;COUNT(DISTINCT,shipping_client_ref,PASS,"TRAP: billing vs shipping role. 'bought' = billing party. Brief declares the default; control had to ask."
+hard_004,how many customers shopped online sliced by household income,,,ANY,"Observational: brief surfaces the ~3.4% NULL household-profile decision; control silently INNER JOINs and drops them."

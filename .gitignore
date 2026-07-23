@@ -33,3 +33,22 @@ v2/models/
 .ruff_cache/
 dist/
 build/
+
+# Runtime-generated agent artifacts (experiences, value cache, learned joins) -- the harness
+# rebuilds these as it runs; they are per-run state, not source.
+v3/experience/*
+!v3/experience/.gitkeep
+
+# Generated context artifacts (regenerate with v2/scripts/*).
+v2/learning/
+
+# Large retrieval-training / benchmark eval packs -- not used by the v3 harness.
+v2/evals/retail_column_retrieval_pairs_*.csv
+v2/evals/Benchmark_*.csv
+v2/evals/retail_schema_aware_benchmark.csv
+
+# Local editor / agent config and scratch.
+.claude/
+*.log
+tmp/
+scratch/
