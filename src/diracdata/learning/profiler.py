@@ -20,11 +20,17 @@ def column_facts(engine: Any, table: str, column: str, *,
     """Measured facts for one column. `complete_max` = report ALL distinct values up to this many
     (a complete domain); beyond it, a small sample + range."""
     q = _id(column)
-    # One aggregate pass: total rows, non-null count, distinct count, min, max.
-    r = engine.query(
-        f"SELECT COUNT(*), COUNT({q}), COUNT(DISTINCT {q}), MIN({q}), MAX({q}) FROM {_id(table)}", 1).rows
-    n, nn, d, mn, mx = ((int(r[0][0] or 0), int(r[0][1] or 0), int(r[0][2] or 0), r[0][3], r[0][4])
-                        if r else (0, 0, 0, None, None))
+    # One aggregate pass: total rows, non-null count, distinct count, min, max. Some engines cannot
+    # MIN/MAX an unorderable complex type (e.g. Postgres jsonb) -> degrade to the counts + no range.
+    try:
+        r = engine.query(
+            f"SELECT COUNT(*), COUNT({q}), COUNT(DISTINCT {q}), MIN({q}), MAX({q}) FROM {_id(table)}", 1).rows
+        n, nn, d, mn, mx = ((int(r[0][0] or 0), int(r[0][1] or 0), int(r[0][2] or 0), r[0][3], r[0][4])
+                            if r else (0, 0, 0, None, None))
+    except Exception:  # noqa: BLE001
+        r = engine.query(f"SELECT COUNT(*), COUNT({q}), COUNT(DISTINCT {q}) FROM {_id(table)}", 1).rows
+        n, nn, d = (int(r[0][0] or 0), int(r[0][1] or 0), int(r[0][2] or 0)) if r else (0, 0, 0)
+        mn = mx = None
     facts = {
         "table": table, "column": column, "row_count": n, "distinct": d,
         "null_pct": round(100 * (n - nn) / n, 2) if n else 0.0,   # (rows - non_null) / rows = null share
@@ -45,8 +51,12 @@ def column_facts(engine: Any, table: str, column: str, *,
 
 
 def _distinct(engine, table, q, limit) -> list:
-    return [row[0] for row in engine.query(
-        f"SELECT DISTINCT {q} FROM {_id(table)} WHERE {q} IS NOT NULL ORDER BY 1 LIMIT {limit}", limit).rows]
+    try:
+        return [row[0] for row in engine.query(
+            f"SELECT DISTINCT {q} FROM {_id(table)} WHERE {q} IS NOT NULL ORDER BY 1 LIMIT {limit}", limit).rows]
+    except Exception:  # noqa: BLE001  -- unorderable type (e.g. jsonb): drop the ORDER BY
+        return [row[0] for row in engine.query(
+            f"SELECT DISTINCT {q} FROM {_id(table)} WHERE {q} IS NOT NULL LIMIT {limit}", limit).rows]
 
 
 def _id(value: str) -> str:
