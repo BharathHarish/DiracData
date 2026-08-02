@@ -446,6 +446,22 @@ Every phase lists **Touches** (the concrete modules changed — engines, `Result
 - **Tests:** worker OOM → clean tool error + agent survives; timeout → interrupt; backpressure on a
   full queue; only envelopes cross the boundary.
 
+### Phase 2.0 — Provision + seed the fintech Postgres (test/UAT data)
+The connector is worthless without a real Postgres to point it at. This is an explicit deliverable.
+- **Provision:** a local Postgres (macOS: `brew install postgresql@16` + a local data dir + a
+  `fintech` database — no sudo). Documented in `docs/postgres-setup.md`; CI/other devs point
+  `DIRACDATA_TEST_PG_DSN` at any Postgres.
+- **Seed:** `scripts/setup_fintech_pg.py` — idempotently create and populate **`orders`** and
+  **`payments`** in the fintech Postgres (realistic columns incl. a `jsonb`/array/`timestamptz` so the
+  type tests are real; deterministic seed so numbers are reproducible). Reads the DSN from ENV
+  (`DIRACDATA_SOURCE_ORDERS_PG_DSN` / `DIRACDATA_TEST_PG_DSN`), never a literal. Prints row counts +
+  a couple of ground-truth aggregates for hand-verification.
+- **Lake side (for cross-source):** a small `customers` dimension seeded into a local DuckDB/parquet
+  lake so ME-FIN-04 can join Postgres `orders`/`payments` against a different engine.
+- **Tests:** `scripts/setup_fintech_pg.py --check` verifies the seed is present + counts match
+  (skips/att errors clearly if no PG); a unit test asserts the seeder is idempotent against a
+  throwaway PG when `DIRACDATA_TEST_PG_DSN` is set.
+
 ### Phase 2 — PostgresEngine + source registry loaders
 - **Engines:** `engines/postgres.py` (ADBC/connectorx → Arrow; read-only txn; statement timeout;
   identifier quoting); `registry.from_env` / `from_yaml` (secrets from ENV, redacted); driver as an
@@ -455,8 +471,8 @@ Every phase lists **Touches** (the concrete modules changed — engines, `Result
 - **Agent skeleton / prompts / learning:** none (Postgres reachable as an engine, not yet wired into
   the agent's tools — that's Phase 3).
 - **Config:** `sources`, per-source spec fields.
-- **Tests:** `EngineContract` against Postgres (**skips without `DIRACDATA_TEST_PG_DSN`**);
-  complex-type round-trip PG→Arrow→parquet→reconciler.
+- **Tests:** `EngineContract` against the **seeded** Postgres (**skips without `DIRACDATA_TEST_PG_DSN`**);
+  complex-type round-trip PG→Arrow→parquet→reconciler using the seeded `jsonb`/array/`timestamptz`.
 
 ### Phase 3 — Wire multi-source into the agent (skeleton + tools + prompt + dialect)
 This is the **agent change** phase — split so each delta is reviewable.
@@ -526,6 +542,7 @@ This is the **agent change** phase — split so each delta is reviewable.
 | `prompts/dialect_<engine>.md`, `learn_bindings.md` | 2, 4 | per-dialect notes; binding-discovery prompt |
 | `learning/fabric_agent.py`, `learning/bindings.py` | 4 | per-source learning + binding discovery |
 | `context/EstateCatalog` | 3b | render dialect/tables/freshness/bindings into the prompt |
+| `scripts/setup_fintech_pg.py`, `docs/postgres-setup.md` | 2.0 | provision + seed orders/payments in Postgres (+ lake customers dim) |
 
 Each phase ends with: the full suite green, new conformance/integration tests added, and the
 single-source default path proven unchanged.
