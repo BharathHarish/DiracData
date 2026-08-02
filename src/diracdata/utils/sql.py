@@ -233,9 +233,11 @@ def validate_sql(sql: str, *, available_tables: set[str]) -> dict[str, Any]:
     if not re.match(r"^\s*(select|with)\b", lowered):
         return {"status": "error", "error": "Only SELECT/WITH SQL is allowed"}
     cte_names = _cte_names(lowered)
+    # capture the table name after FROM/JOIN, skipping an optional `schema.` qualifier (e.g.
+    # `public.payments` -> `payments`) so schema-qualified / cross-engine SQL validates correctly.
     referenced = {
         match
-        for match in re.findall(r"\b(?:from|join)\s+([a-zA-Z_][\w]*)\b", lowered)
+        for match in re.findall(r"\b(?:from|join)\s+(?:[a-zA-Z_]\w*\.)?([a-zA-Z_][\w]*)\b", lowered)
         if match not in {"select"}
     }
     unknown = sorted(referenced - available_tables - cte_names)

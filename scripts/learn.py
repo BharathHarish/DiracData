@@ -33,7 +33,9 @@ def main() -> int:
     ap.add_argument("--schema", default=None, help="Learn a local DuckDB schema (single-source).")
     ap.add_argument("--source", default=None, help="Learn ONE source from DIRACDATA_SOURCES (any engine).")
     ap.add_argument("--estate", action="store_true",
-                    help="Learn EVERY source in DIRACDATA_SOURCES + discover cross-source bindings.")
+                    help="Learn EVERY source in the estate + discover cross-source bindings.")
+    ap.add_argument("--sources", default=None,
+                    help="YAML manifest declaring the estate (else DIRACDATA_SOURCES).")
     ap.add_argument("--model-profile", default="bedrock_zai_glm_5_ap_south_1")
     ap.add_argument("--env-file", default=str(ROOT / ".env"))
     ap.add_argument("--data-root", default=str(ROOT / "data"))
@@ -72,9 +74,9 @@ def main() -> int:
               file=sys.stderr)
 
     if args.estate or args.source:
-        registry = SourceRegistry.from_env()
+        registry = SourceRegistry.load(args.sources)
         if registry is None:
-            sys.exit("--source/--estate need DIRACDATA_SOURCES set (see docs/postgres-setup.md)")
+            sys.exit("--source/--estate need --sources <yaml> or DIRACDATA_SOURCES (see docs/estate.md)")
         names = registry.names() if args.estate else [args.source]
         for name in names:
             sink("learn", "info", f"learning source: {name}")

@@ -52,6 +52,14 @@ class SourceRegistry:
         return reg
 
     @classmethod
+    def load(cls, path: str | Path | None = None, env: Any = None) -> "SourceRegistry | None":
+        """The one estate entry point: a YAML manifest (`path`) if given, else `DIRACDATA_SOURCES` from
+        ENV, else None (single-source fallback). Used by the CLIs so the estate is declared one way."""
+        if path:
+            return cls.from_yaml(path, env=env)
+        return cls.from_env(env=env)
+
+    @classmethod
     def from_env(cls, env: Any = None) -> "SourceRegistry | None":
         """Build a multi-source registry from `DIRACDATA_SOURCES=a,b` + per-source `DIRACDATA_SOURCE_<A>_*`
         keys. Returns None when `DIRACDATA_SOURCES` is unset (caller falls back to `from_config`).

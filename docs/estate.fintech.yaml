@@ -1,0 +1,26 @@
+# A DATA ESTATE spanning multiple databases -- pass to the CLIs with --sources docs/estate.fintech.yaml
+# (or set DIRACDATA_SOURCES in ENV). Add/remove sources freely; each is an independent engine.
+#
+# Secrets NEVER live in this file: a DSN is written as ${ENV_VAR} and interpolated from the environment
+# at load time. Set it first, e.g.:  export FINTECH_PG_DSN="postgresql://$USER@localhost:5433/fintech"
+
+default: fintech_lake            # the "home" source (its dialect drives the default authoring rules)
+
+sources:
+  - name: fintech_lake           # some tables live in a DuckDB/parquet lake
+    kind: duckdb
+    data_root: ./data            # reads ./data/<schema>/parquet/*.parquet (relative to CWD)
+    schema: fintech_lake
+
+  - name: orders_pg              # ...and some live in Postgres
+    kind: postgres
+    dsn: ${FINTECH_PG_DSN}       # secret from ENV, not a literal
+    read_only: true              # a source is never written to
+    timeout_s: 60                # optional per-source statement timeout
+    params:
+      schema: public             # the Postgres schema to expose
+
+  # Future engines drop in the same way (each just implements the QueryEngine contract):
+  # - name: events_ch
+  #   kind: clickhouse           # (mysql / trino / clickhouse ... as connectors land)
+  #   dsn: ${EVENTS_CH_DSN}

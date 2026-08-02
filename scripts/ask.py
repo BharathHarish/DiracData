@@ -72,6 +72,8 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--question", default=None, help="Ask one question and exit; omit for a REPL.")
     ap.add_argument("--schema", default="retail_analytics")
+    ap.add_argument("--sources", default=None,
+                    help="YAML manifest declaring a multi-DB estate (else DIRACDATA_SOURCES, else single).")
     ap.add_argument("--model-profile", default="bedrock_zai_glm_5_ap_south_1")
     ap.add_argument("--env-file", default=str(ROOT / ".env"))
     ap.add_argument("--data-root", default=str(ROOT / "data"))
@@ -87,9 +89,9 @@ def main() -> int:
     settings = replace(settings_from_env(args.env_file),
                        agent_model_profile=args.model_profile, stream_tokens=True)
     model = ChatModelFactory(settings=settings).create_chat_model(profile_id=args.model_profile)
-    # Multi-source: DIRACDATA_SOURCES=a,b + per-source keys -> a SourceRegistry (default = first source).
+    # Estate: --sources <yaml> OR DIRACDATA_SOURCES env -> a SourceRegistry (default = first source).
     # Single-source (default): one DuckDB engine over --schema, wrapped as a one-source registry.
-    registry = SourceRegistry.from_env()
+    registry = SourceRegistry.load(args.sources)
     if registry is not None:
         engine = registry.get_default()
         schema = engine.name

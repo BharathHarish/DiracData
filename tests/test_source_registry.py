@@ -76,6 +76,15 @@ class SourceRegistryTests(unittest.TestCase):
     def test_from_env_none_when_unset(self):
         self.assertIsNone(SourceRegistry.from_env({}))
 
+    def test_load_prefers_yaml_then_env_then_none(self):
+        p = Path(self._tmp.name) / "s.yaml"
+        p.write_text(f"sources:\n  - name: x\n    kind: duckdb\n    data_root: {self._tmp.name}\n    schema: reg_schema\n")
+        self.assertEqual(SourceRegistry.load(str(p), env={}).names(), ["x"])   # yaml wins
+        env = {"DIRACDATA_SOURCES": "y", "DIRACDATA_SOURCE_Y_KIND": "duckdb",
+               "DIRACDATA_SOURCE_Y_DATA_ROOT": self._tmp.name, "DIRACDATA_SOURCE_Y_SCHEMA": "reg_schema"}
+        self.assertEqual(SourceRegistry.load(None, env=env).names(), ["y"])     # env fallback
+        self.assertIsNone(SourceRegistry.load(None, env={}))                    # neither -> None
+
     def test_from_yaml_interpolates_env_secret(self):
         yaml_text = "sources:\n  - name: orders_pg\n    kind: postgres\n    dsn: ${ORDERS_DSN}\n"
         p = Path(self._tmp.name) / "sources.yaml"
