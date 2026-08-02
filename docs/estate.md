@@ -7,8 +7,9 @@ of three ways (they all build the same `SourceRegistry`):
 
 ## 1. YAML manifest (recommended for the CLI)
 
-One file lists every source. Secrets are `${ENV}` references, never literals. See
-[docs/estate.fintech.yaml](estate.fintech.yaml):
+A user-uploaded manifest lists every source. **It is a user artifact, not source** — uploads land at
+`user_artifacts/pretraining/schema_artifacts/<name>.<upload-ts>.yaml` (gitignored), and you point the
+CLI at that path with `--sources`. Secrets are `${ENV}` references, never literals. Format:
 
 ```yaml
 default: fintech_lake            # the "home" source (drives the default dialect)
@@ -56,16 +57,18 @@ reg = SourceRegistry([
 
 ```bash
 export FINTECH_PG_DSN="postgresql://$USER@localhost:5433/fintech"
+# point at the latest uploaded manifest (user artifact, gitignored)
+MANIFEST=$(ls -t user_artifacts/pretraining/schema_artifacts/*.yaml | head -1)
 
 # LEARNING agent over the whole estate: per-source fabric + cross-source binding discovery
-PYTHONPATH=src .venv/bin/python scripts/learn.py --estate --sources docs/estate.fintech.yaml --quiet
+PYTHONPATH=src .venv/bin/python scripts/learn.py --estate --sources "$MANIFEST" --quiet
 
 # QUERY agent, single source (pushed down to Postgres)
-PYTHONPATH=src .venv/bin/python scripts/ask.py --sources docs/estate.fintech.yaml \
+PYTHONPATH=src .venv/bin/python scripts/ask.py --sources "$MANIFEST" \
     --question "What is the total payment amount collected in 2024?"
 
 # QUERY agent, CROSS-SOURCE (Postgres payments/orders reconciled with the lake customers dimension)
-PYTHONPATH=src .venv/bin/python scripts/ask.py --sources docs/estate.fintech.yaml \
+PYTHONPATH=src .venv/bin/python scripts/ask.py --sources "$MANIFEST" \
     --question "What is the total payment amount by customer segment?"
 ```
 

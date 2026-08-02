@@ -39,6 +39,10 @@ build/
 v3/experience/*
 !v3/experience/.gitkeep
 
+# USER-UPLOADED artifacts (estate/schema manifests, etc.) -- never source. They land under
+# user_artifacts/pretraining/schema_artifacts/<name>.<upload-ts>.yaml and are gitignored.
+/user_artifacts/
+
 # Generated context artifacts (regenerate with v2/scripts/*).
 v2/learning/
 
