@@ -5,6 +5,7 @@ connector (Postgres/MySQL/Trino) reuses this same mixin so conformance is one co
 
 from __future__ import annotations
 
+import os
 import sys
 import tempfile
 import unittest
@@ -71,6 +72,38 @@ class DuckDBEngineContractTest(EngineContract, unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         cls._tmp.cleanup()
+
+
+def _pg_contract_table(dsn, drop=False):
+    import adbc_driver_postgresql.dbapi as pg
+    con = pg.connect(dsn)
+    with con.cursor() as cur:
+        cur.execute("DROP TABLE IF EXISTS diracdata_contract_t")
+        if not drop:
+            cur.execute("CREATE TABLE diracdata_contract_t "
+                        "(user_id int, seg text, amount double precision, note text)")
+            cur.execute("INSERT INTO diracdata_contract_t "
+                        "VALUES (1,'a',10.0,'x'),(2,'b',20.0,NULL),(3,'a',30.0,'z')")
+    con.commit()
+    con.close()
+
+
+@unittest.skipUnless(os.environ.get("DIRACDATA_TEST_PG_DSN"), "no DIRACDATA_TEST_PG_DSN (Postgres)")
+class PostgresEngineContractTest(EngineContract, unittest.TestCase):
+    """The SAME contract, against a real Postgres. Skips cleanly when no DSN is set."""
+
+    table = "diracdata_contract_t"
+
+    @classmethod
+    def setUpClass(cls):
+        from diracdata.engines.postgres import PostgresEngine
+        cls._dsn = os.environ["DIRACDATA_TEST_PG_DSN"]
+        _pg_contract_table(cls._dsn)
+        cls.engine = PostgresEngine(dsn=cls._dsn, name="pg_contract")
+
+    @classmethod
+    def tearDownClass(cls):
+        _pg_contract_table(cls._dsn, drop=True)
 
 
 if __name__ == "__main__":

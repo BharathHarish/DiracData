@@ -7,7 +7,8 @@ the agent can reach. New data stores are new `QueryEngine`s here and nothing els
 
 from diracdata.engines.base import AbstractEngine, QueryEngine, QueryResult
 from diracdata.engines.duckdb import DuckDBEngine, Reconciler
+from diracdata.engines.postgres import PostgresEngine
 from diracdata.engines.registry import EngineSpec, SourceRegistry
 
 __all__ = ["QueryEngine", "AbstractEngine", "QueryResult", "DuckDBEngine", "Reconciler",
-           "EngineSpec", "SourceRegistry"]
+           "PostgresEngine", "EngineSpec", "SourceRegistry"]

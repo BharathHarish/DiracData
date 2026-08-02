@@ -56,6 +56,34 @@ class SourceRegistryTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             SourceRegistry([])
 
+    def test_from_env_builds_mixed_source_specs(self):
+        env = {
+            "DIRACDATA_SOURCES": "orders_pg,users_lake",
+            "DIRACDATA_SOURCE_ORDERS_PG_KIND": "postgres",
+            "DIRACDATA_SOURCE_ORDERS_PG_DSN": "postgresql://user@host/db",
+            "DIRACDATA_SOURCE_USERS_LAKE_KIND": "duckdb",
+            "DIRACDATA_SOURCE_USERS_LAKE_DATA_ROOT": self._tmp.name,
+            "DIRACDATA_SOURCE_USERS_LAKE_SCHEMA": "reg_schema",
+        }
+        reg = SourceRegistry.from_env(env)
+        self.assertEqual(set(reg.names()), {"orders_pg", "users_lake"})
+        self.assertEqual(reg.spec("orders_pg").kind, "postgres")
+        self.assertEqual(reg.spec("orders_pg").dsn, "postgresql://user@host/db")
+        self.assertEqual(reg.spec("users_lake").kind, "duckdb")
+        self.assertIn("t", reg.get("users_lake").list_tables())   # duckdb source builds lazily
+        self.assertEqual(reg.get("users_lake").dialect, "duckdb")
+
+    def test_from_env_none_when_unset(self):
+        self.assertIsNone(SourceRegistry.from_env({}))
+
+    def test_from_yaml_interpolates_env_secret(self):
+        yaml_text = "sources:\n  - name: orders_pg\n    kind: postgres\n    dsn: ${ORDERS_DSN}\n"
+        p = Path(self._tmp.name) / "sources.yaml"
+        p.write_text(yaml_text)
+        reg = SourceRegistry.from_yaml(p, {"ORDERS_DSN": "postgresql://secret@h/db"})
+        self.assertEqual(reg.spec("orders_pg").dsn, "postgresql://secret@h/db")
+        self.assertNotIn("secret", yaml_text)     # the secret is NOT a literal in the manifest
+
 
 if __name__ == "__main__":
     unittest.main()
