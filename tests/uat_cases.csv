@@ -1,0 +1,52 @@
+id,phase,category,title,precondition,input,expected,status,notes
+UAT-00,baseline,regression,Existing suite stays green,clean checkout,PYTHONPATH=src pytest tests -q,111 passed,PASS,run before and after every phase
+UAT-01,baseline,regression,Retail simple count unchanged,retail fabric + a working model,ask.py --schema retail_analytics --question "How many clients in total?",100000 distinct clients,PASS,golden numeric
+UAT-02,baseline,regression,Retail 2001 online revenue unchanged,retail fabric + model,ask.py --question "total online revenue in 2001",$339537789.11,PENDING,golden numeric
+UAT-P0-01,phase0,per-stage-config,Defaults reproduce today,no STAGE_* env set,build agent; inspect resolved stage models,every stage uses global agent_model_profile + 8192 + temp 0,PASS,no behaviour change
+UAT-P0-02,phase0,per-stage-config,Verify max_tokens override,set DIRACDATA_STAGE_VERIFY_MAX_TOKENS=2048,resolve stage configs,only VERIFY max_tokens=2048; others global,PASS,ENV precedence
+UAT-P0-03,phase0,per-stage-config,Per-stage model override,set DIRACDATA_STAGE_FRAMING_MODEL_PROFILE=anthropic_haiku_45,resolve framing stage,framing model = haiku; authoring = global,PASS,per-stage model choice
+UAT-P0-04,phase0,per-stage-config,Determinism floor clamps temp,deterministic_sampling=true + STAGE_AUTHORING_TEMPERATURE=0.7,resolve authoring,temperature clamped to 0.0,PASS,determinism guarantee
+UAT-P0-05,phase0,per-stage-config,ModelRegistry caches,request same profile twice,ModelRegistry.get x2,same StageModel instance returned,PASS,no rebuild per call
+UAT-P0-06,phase0,e2e,CLI unchanged with defaults,retail fabric + model,ask.py simple question,identical answer + steps vs baseline,PASS,regression
+UAT-P1-01,phase1,streaming-adapter,Anthropic adapter maps blocks,recorded anthropic chunks fixture,adapter.translate over fixture,answer_delta + reasoning_delta + tool events emitted correctly,PASS,fixture unit
+UAT-P1-02,phase1,streaming-adapter,OpenAI/LiteLLM adapter,recorded openai-compatible chunks,adapter.translate,answer_delta + tool_call_* emitted; reasoning if present,PASS,covers LiteLLM
+UAT-P1-03,phase1,streaming-adapter,Bedrock Converse adapter,recorded converse chunks (gpt-oss),adapter.translate,reasoning_delta separate from answer_delta; usage emitted,PASS,fixture unit
+UAT-P1-04,phase1,collector,Reasoning kept separate,gpt-oss event stream,Collector.run,CollectedResult.reasoning populated; answer has NO reasoning text,PASS,fixes reasoning bleed
+UAT-P1-05,phase1,collector,Non-streaming fallback,model without .stream,Collector.run,single invoke; result equals streamed path,PASS,same guarantee as today
+UAT-P1-06,phase1,e2e,gpt-oss answer is clean,retail fabric + gpt-oss profile,ask.py simple question,answer has no "the issue may be..." reasoning preamble,PASS,live UAT
+UAT-P1-07,phase1,e2e,Tool loop unaffected,retail fabric + GLM5,ask.py question needing run_sql,run_sql executes; answer correct,PASS,no regression on tools
+UAT-P2-01,phase2,stream-modes,OFF emits no live events,mode=off,run a turn,zero live events; final answer identical,PASS,batch/eval
+UAT-P2-02,phase2,stream-modes,MESSAGES surface,mode=messages,run a turn,only answer_* + tool_call_* seen,PASS,default UI
+UAT-P2-03,phase2,stream-modes,ALL surface,mode=all,run a turn,reasoning_* + usage + model_meta present,PASS,observability
+UAT-P2-04,phase2,stream-modes,UPDATES surface,mode=updates,run a turn,phase + tool start/end only,PASS,progress
+UAT-P2-05,phase2,e2e,CLI --no-stream,retail fabric,ask.py --no-stream,answer printed once at end; no token stream,PASS,user control
+UAT-P3-01,phase3,router,Fast lane on exact match,router on + a gold question with exact_match,route the query,tier=fast; cheap profile; max_steps small; allow_shortcut true,PASS,experience shortcut
+UAT-P3-02,phase3,router,Deep lane on cold cohort,router on + cold cohort query,route the query,tier=deep; strong authoring profile; higher budget,PASS,complexity routing -> Phase 4 (needs framing self-assessment for cold/complexity signal)
+UAT-P3-03,phase3,router,Escalation on repeated reject,router on + induced finish-gate rejects,run loop,re-plans one tier up; stronger model on retry,PASS,cheap-first safety net
+UAT-P3-04,phase3,router,Router off = today,ROUTER_ENABLED=false,run a turn,all stages use global model; identical to baseline,PASS,feature flag
+UAT-P3-05,phase3,e2e,Fast-lane correctness,router on + exact gold match live,ask.py that question,correct answer in fewer steps + fewer tokens than deep,PASS,live UAT
+UAT-P3-06,phase3,eval-rig,Router A/B accuracy holds,5x repeatability rig on gold set,router on vs off,accuracy parity; total tokens lower with router,DEFERRED,never single run -> eval-rig ship gate, not a build gate
+UAT-P4-01,phase4,router,Per-stage differentiation,router on + deep query,route,framing+authoring strong; verify mid (distinct profiles),PENDING,per-stage models
+UAT-P4-02,phase4,eval-rig,Cost down at parity,eval rig,router v2 vs single-strong baseline,accuracy parity; tokens/$ lower,PENDING,ship gate
+UAT-P5-01,phase5,ux,Per-turn cost surfaced,usage events on,run a turn,tokens in/out + est cost shown,PENDING,optional
+UAT-P5-02,phase5,ux,Answer provenance,run a turn,inspect answer event,result_id + reused experience id present,PENDING,optional
+UAT-P5-03,phase5,ux,Transcript replay,a prior conversation with transcript.md,ask.py --replay <id>,turn re-rendered from transcript without model calls,PENDING,optional
+UAT-P1X-HAIKU,phase1,envelope-xmodel,Envelope on Haiku (Anthropic adapter),envelope=true + haiku,ask.py count,correct 100000; anthropic adapter; no errors,PASS,cross-model
+UAT-P1X-GPT54,phase1,envelope-xmodel,Envelope on GPT-5.4 (OpenAI adapter),envelope=true + openai_gpt_5_4_mini,ask.py count,correct 100000; openai adapter; no errors,PASS,cross-model
+UAT-P1X-GLM5,phase1,envelope-xmodel,Envelope on GLM5 (Bedrock adapter),envelope=true + glm5,ask.py count,correct 100000; bedrock adapter; no errors,PASS,cross-model
+UAT-P1X-KIMI,phase1,envelope-xmodel,Envelope on Kimi (Bedrock adapter),envelope=true + kimi,ask.py count,correct 100000; bedrock adapter; no errors,PASS,cross-model
+UAT-P1X-GPTOSS,phase1,envelope-xmodel,Envelope on gpt-oss (Bedrock + reasoning),envelope=true + gpt-oss,ask.py count,correct 100000; reasoning stripped; no errors,PASS,cross-model
+UAT-P1X-NEMOTRON,phase1,envelope-stream,Envelope stream-only on Nemotron-nano,envelope + nemotron (no tool-use),Collector over plain stream,answer captured; reasoning separated; no break,PASS,stream-only (loop needs tools)
+UAT-P1X-DEEPSEEK,phase1,envelope-stream,Envelope stream-only on DeepSeek v3.2,envelope + deepseek (no tool-use),Collector over plain stream,answer captured; no break,PASS,stream-only (loop needs tools)
+UAT-P3-AG1,phase3,agentic-router,Main model picks cheap model for simple query,router on + precedented query,ask.py,chose FREE glm5 + small budget + shortcut; answer correct,PASS,agentic cost-optimisation
+UAT-P3-AG2,phase3,agentic-router,Main model picks strong model for complex query,router on + cold cohort,ask.py,chose gpt-oss (strong+reasoning) + larger budget; penny-perfect cohort,PASS,agentic perf-optimisation
+UAT-P3-AG3,phase3,agentic-router,Invalid/hallucinated pick falls back to global,router on + bad model id,unit,fallback to global model; no crash,PASS,validation+fallback
+UAT-P3-AG4,phase3,agentic-router,No ENV routing policy,catalog-driven,code review,no tier->profile ENV knobs; only enable flag + escalation bound,PASS,agentic not config
+UAT-M0,memory,experience-book,ExperienceBook read/write/sections,object store,unit,roundtrip + section edits + canonical order + durable reload,PASS,6 tests
+UAT-M1,memory,async-queue,Candidate queue enqueue+drain non-blocking,object store,unit,enqueue durable+instant; drain runs curate+clears; thread non-blocking; no-clog on failure,PASS,5 tests
+UAT-M2-CURATE,memory,curator,Curator learns patterns/gotchas/bindings/rca-leads,scripted curator model,unit,adds SQL pattern/RCA lead; refine replaces section,PASS,curator loop
+UAT-M2-JUNK,memory,curator,Trivial turn learns nothing,scripted curator (no update call),unit,book unchanged,PASS,learn-only-if-useful
+UAT-M2-WIRING,memory,curator,Agent enqueues+drains when enabled,fake model + book,unit,enabled -> enqueue+drain_async; off/no-book -> no consolidator,PASS,agent hook
+UAT-M2-E2E,memory,curator,Live turn learns typed knowledge async,retail + GLM5 + agentic_memory_enabled,ask.py cohort query,experiences.md written async: SQL PATTERN (template w/ {year} slots) + GOTCHA + BINDINGS; answer correct,PASS,full design live
+UAT-M4-READBACK,memory,retrieval,experiences.md injected into framing + analyst,agentic_memory_enabled + book,unit,learned block in framing task + system prompt; empty when off/no book,PASS,4 tests
+UAT-M4-REUSE,memory,retrieval,Learned template + gotcha reused on new query,retail + book has {year} cohort template,ask.py 2003 cohort,penny-perfect (81/46); fewer steps (6 vs 7); applied learned NULL gotcha,PASS,flywheel closed

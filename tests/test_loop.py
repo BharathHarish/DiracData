@@ -1,0 +1,102 @@
+"""The single agent loop, driven by a scripted fake model (no tokens): it calls a tool, sees the
+result, then commits a final answer. Also pins the last-turn tool withdrawal (must answer).
+"""
+
+import sys
+import unittest
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT / "src") not in sys.path:
+    sys.path.insert(0, str(ROOT / "src"))
+
+from diracdata.agents.loop import run_loop  # noqa: E402
+from diracdata.memory.working_memory import WorkingMemory  # noqa: E402
+
+
+class _ScriptedModel:
+    """Emits queued AIMessages. No .stream -> stream_and_collect falls back to .invoke."""
+
+    def __init__(self, steps):
+        self._steps = list(steps)
+
+    def bind_tools(self, tools):
+        return self
+
+    def invoke(self, messages):
+        from langchain_core.messages import AIMessage
+        step = self._steps.pop(0) if self._steps else {"content": ""}
+        return AIMessage(content=step.get("content", ""), tool_calls=step.get("tool_calls", []))
+
+
+def _echo_tool():
+    from langchain.tools import tool
+
+    @tool("echo")
+    def echo(x: str) -> str:
+        """Echo the input back."""
+        return f"echoed:{x}"
+
+    return echo
+
+
+class LoopTests(unittest.TestCase):
+    def test_calls_tool_then_finishes(self) -> None:
+        seen = []
+        model = _ScriptedModel([
+            {"tool_calls": [{"name": "echo", "args": {"x": "hi"}, "id": "c1"}]},
+            {"content": "FINAL ANSWER: done"},
+        ])
+        out = run_loop(model=model, tools=[_echo_tool()], system_prompt="sys",
+                       memory=WorkingMemory(goal="g"), max_steps=8,
+                       observe=lambda n, a, r: seen.append((n, r)))
+        self.assertIn("done", out["text"])
+        self.assertEqual(out["steps"], 2)
+        self.assertEqual(seen, [("echo", "echoed:hi")])   # tool actually dispatched
+
+    def test_last_turn_withdraws_tools_and_forces_an_answer(self) -> None:
+        # even if the model keeps trying to call tools, the final turn returns whatever text it has
+        model = _ScriptedModel([
+            {"tool_calls": [{"name": "echo", "args": {"x": "1"}, "id": "c1"}], "content": "partial"},
+        ])
+        out = run_loop(model=model, tools=[_echo_tool()], system_prompt="sys",
+                       memory=WorkingMemory(goal="g"), max_steps=1)
+        self.assertEqual(out["steps"], 1)
+        self.assertEqual(out["text"], "partial")          # committed, did not loop forever
+
+    def test_a_malformed_tool_call_is_feedback_not_a_crash(self) -> None:
+        # the model calls echo with no args (missing required `x`) -> the loop must survive and
+        # feed the error back, then let the model recover on the next turn
+        seen = []
+        model = _ScriptedModel([
+            {"tool_calls": [{"name": "echo", "args": {}, "id": "c1"}]},   # invalid: missing x
+            {"content": "recovered"},
+        ])
+        out = run_loop(model=model, tools=[_echo_tool()], system_prompt="sys",
+                       memory=WorkingMemory(goal="g"), max_steps=8,
+                       observe=lambda n, a, r: seen.append(r))
+        self.assertEqual(out["text"], "recovered")            # did not crash; recovered
+        self.assertTrue(any("errored" in r for r in seen))    # the error was fed back as an observation
+
+    def test_finish_gate_rejects_then_accepts(self) -> None:
+        # a bare-text finish is gated: first rejected (feedback appended), then the model fixes it
+        from diracdata.agents.verify import FinishGate
+        mem = WorkingMemory(goal="g")
+        mem.seen_numbers = {52.0}
+        calls = {"n": 0}
+
+        def verifier(answer, m):
+            calls["n"] += 1
+            return ({"ok": calls["n"] > 1, "reason": "state the source", "ambiguity": False}, 0)
+
+        gate = FinishGate(memory=mem, verifier=verifier)
+        model = _ScriptedModel([{"content": "52 customers"}, {"content": "52 customers (from r1)"}])
+        out = run_loop(model=model, tools=[_echo_tool()], system_prompt="sys", memory=mem,
+                       max_steps=8, finish_gate=gate)
+        self.assertEqual(calls["n"], 2)                   # first submit rejected, second accepted
+        self.assertEqual(out["text"], "52 customers (from r1)")
+        self.assertTrue(out["verdict"]["ok"])
+
+
+if __name__ == "__main__":
+    unittest.main()
