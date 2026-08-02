@@ -125,9 +125,10 @@ def main() -> int:
             return ""
 
     experience_book = ExperienceBook(schema, obj_store)  # schema-scoped agentic memory (async curator)
+    bindings = fabric.get("estate", "bindings.json", None)   # cross-source map (learn.py --estate)
     agent = V4Agent(model=model, workspace=workspace, engine=engine, result_store=result_store,
                     sink=sink, config=settings, max_steps=args.max_steps, value_cache=value_cache,
-                    asker=asker, experience_book=experience_book, sources=registry)
+                    asker=asker, experience_book=experience_book, sources=registry, bindings=bindings)
 
     # Durable conversation memory: transcript.md + running summary.md carry follow-ups across turns
     # AND across sessions (resume a prior id). A fresh REPL session gets a new id by default.

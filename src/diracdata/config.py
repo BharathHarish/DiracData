@@ -121,6 +121,8 @@ class Config:
     # --- profiling / footprint (learning + stewardship) ---
     profiler_complete_max: int = 40
     profiler_sample: int = 12
+    binding_sample: int = 200          # distinct values sampled per key for cross-source overlap
+    binding_min_overlap: float = 0.5   # min sample overlap to call two columns a binding
     footprint_max_cols: int = 16
     footprint_max_joins: int = 3
     hint_values_shown: int = 8         # example values shown in a term-domain hint
@@ -243,6 +245,8 @@ class Config:
             learn_result_display=_int("DIRACDATA_LEARN_RESULT_DISPLAY", d.learn_result_display),
             profiler_complete_max=_int("DIRACDATA_PROFILER_COMPLETE_MAX", d.profiler_complete_max),
             profiler_sample=_int("DIRACDATA_PROFILER_SAMPLE", d.profiler_sample),
+            binding_sample=_int("DIRACDATA_BINDING_SAMPLE", d.binding_sample),
+            binding_min_overlap=_float("DIRACDATA_BINDING_MIN_OVERLAP", d.binding_min_overlap),
             footprint_max_cols=_int("DIRACDATA_FOOTPRINT_MAX_COLS", d.footprint_max_cols),
             footprint_max_joins=_int("DIRACDATA_FOOTPRINT_MAX_JOINS", d.footprint_max_joins),
             hint_values_shown=_int("DIRACDATA_HINT_VALUES_SHOWN", d.hint_values_shown),

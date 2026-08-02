@@ -20,15 +20,20 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from diracdata.utils.model_factory import ChatModelFactory  # noqa: E402
 from diracdata.utils.duckdb_engine import DuckDBEngine  # noqa: E402
+from diracdata.engines import SourceRegistry  # noqa: E402
 from diracdata.config import settings_from_env  # noqa: E402
 
 from diracdata.context.fabric import fabric_store_from_settings  # noqa: E402
 from diracdata.learning import LearningAgent, write_artifacts  # noqa: E402
+from diracdata.learning.bindings import discover_bindings  # noqa: E402
 
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--schema", required=True)
+    ap.add_argument("--schema", default=None, help="Learn a local DuckDB schema (single-source).")
+    ap.add_argument("--source", default=None, help="Learn ONE source from DIRACDATA_SOURCES (any engine).")
+    ap.add_argument("--estate", action="store_true",
+                    help="Learn EVERY source in DIRACDATA_SOURCES + discover cross-source bindings.")
     ap.add_argument("--model-profile", default="bedrock_zai_glm_5_ap_south_1")
     ap.add_argument("--env-file", default=str(ROOT / ".env"))
     ap.add_argument("--data-root", default=str(ROOT / "data"))
@@ -58,16 +63,32 @@ def main() -> int:
 
     settings = replace(settings_from_env(args.env_file), agent_model_profile=args.model_profile, stream_tokens=True)
     model = ChatModelFactory(settings=settings).create_chat_model(profile_id=args.model_profile)
-    engine = DuckDBEngine(data_root=Path(args.data_root), schema_name=args.schema)
     store = fabric_store_from_settings(settings)
 
-    learner = LearningAgent(engine=engine, model=model, sink=sink)
-    result = learner.compile()
-    keys = write_artifacts(result, schema=args.schema, store=store)
+    def learn_one(engine, key: str) -> None:
+        result = LearningAgent(engine=engine, model=model, sink=sink).compile()
+        keys = write_artifacts(result, schema=key, store=store)
+        print(f"\ncompiled {key}: {len(result.tables)} tables ({result.tokens} tokens) -> {', '.join(keys)}",
+              file=sys.stderr)
 
-    print(f"\ncompiled {len(result.tables)} tables ({result.tokens} tokens) -> object store:", file=sys.stderr)
-    for k in keys:
-        print(f"  {k}", file=sys.stderr)
+    if args.estate or args.source:
+        registry = SourceRegistry.from_env()
+        if registry is None:
+            sys.exit("--source/--estate need DIRACDATA_SOURCES set (see docs/postgres-setup.md)")
+        names = registry.names() if args.estate else [args.source]
+        for name in names:
+            sink("learn", "info", f"learning source: {name}")
+            learn_one(registry.get(name), name)
+        if args.estate:
+            sink("learn", "info", "discovering cross-source bindings")
+            bindings = discover_bindings(registry)
+            store.put("estate", "bindings.json", bindings)
+            print(f"\nestate bindings ({len(bindings)}): " +
+                  "; ".join(f"{b['left']}={b['right']} ({b['overlap_pct']}%)" for b in bindings), file=sys.stderr)
+    else:
+        if not args.schema:
+            sys.exit("give --schema (local DuckDB), --source <name>, or --estate")
+        learn_one(DuckDBEngine(data_root=Path(args.data_root), schema_name=args.schema), args.schema)
     return 0
 
 

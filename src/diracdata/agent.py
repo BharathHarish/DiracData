@@ -49,11 +49,12 @@ class V4Agent:
                  sink: Sink = null_sink, config: Config | None = None, max_steps: int | None = None,
                  value_cache: Any = None, asker: Any = None, frame: bool = True, subagents: bool = True,
                  max_subagent_depth: int | None = None, model_registry: ModelRegistry | None = None,
-                 experience_book: Any = None, sources: Any = None) -> None:
+                 experience_book: Any = None, sources: Any = None, bindings: Any = None) -> None:
         self.model = model
         self.workspace = workspace
         self.engine = engine
         self.sources = sources          # optional SourceRegistry; None -> single-source (self.engine)
+        self.bindings = bindings         # optional cross-source bindings for the estate map
         self.result_store = result_store
         self.sink = sink
         # Config is the single source of runtime constants; explicit args override just those two.
@@ -211,9 +212,8 @@ class V4Agent:
         if self.sources is None or len(self.sources.names()) <= 1:
             return ""
         from diracdata.context.estate import render_estate
-        bindings = getattr(self.workspace, "bindings", None) if self.workspace is not None else None
         return render_estate(self.sources, default_name=getattr(self.engine, "name", None),
-                             bindings=bindings)
+                             bindings=self.bindings)
 
     def flush_memory(self) -> None:
         """Synchronously drain any pending memory candidates -- call at process exit so a single-shot
