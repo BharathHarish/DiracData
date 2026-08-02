@@ -48,3 +48,26 @@ class AbstractEngine:
     @staticmethod
     def quote_literal(value: str) -> str:
         return str(value).replace("'", "''")
+
+    def copy_to_parquet(self, sql: str, out_path: str) -> int:
+        """Default: stream the query as Arrow RecordBatches to parquet (never buffering the full
+        result), so large outputs live on disk, not in memory. DuckDB overrides this with native
+        COPY; external connectors implement `arrow_batches`."""
+        import pyarrow.parquet as pq
+
+        reader = self.arrow_batches(sql)
+        writer = pq.ParquetWriter(out_path, reader.schema)
+        n = 0
+        try:
+            for batch in reader:
+                writer.write_batch(batch)
+                n += batch.num_rows
+        finally:
+            writer.close()
+        return n
+
+    def arrow_batches(self, sql: str) -> Any:
+        """Return the FULL result of `sql` as a pyarrow RecordBatchReader. External connectors
+        implement this; DuckDB overrides copy_to_parquet directly and does not need it."""
+        raise NotImplementedError(
+            f"{type(self).__name__} must implement arrow_batches() or override copy_to_parquet()")

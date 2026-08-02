@@ -20,6 +20,9 @@ WORK LIKE THIS:
   filter's selectivity, a join's grain (COUNT(DISTINCT key) to avoid fan-out), a subtotal -- before
   you trust the whole. run_sql stores the full result and returns a preview; to cut a large result
   further, use query_result(result_id, sql) with the stored result named `result`.
+- COMBINE RESULTS across sources with combine_results([id,...], sql): reduce each source with run_sql
+  first (aggregate at the source), then join the small stored results by their result_ids in one
+  DuckDB step. Move aggregates, not raw tables.
 
 BIND TO THE CONFIRMED INTENT in working memory (the framed meanings + any user clarifications) -- do
 NOT substitute a convenient look-alike column. If a NEW material ambiguity surfaces mid-analysis that

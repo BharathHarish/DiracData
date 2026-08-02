@@ -97,7 +97,10 @@ def main() -> int:
         query_history_path=history if history.exists() else None)
     value_cache = ColumnValueCache(fabric, args.schema)
     result_store = ResultStore(engine=engine, store=obj_store, schema=args.schema,
-                               preview_rows=settings.preview_rows, preview_all_max=settings.preview_all_max)
+                               preview_rows=settings.preview_rows, preview_all_max=settings.preview_all_max,
+                               reconciler_memory_limit=settings.reconciler_memory_limit,
+                               reconciler_temp_dir=settings.reconciler_temp_dir,
+                               reconciler_threads=settings.reconciler_threads)
     # One wrap point governs the whole live stream: model output (token/reasoning/usage) + loop (tools/info).
     mode = "off" if args.no_stream else (args.stream_mode or settings.stream_mode)
     sink = mode_sink(_make_sink(args.quiet), mode)

@@ -97,6 +97,12 @@ class Config:
     preview_all_max: int = 200       # ResultStore full-return threshold
     find_examples_limit: int = 5
 
+    # --- multi-engine: reconciler (combines result parquets, spills instead of OOM) + execution ---
+    reconciler_memory_limit: str = "2GB"    # DuckDB reconciler memory cap; spills to temp beyond it
+    reconciler_temp_dir: str | None = None   # spill dir; None -> a subdir of the result store's temp
+    reconciler_threads: int | None = None    # None -> DuckDB default
+    executor: str = "inline"                 # inline | process (isolated worker pool -> Phase 1.5)
+
     # --- display / truncation widths ---
     obs_cap: int = 12000             # tool observation fed back to the loop
     tool_call_display: int = 200     # streamed tool-call echo
@@ -217,6 +223,10 @@ class Config:
             preview_rows=_int("DIRACDATA_PREVIEW_ROWS", d.preview_rows),
             preview_all_max=_int("DIRACDATA_PREVIEW_ALL_MAX", d.preview_all_max),
             find_examples_limit=_int("DIRACDATA_FIND_EXAMPLES_LIMIT", d.find_examples_limit),
+            reconciler_memory_limit=_str("DIRACDATA_RECONCILER_MEMORY_LIMIT", d.reconciler_memory_limit),
+            reconciler_temp_dir=_str_or_none("DIRACDATA_RECONCILER_TEMP_DIR") or d.reconciler_temp_dir,
+            reconciler_threads=_opt_int("DIRACDATA_RECONCILER_THREADS", default=d.reconciler_threads),
+            executor=_str("DIRACDATA_EXECUTOR", d.executor),
             obs_cap=_int("DIRACDATA_OBS_CAP", d.obs_cap),
             tool_call_display=_int("DIRACDATA_TOOL_CALL_DISPLAY", d.tool_call_display),
             tool_result_display=_int("DIRACDATA_TOOL_RESULT_DISPLAY", d.tool_result_display),

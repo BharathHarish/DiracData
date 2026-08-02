@@ -1,18 +1,56 @@
-"""Read-only DuckDB runtime over a schema's local parquet files (each table = a view).
+"""DuckDB runtimes:
 
-The reference `QueryEngine`: DuckDB also backs the cross-source RECONCILER (combining result
-parquets), so this surface is the contract every other connector implements.
+- `DuckDBEngine` -- the reference read-only source over a schema's local parquet (each table = a view).
+- `Reconciler`  -- a locked-down, source-independent DuckDB that COMBINES result parquets (the
+  cross-source join substrate). memory_limit + temp_directory make it spill to disk instead of OOMing.
+
+Both share `_DuckDBRuntime` (bounded query / DESCRIBE / COPY over one connection).
 """
 
 from __future__ import annotations
 
 from pathlib import Path
 from threading import RLock
+from typing import Any
 
 from diracdata.engines.base import AbstractEngine, QueryResult
 
 
-class DuckDBEngine(AbstractEngine):
+def _lit(value: str) -> str:
+    return str(value).replace("'", "''")
+
+
+class _DuckDBRuntime:
+    """Shared execution over `self._con` behind `self._lock`: bounded query, typing, full COPY."""
+
+    _con: Any
+    _lock: RLock
+
+    def query(self, sql: str, max_rows: int) -> QueryResult:
+        clean = sql.strip().rstrip(";")
+        with self._lock:
+            cur = self._con.execute(f"SELECT * FROM ({clean}) AS diracdata_query LIMIT {int(max_rows)}")
+            cols = [c[0] for c in cur.description or []]
+            rows = cur.fetchmany(int(max_rows))
+        return QueryResult(columns=cols, rows=rows)
+
+    def describe_query(self, sql: str) -> list[dict[str, str]]:
+        clean = sql.strip().rstrip(";")
+        with self._lock:
+            rows = self._con.execute(f"DESCRIBE ({clean})").fetchall()
+        return [{"column_name": str(r[0]), "column_type": str(r[1])} for r in rows]
+
+    def copy_to_parquet(self, sql: str, out_path: str) -> int:
+        """Materialize a SELECT's FULL result to parquet (no row cap) and return its row count."""
+        clean = sql.strip().rstrip(";")
+        with self._lock:
+            self._con.execute(f"COPY ({clean}) TO '{_lit(out_path)}' (FORMAT PARQUET)")
+            row = self._con.execute(
+                f"SELECT COUNT(*) FROM read_parquet('{_lit(out_path)}')").fetchone()
+        return int(row[0]) if row else 0
+
+
+class DuckDBEngine(_DuckDBRuntime, AbstractEngine):
     dialect = "duckdb"
 
     def __init__(self, *, data_root: Path, schema_name: str = "default_schema",
@@ -30,8 +68,8 @@ class DuckDBEngine(AbstractEngine):
             table = path.stem
             with self._lock:
                 self._con.execute(
-                    f"CREATE OR REPLACE VIEW {table} AS "
-                    f"SELECT * FROM read_parquet('{self.quote_literal(path.as_posix())}')")
+                    f"CREATE OR REPLACE VIEW {self.quote_ident(table)} AS "
+                    f"SELECT * FROM read_parquet('{_lit(path.as_posix())}')")
             self._tables.add(table)
 
     def list_tables(self) -> list[str]:
@@ -51,29 +89,36 @@ class DuckDBEngine(AbstractEngine):
             rows = self._con.execute(f"DESCRIBE {self.quote_ident(table_name)}").fetchall()
         return [{"column_name": str(row[0]), "column_type": str(row[1])} for row in rows]
 
-    def query(self, sql: str, max_rows: int) -> QueryResult:
-        clean_sql = sql.strip().rstrip(";")
-        limited_sql = f"SELECT * FROM ({clean_sql}) AS diracdata_query LIMIT {int(max_rows)}"
-        with self._lock:
-            cursor = self._con.execute(limited_sql)
-            columns = [column[0] for column in cursor.description or []]
-            rows = cursor.fetchmany(int(max_rows))
-        return QueryResult(columns=columns, rows=rows)
 
-    def copy_to_parquet(self, sql: str, out_path: str) -> int:
-        """Materialize a SELECT's FULL result to parquet (no row cap) and return its row count, so
-        large outputs live on disk/object store, not in the agent's context."""
-        clean_sql = sql.strip().rstrip(";")
+class Reconciler(_DuckDBRuntime):
+    """A locked-down DuckDB that combines RESULT PARQUETS -- independent of any source (it only ever
+    sees reduced result parquets). `memory_limit` + `temp_directory` spill to disk instead of OOMing;
+    the HTTP filesystem is disabled so it cannot reach the network. Bind a result with `register_view`,
+    then query/COPY referencing that name."""
+
+    dialect = "duckdb"
+
+    def __init__(self, *, memory_limit: str = "2GB", temp_dir: str | None = None,
+                 threads: int | None = None) -> None:
+        try:
+            import duckdb
+        except ImportError as exc:
+            raise RuntimeError("Reconciler requires duckdb") from exc
+        self._con = duckdb.connect(":memory:")
+        self._lock = RLock()
+        self._con.execute(f"SET memory_limit='{_lit(memory_limit)}'")
+        if temp_dir:
+            Path(temp_dir).mkdir(parents=True, exist_ok=True)
+            self._con.execute(f"SET temp_directory='{_lit(temp_dir)}'")
+        if threads:
+            self._con.execute(f"SET threads={int(threads)}")
+        # Stream large results (sort/aggregate/COPY spill to temp_directory) instead of buffering the
+        # whole result in memory -- this is what turns "large combine" into "spills, not OOM".
+        self._con.execute("SET preserve_insertion_order=false")
+        self._con.execute("SET disabled_filesystems='HTTPFileSystem'")   # no network reach
+
+    def register_view(self, name: str, parquet_path: str) -> None:
+        """Bind a stored result parquet as a table named `name` (referenced by combine SQL)."""
         with self._lock:
             self._con.execute(
-                f"COPY ({clean_sql}) TO '{self.quote_literal(out_path)}' (FORMAT PARQUET)")
-            row = self._con.execute(
-                f"SELECT COUNT(*) FROM read_parquet('{self.quote_literal(out_path)}')").fetchone()
-        return int(row[0]) if row else 0
-
-    def describe_query(self, sql: str) -> list[dict[str, str]]:
-        """Column names + types for an arbitrary SELECT, without running it for rows."""
-        clean_sql = sql.strip().rstrip(";")
-        with self._lock:
-            rows = self._con.execute(f"DESCRIBE ({clean_sql})").fetchall()
-        return [{"column_name": str(r[0]), "column_type": str(r[1])} for r in rows]
+                f'CREATE OR REPLACE VIEW "{name}" AS SELECT * FROM read_parquet(\'{_lit(parquet_path)}\')')
