@@ -33,11 +33,11 @@ ME-P3b-01,phase3b,catalog,EstateCatalog renders the estate map,registry + bindin
 ME-P3b-02,phase3b,routing,Framing picks the right source(s),a question answerable from one source,frame_intent(...),selects that source; cross-source question selects both,PASS,agentic source selection
 ME-P3b-03,phase3b,e2e,Cross-source question end-to-end,PG orders + duckdb/lake facts,ask.py a question joining them,per-source reduce -> combine_results -> verified answer with as-of label,PASS,the headline cross-engine run
 ME-P3b-04,phase3b,verify,Verifier catches freshness/grain mismatch,a naive cross-source join ignoring as-of,run verify,flags the temporal/grain inconsistency,PENDING,semantic guard
-ME-P4-01,phase4,learning,Per-source learning writes under the estate,two sources,learn.py --estate fintech_estate,fabric/<estate>/<source>/metadata+value_domains+join_graph written per source,PENDING,per-source fabric
-ME-P4-02,phase4,learning,Binding discovery finds a real key,two sources sharing user_id (overlap),run binding discovery,edge orders_pg.user_id=users_lake.user_id with overlap %,PENDING,cross-source map
-ME-P4-03,phase4,learning,No false binding on disjoint ids,two sources with disjoint ids,run binding discovery,no binding proposed,PENDING,precision
-ME-P4-04,phase4,learning,learn.py --estate runs N sources + bindings,estate of 2 sources,learn.py --estate ...,both sources learned; bindings.json written,PENDING,CLI
-ME-P4-05,phase4,catalog,Catalog reads bindings.json,bindings.json present,catalog.render(),bindings shown in the estate map,PENDING,wire learning->prompt
+ME-P4-01,phase4,learning,Per-source learning writes under the estate,two sources,learn.py --estate fintech_estate,fabric/<estate>/<source>/metadata+value_domains+join_graph written per source,PASS,per-source fabric
+ME-P4-02,phase4,learning,Binding discovery finds a real key,two sources sharing user_id (overlap),run binding discovery,edge orders_pg.user_id=users_lake.user_id with overlap %,PASS,cross-source map
+ME-P4-03,phase4,learning,No false binding on disjoint ids,two sources with disjoint ids,run binding discovery,no binding proposed,PASS,precision
+ME-P4-04,phase4,learning,learn.py --estate runs N sources + bindings,estate of 2 sources,learn.py --estate ...,both sources learned; bindings.json written,PASS,CLI
+ME-P4-05,phase4,catalog,Catalog reads bindings.json,bindings.json present,catalog.render(),bindings shown in the estate map,PASS,wire learning->prompt
 ME-P5-01,phase5,lifecycle,Cited survive gc; scratch swept,a turn with cited + scratch results,gc(run_id keep=cited),cited kept; scratch parquet removed,PENDING,retention
 ME-P5-02,phase5,lifecycle,Object-store keys deleted on sweep,results past ttl,sweep(older_than_turns),object-store keys removed,PENDING,durable retention
 ME-P5-03,phase5,lifecycle,Temp cleaned on close,after a run,ResultStore.close(),local temp dir removed,PENDING,teardown
@@ -48,7 +48,7 @@ ME-P6-02,phase6,engine-contract,Trino engine conforms,DIRACDATA_TEST_TRINO_DSN s
 ME-P6-03,phase6,e2e,Three-store reconcile,postgres + lake + mysql,ask.py a 3-source question,per-source reduce -> combine -> correct answer,PENDING,N-store proof
 ME-P6-04,phase6,optimization,DuckDB-attach single statement,an attachable postgres source,run a pushdown attach path,single statement pushes filter+aggregate down; result matches connector path,PENDING,optional optimisation
 ME-FIN-01,final,setup,Simulate orders + payments in Postgres,a running postgres,python scripts/setup_fintech_pg.py,orders + payments tables created and seeded in postgres; row counts reported,PASS,user-verifiable setup
-ME-FIN-02,final,learning,Run learning pipeline over the Postgres source,fintech pg source registered,learn.py --estate fintech --source orders_pg,fabric compiled for orders+payments (descriptions+value domains+joins); written to store,PENDING,learning agent on postgres
+ME-FIN-02,final,learning,Run learning pipeline over the Postgres source,fintech pg source registered,learn.py --estate fintech --source orders_pg,fabric compiled for orders+payments (descriptions+value domains+joins); written to store,PASS,learning agent on postgres
 ME-FIN-03,final,e2e,Main agent single-source Postgres answer,fintech pg learned,ask.py --source orders_pg 'total payment amount in 2024',correct total pushed down to postgres; faithful + verified,PASS,postgres query e2e
 ME-FIN-04,final,e2e,Main agent cross-source answer,orders/payments in pg + a dim in duckdb/lake,ask.py a question joining pg payments with the lake dimension,per-source reduce -> combine_results -> correct combined answer with as-of note,PASS,cross-engine headline
 ME-FIN-05,final,e2e,Full CLI transcript is reproducible,all fintech setup done,the exact CLI commands in the final report,user runs them and reproduces FIN-02..04,PASS,hand-verifiable by user
