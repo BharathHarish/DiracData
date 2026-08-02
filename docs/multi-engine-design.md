@@ -149,10 +149,11 @@ store — parquet is the on-disk representation of the same columnar data.
 ### 3.2 The reconciler is a *separate* DuckDB, not a source
 
 Today `ResultStore` uses `self.engine` (the source DuckDB) to slice results. In multi-engine that is
-wrong — the reconciler must be independent of any source. `ResultStore` gains a dedicated,
-locked-down DuckDB `:memory:` **reconciler connection** (`enable_external_access=false` except the
-result-parquet paths; `memory_limit`; `threads` capped — all `Config` fields). Sources produce
-parquet; the reconciler joins parquet. Clean separation of concerns.
+wrong — the reconciler must be independent of any source. The reconciler is a locked-down DuckDB
+connection (`enable_external_access=false` except the result-parquet paths; `memory_limit` +
+`temp_directory` so it **spills to disk instead of OOMing**; `threads` capped — all `Config` fields).
+Sources produce parquet; the reconciler joins parquet. **It does not run in the agent process** — it
+runs inside an isolated execution worker; see §3.6. One fresh reconciler connection per job.
 
 ### 3.3 `combine_results` — the cross-source join primitive
 
@@ -188,6 +189,72 @@ The envelope the agent already receives is the shape view: `columns`, `dtypes`, 
   one-pass aggregate already proven for the learning profiler; no new stats code.
 - Preview values that are nested/large are rendered as **truncated JSON text** with a `has_nested`
   flag and the per-column type, so the agent sees structure without flooding context.
+
+### 3.6 Execution and isolation model (runtime infra)
+
+**The requirement:** the agent (LLM) loop must survive a large/expensive combine, an engine OOM, a
+native driver crash, or a hang — with a clean error it can re-plan from, never a dead process.
+
+**The seam: the agent process never executes SQL.** Tools are thin *clients*. A `run_sql(source,sql)`
+or `combine_results(ids,sql)` call **submits a job** to an `Executor` and waits on a future; it does
+not open a DB connection or hold result data. All source drivers *and* the DuckDB reconciler live in
+**worker processes**, not the agent process.
+
+```
+agent process (LLM loop, tools)           execution service (bounded pool of worker PROCESSES)
+  run_sql(src, sql) ──submit(job)──▶  ┌─ worker: source driver + fresh DuckDB reconciler
+  combine_results(ids, sql) ─────────▶│    runs one job, memory_limit + spill + timeout + rlimit
+        ▲                             │    streams FULL result → parquet in the object store
+        └──── envelope + result_id ───┘    returns ONLY the small envelope (never the megabytes)
+```
+
+Only picklable **envelopes** (columns/dtypes/row_count/preview + `result_id`) cross the process
+boundary. Bulk data is handed off through the **store** (parquet keyed by `result_id` in the object
+store / shared spill dir), so any worker can pick up any job and the agent's memory + IPC stay tiny
+regardless of result size.
+
+**Why a process, not a thread.** A thread shares the agent's address space: a DuckDB abort, a
+segfaulting native driver, or an OS OOM-kill would take the agent down too. A process boundary turns
+all three into a future that *raises* → the tool returns a structured error ("combine exceeded
+memory/time; reduce the inputs or push the join down") → the agent re-plans and survives. (The async
+memory curator stays a thread — it is trusted, tiny, bounded. *Unbounded, untrusted SQL execution*
+gets a process.)
+
+**Five layers of OOM / runaway containment (defense in depth):**
+1. **Push-down invariant** — reconciler inputs are `O(answer)`, never `O(source)` (§3.4).
+2. **Pre-flight guard** — refuse a fetch/combine input over `Config.fetch_max_rows/bytes` *before* it
+   runs; tell the agent to add a reducing predicate.
+3. **DuckDB is out-of-core** — `memory_limit` + `temp_directory` make it **spill to disk, not OOM**;
+   "large result" ≠ "OOM". Bounded by disk, and it streams.
+4. **Worker OS memory cap** — `rlimit`/cgroup per worker: a pathological case kills *only that worker*
+   (auto-respawned), not the box.
+5. **Timeout + interrupt** — soft `con.interrupt()` on `Config.exec_job_timeout_s`, hard worker-kill
+   backstop for a true hang.
+
+**Scalability:**
+- **Bounded persistent pool** — `min(cpu-2, Config.exec_workers)` long-lived workers (connections
+  cached across jobs via a pool initializer); a *fresh* reconciler connection per job, disposed after.
+  No fork-per-query cost, no unbounded growth.
+- **Backpressure** — a bounded job queue (`Config.exec_queue_max`); when full, agent turns *wait*
+  (fair), they don't spawn more processes.
+- **Stateless workers + store handoff** → scale **horizontally** behind the same `Executor` interface:
+  `LocalProcessPoolExecutor` today, a remote/Ray/Dask/service executor later, zero agent changes.
+- **Under many concurrent turns** the bottleneck is the pool + the source engines (which own their own
+  concurrency) — the agent layer adds none. Each combine is small (push-down) and spills if not.
+
+**Implementation note:** the stdlib `ProcessPoolExecutor` cannot kill a single hung job without
+tearing the whole pool, so the default is a **small custom process pool** (submit via a queue,
+per-job soft-interrupt, kill-and-respawn on hard timeout) — still a stdlib-only, ~120-line component.
+
+**Framework seam — `diracdata.execution`** (new optional package): an `Executor` protocol
+(`submit(job) -> Future[Envelope]`), `LocalProcessPoolExecutor` as the default, pluggable remote. The
+agent and `ResultStore` depend on the **interface**; a consumer can inject their own backend. All
+knobs (`exec_workers`, `exec_queue_max`, `exec_job_timeout_s`, `reconciler_memory_limit`,
+`reconciler_temp_dir`, `worker_memory_cap_mb`, `fetch_max_rows/bytes`) are `Config` fields.
+
+**Back-compat:** with one in-process source and the executor disabled (`Config.executor="inline"`),
+execution runs inline exactly as today — the single-source path is unchanged and needs no worker
+processes. The pool turns on with multi-source or explicitly.
 
 ## 4. Ephemeral result lifecycle (cleanup policy)
 
@@ -282,8 +349,9 @@ Grouped; each has a home in the design so none is a surprise.
 - Pushdown cost/guardrails: row/byte caps; reject `O(source)` combine inputs; warehouse $ awareness
   (bytes scanned) surfaced to the router.
 - Schema drift between learn-time and query-time → introspect-on-demand + stale-catalog detection.
-- Connection pooling & concurrency: a pool per source; the reconciler is one ephemeral `:memory:`
-  connection **per in-flight turn** (stateless, horizontally scalable) — never one shared connection.
+- Connection pooling & concurrency: source drivers + the reconciler live in a **bounded pool of
+  worker processes** (§3.6), one fresh reconciler connection per job — isolated so an OOM/crash kills a
+  worker, not the agent; stateless and horizontally scalable; never one shared connection.
 - Auth expiry (Snowflake/BigQuery OAuth) → connector refresh hook.
 - Observability: per-source query log (sql, rows, bytes, ms) into the transcript.
 
@@ -297,6 +365,9 @@ Grouped; each has a home in the design so none is a surprise.
 - New package `diracdata.engines` with a clean public API (`from diracdata.engines import
   SourceRegistry, EngineSpec, QueryEngine, DuckDBEngine, PostgresEngine`). Same "optional package"
   pattern as `streaming`/`routing`/`experiences`.
+- New package `diracdata.execution` — the `Executor` protocol + `LocalProcessPoolExecutor` (§3.6).
+  The agent/`ResultStore` depend on the interface; a consumer can inject a remote backend. Optional:
+  the default single-source path runs inline with no worker processes.
 - The agent takes a `SourceRegistry` (or, back-compat, a single engine). No global state; a consumer
   constructs the registry in Python, or loads from ENV/YAML.
 - Connectors are **extras**: `pip install diracdata[postgres]`, `[trino]`, `[mysql]` → each pulls its
@@ -336,9 +407,15 @@ The whole unit suite must run with **zero external services** (like today's MinI
   with a back-compat single-source synth; the `EngineContract` conformance harness. *No behavior
   change.* Gate: 171 green + conformance passes for DuckDB.
 - **Phase 1 — Arrow result contract + reconciler + `combine_results`.** `to_parquet` via Arrow
-  (DuckDB keeps native COPY); a dedicated locked-down DuckDB reconciler in `ResultStore`;
-  `combine_results(result_ids, sql)` tool storing output as a new result. Tests: two-DuckDB combine,
-  ASOF, nulls, nested round-trip. Single-source path unchanged.
+  (DuckDB keeps native COPY); a locked-down DuckDB reconciler (`memory_limit`+`temp_directory` spill);
+  `combine_results(result_ids, sql)` tool storing output as a new result. Runs inline first (behind
+  `Config.executor="inline"`). Tests: two-DuckDB combine, ASOF, nulls, nested round-trip, spill-on-
+  large. Single-source path unchanged.
+- **Phase 1.5 — `diracdata.execution` (isolation).** The `Executor` protocol +
+  `LocalProcessPoolExecutor` (bounded pool, store-based handoff, per-job memory_limit/timeout/rlimit,
+  kill-and-respawn); route `run_sql`/`combine_results` through it. Tests: OOM in a worker → clean tool
+  error + agent survives; timeout → interrupt; backpressure under a full queue; envelope-only across
+  the boundary. Inline path stays the default until multi-source.
 - **Phase 2 — PostgresEngine + registry loaders.** ADBC/connectorx → Arrow; ENV/YAML source loaders
   (secrets from ENV); read-only + timeout; `arrow.py` canonicalization (jsonb/array/timestamptz).
   Conformance test skips without `DIRACDATA_TEST_PG_DSN`.
