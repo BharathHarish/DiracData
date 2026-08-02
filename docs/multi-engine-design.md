@@ -402,33 +402,130 @@ The whole unit suite must run with **zero external services** (like today's MinI
 
 ## 10. Implementation phases (each shippable, tested, behind flags, 0 regression)
 
-- **Phase 0 — `diracdata.engines` skeleton.** `QueryEngine` protocol + `AbstractEngine`; move
-  `DuckDBEngine` in (re-export from `utils/duckdb_engine.py` for compat); `EngineSpec`/`SourceRegistry`
-  with a back-compat single-source synth; the `EngineContract` conformance harness. *No behavior
-  change.* Gate: 171 green + conformance passes for DuckDB.
-- **Phase 1 — Arrow result contract + reconciler + `combine_results`.** `to_parquet` via Arrow
-  (DuckDB keeps native COPY); a locked-down DuckDB reconciler (`memory_limit`+`temp_directory` spill);
-  `combine_results(result_ids, sql)` tool storing output as a new result. Runs inline first (behind
-  `Config.executor="inline"`). Tests: two-DuckDB combine, ASOF, nulls, nested round-trip, spill-on-
-  large. Single-source path unchanged.
-- **Phase 1.5 — `diracdata.execution` (isolation).** The `Executor` protocol +
-  `LocalProcessPoolExecutor` (bounded pool, store-based handoff, per-job memory_limit/timeout/rlimit,
-  kill-and-respawn); route `run_sql`/`combine_results` through it. Tests: OOM in a worker → clean tool
-  error + agent survives; timeout → interrupt; backpressure under a full queue; envelope-only across
-  the boundary. Inline path stays the default until multi-source.
-- **Phase 2 — PostgresEngine + registry loaders.** ADBC/connectorx → Arrow; ENV/YAML source loaders
-  (secrets from ENV); read-only + timeout; `arrow.py` canonicalization (jsonb/array/timestamptz).
-  Conformance test skips without `DIRACDATA_TEST_PG_DSN`.
-- **Phase 3 — Estate catalog + routing in the prompt.** Render the estate map (per-source
-  dialect/tables/freshness/bindings); `run_sql(source, sql)` + sourced navigation tools; framing picks
-  source(s); a real PG↔lake cross-source question end-to-end.
-- **Phase 4 — Cross-source learning.** Per-source learning keyed by source + binding discovery
-  (sample-overlap via reconciler) → `bindings.json`, injected into the catalog.
-- **Phase 5 — Lifecycle/GC + observability.** Retention config, `gc`/`sweep`/`close`, cited-result
-  protection, per-source query log.
-- **Phase 6 — More connectors + optimizations.** MySQL (driver or DuckDB `mysql_scanner`), Trino
-  (client); optional DuckDB-attach single-statement path for attachable sources; optional isolated
-  `run_python` escape hatch (only if a real query needs it).
+Every phase lists **Touches** (the concrete modules changed — engines, `ResultStore`/tools, the
+**agent skeleton**, **prompts**, **learning**, config) so nothing agent-facing is implicit.
+
+### Phase 0 — `diracdata.engines` skeleton (no behavior change)
+- **Engines:** `base.py` (`QueryEngine` protocol + `AbstractEngine`), move `DuckDBEngine` →
+  `engines/duckdb.py` (thin re-export from `utils/duckdb_engine.py` for compat), `registry.py`
+  (`EngineSpec` + `SourceRegistry` with a **single-source synth** from today's `Config`).
+- **Agent skeleton:** none yet — `agent.py`/`loop.py`/tools still receive one engine (the registry
+  hands back the synthesized default).
+- **Prompts / learning:** none.
+- **Config:** none new (reads existing `sql_engine`/`data_root`/`schema`).
+- **Tests:** `EngineContract` conformance harness (parametrized), run against `DuckDBEngine`.
+- **Gate:** 171 green + conformance passes; imports unchanged.
+
+### Phase 1 — Arrow result contract + reconciler + `combine_results` (inline)
+- **Engines:** `to_parquet` via Arrow batches in `AbstractEngine` (DuckDB keeps native `COPY`);
+  `engines/arrow.py` type canonicalization scaffold.
+- **ResultStore:** own a **separate locked-down DuckDB reconciler** (`memory_limit`+`temp_directory`
+  spill; not a source); generalize `query(result_id, sql)` → `combine(result_ids, sql)` binding many
+  parquets; store combine output as a new `result_id` (faithfulness holds).
+- **Tools (`tools/query.py`):** add **`combine_results(result_ids, sql)`** (DuckDB dialect); register
+  in `tools/__init__.build_tools`; numbers land in `WorkingMemory` like `run_sql`.
+- **Agent skeleton:** `tools/__init__` + `agent.py` pass the reconciler to `ResultStore`; loop
+  unchanged. **`run_sql` signature unchanged** (still single default source).
+- **Prompts:** `analyst.md` gains a short "to join two stored results, use `combine_results`" note;
+  `sql_rules.md` unchanged.
+- **Config:** `reconciler_memory_limit`, `reconciler_temp_dir`, `reconciler_threads`, `executor`
+  (`"inline"` default).
+- **Tests:** two-DuckDB combine, ASOF freshness, nulls, nested round-trip, spill-on-large.
+
+### Phase 1.5 — `diracdata.execution` (process isolation, §3.6)
+- **Execution (new pkg):** `Executor` protocol + `LocalProcessPoolExecutor` (bounded pool,
+  store-based handoff, per-job memory_limit/timeout/rlimit, kill-and-respawn); worker initializer
+  builds the `SourceRegistry` + reconciler once per worker.
+- **ResultStore / tools:** `run` and `combine` go **through the executor** (submit job → wait on
+  future → envelope); on worker death return a structured error string the agent can re-plan from.
+- **Agent skeleton:** `agent.py` builds/owns the `Executor`, injects into `ResultStore`; **loop and
+  tool call-sites unchanged** (still call `run_sql`/`combine_results`). `flush`/`close` on exit.
+- **Prompts:** none.
+- **Config:** `exec_workers`, `exec_queue_max`, `exec_job_timeout_s`, `worker_memory_cap_mb`,
+  `fetch_max_rows`, `fetch_max_bytes`; `executor` flips to `"process"` when multi-source.
+- **Tests:** worker OOM → clean tool error + agent survives; timeout → interrupt; backpressure on a
+  full queue; only envelopes cross the boundary.
+
+### Phase 2 — PostgresEngine + source registry loaders
+- **Engines:** `engines/postgres.py` (ADBC/connectorx → Arrow; read-only txn; statement timeout;
+  identifier quoting); `registry.from_env` / `from_yaml` (secrets from ENV, redacted); driver as an
+  install-extra with a clear missing-driver hint.
+- **Arrow:** finish `arrow.py` canonicalization — `jsonb`→canonical JSON text, arrays→list, decimals,
+  `timestamptz`→UTC.
+- **Agent skeleton / prompts / learning:** none (Postgres reachable as an engine, not yet wired into
+  the agent's tools — that's Phase 3).
+- **Config:** `sources`, per-source spec fields.
+- **Tests:** `EngineContract` against Postgres (**skips without `DIRACDATA_TEST_PG_DSN`**);
+  complex-type round-trip PG→Arrow→parquet→reconciler.
+
+### Phase 3 — Wire multi-source into the agent (skeleton + tools + prompt + dialect)
+This is the **agent change** phase — split so each delta is reviewable.
+- **3a — sourced tools + skeleton:**
+  - `tools/query.py`: **`run_sql(source, sql)`** selects the engine from the registry, validates in
+    *that* dialect, echoes the dialect used; back-compat: `source` optional, defaults to the sole/
+    default source so existing calls and tests are unchanged.
+  - `tools/navigation.py`: `get_tables/describe_columns/get_columns/profile_column/find_examples`
+    gain an optional `source` arg (default source).
+  - `agent.py` / `tools/__init__.build_tools`: accept a **`SourceRegistry`** (back-compat: a single
+    engine is wrapped into a one-source registry); thread it to tools + `ResultStore`.
+  - `agents/loop.py`: no control-flow change — tools just carry `source` now.
+- **3b — estate catalog + dialect in the prompt + routing:**
+  - `context/`: an `EstateCatalog` renderer (per-source dialect/tables/freshness/bindings → the
+    estate-map block, §5) built from the registry + fabric/`bindings.json`.
+  - **Prompts:** `analyst.md` + `framing.md` inject the estate map and the "SELECT per source in its
+    dialect; combine in DuckDB" rules; per-source `dialect_<engine>.md` concatenated only for sources
+    in play; `verify.md` gains cross-source grain/freshness checks.
+  - `agents/framing.py`: framing **picks the source(s)** for the intent from the catalog (agentic, no
+    ENV policy) — reuses the router muscle.
+  - `agents/verify.py`: faithfulness spans sources (a number traces to a stored result **from a named
+    source**); verifier checks as-of/grain alignment.
+- **Config:** `estate` name; catalog rendering caps.
+- **Tests:** `run_sql(source,…)` default-source regression; a real **PG↔lake cross-source question
+  end-to-end** (per-source reduce → `combine_results` → verified answer with an as-of label).
+
+### Phase 4 — Cross-source learning (learning agent + estate)
+- **Learning:** `learning/fabric_agent.py` runs **per source** (keyed `fabric/<estate>/<source>/…`;
+  `profiler.py` unchanged — already engine-agnostic); a new **binding-discovery pass**
+  (`learning/bindings.py`): propose candidate cross-source keys (name/type/domain overlap) → sample
+  each in its source → overlap via the reconciler → write verified `fabric/<estate>/bindings.json`.
+  New prompt `prompts/learn_bindings.md`.
+- **Estate:** `EstateCatalog` reads `bindings.json`; `scripts/learn.py` gains `--estate` (learn N
+  sources + bindings).
+- **Experiences:** curator taxonomy already open — cross-source bindings/gotchas curated at runtime
+  (no code change; a note in `prompts/curate.md`).
+- **Tests:** overlapping ids → correct edge + overlap %; disjoint ids → **no** false binding;
+  per-source fabric written under the estate.
+
+### Phase 5 — Lifecycle/GC + observability
+- **ResultStore:** `gc(run_id, keep=cited)`, `sweep(older_than_turns)`, `close()`; run-namespaced
+  keys; cited-result protection wired from the finish gate.
+- **Agent skeleton:** `agent.py` calls `gc` per turn and `close` on exit; per-source query log
+  (sql/rows/bytes/ms) appended to the transcript.
+- **Config:** `result_ttl_turns`, `results_prefix`, retention mode.
+- **Tests:** cited survive, scratch swept, object-store keys deleted, temp cleaned; retention ∞/0.
+
+### Phase 6 — More connectors + optimizations
+- **Engines:** `engines/mysql.py`, `engines/trino.py` (each just passes `EngineContract`); optional
+  DuckDB-attach single-statement path for attachable sources.
+- **Deferred (earn-its-keep):** isolated `run_python` escape hatch only if a real query proves DuckDB
+  insufficient.
+- **Tests:** conformance for each new connector; a 3-store (`postgres`+`lake`+`mysql`/`trino`)
+  reconcile.
+
+**Agent-facing change ledger** (which phase touches what — the parts you flagged as missing):
+
+| Module | Phase | Change |
+|---|---|---|
+| `tools/query.py` | 1, 3a | `combine_results` added (1); `run_sql(source, sql)` (3a) |
+| `tools/navigation.py` | 3a | optional `source` arg on every nav tool |
+| `tools/__init__.build_tools` | 1, 1.5, 3a | reconciler + executor + registry wiring |
+| `agent.py` (skeleton) | 1, 1.5, 3a, 5 | owns reconciler/executor/registry; gc+close |
+| `agents/framing.py` | 3b | picks source(s) from the estate catalog |
+| `agents/verify.py` | 3b | cross-source faithfulness + as-of/grain checks |
+| `prompts/analyst.md`,`framing.md`,`verify.md` | 1, 3b | combine note; estate map; cross-source rules |
+| `prompts/dialect_<engine>.md`, `learn_bindings.md` | 2, 4 | per-dialect notes; binding-discovery prompt |
+| `learning/fabric_agent.py`, `learning/bindings.py` | 4 | per-source learning + binding discovery |
+| `context/EstateCatalog` | 3b | render dialect/tables/freshness/bindings into the prompt |
 
 Each phase ends with: the full suite green, new conformance/integration tests added, and the
 single-source default path proven unchanged.
