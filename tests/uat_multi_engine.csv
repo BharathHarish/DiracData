@@ -1,0 +1,53 @@
+id,phase,category,title,precondition,input,expected,status,notes
+ME-00,baseline,regression,Existing suite stays green,clean checkout on multi-engine branch,PYTHONPATH=src pytest tests -q,171 passed,PENDING,run before and after every phase
+ME-P0-01,phase0,engine-contract,DuckDBEngine passes the EngineContract,retail parquet fabric,pytest tests/test_engine_contract.py,list_tables/list_columns/describe_query/fetch/to_parquet/read-only all conform,PENDING,the conformance harness every connector must pass
+ME-P0-02,phase0,registry,Single-source synth reproduces today,no DIRACDATA_SOURCES set,SourceRegistry.from_env() then .get_default(),one duckdb source built from Config.sql_engine/data_root/schema; same tables as today,PENDING,back-compat default
+ME-P0-03,phase0,compat,Legacy import path still works,after moving engine to diracdata.engines,from diracdata.utils.duckdb_engine import DuckDBEngine,imports without error (re-export shim),PENDING,no import breakage
+ME-P0-04,phase0,e2e,CLI unchanged with defaults,retail fabric + a model,ask.py --schema retail_analytics --question 'How many clients in total?',100000 distinct clients; identical steps vs pre-phase,PENDING,regression
+ME-P1-01,phase1,arrow-contract,to_parquet via Arrow equals native COPY,retail parquet,run same SELECT through AbstractEngine.to_parquet and DuckDB native COPY,same row_count and column types,PENDING,arrow path parity
+ME-P1-02,phase1,reconciler,Reconciler is separate and locked down,combine two results,inspect reconciler connection,distinct from any source engine; enable_external_access off except result paths; memory_limit+temp_directory set,PENDING,isolation config
+ME-P1-03,phase1,combine,combine_results joins two stored results,two result_ids r1 r2 with user_id,combine_results(['r1','r2'] 'SELECT ... FROM r1 JOIN r2 USING(user_id)'),returns new result_id + envelope; join correct,PENDING,cross-result join primitive
+ME-P1-04,phase1,faithfulness,Combine output is faithful,combine produced a number,finish gate check,the number traces to the new stored result_id,PENDING,faithfulness extends to combine
+ME-P1-05,phase1,combine,ASOF freshness join,real-time result r1 + daily snapshot r2,combine_results ASOF JOIN aligning to snapshot boundary,rows aligned as-of; no temporal double count,PENDING,freshness handling
+ME-P1-06,phase1,types,Nulls + nested round-trip,result with NULLs + LIST + STRUCT + JSON text,combine over it,values preserved; has_nested flagged; NULLs correct,PENDING,complex-type integrity
+ME-P1-07,phase1,scale,Large combine spills not OOM,combine inputs exceeding reconciler memory_limit,run combine,completes by spilling to temp_directory; no OOM,PENDING,out-of-core proof
+ME-P1-08,phase1,e2e,Single-source path unchanged,retail fabric,ask.py simple question,identical answer; run_sql signature unchanged,PENDING,regression
+ME-P15-01,phase1.5,isolation,Worker OOM leaves agent alive,executor=process + a combine forced past worker rlimit,run the turn,tool returns a clean 'exceeded memory' error; agent process survives and can re-plan,PENDING,the core isolation guarantee
+ME-P15-02,phase1.5,isolation,Job timeout interrupts cleanly,a deliberately slow query + exec_job_timeout_s small,run the turn,soft interrupt then structured timeout error; worker respawns,PENDING,hang containment
+ME-P15-03,phase1.5,isolation,Backpressure on full queue,exec_workers=1 exec_queue_max=1 + 3 concurrent jobs,submit 3,jobs wait fairly; none dropped; all complete,PENDING,bounded queue
+ME-P15-04,phase1.5,isolation,Only envelopes cross the boundary,a large result via the pool,inspect what returns to the agent process,envelope+result_id only; bulk stays as parquet in the store,PENDING,memory/IPC bound
+ME-P15-05,phase1.5,isolation,Inline executor equals today,executor=inline (default),run a turn,identical to pre-1.5 behaviour; no worker processes spawned,PENDING,default unchanged
+ME-P15-06,phase1.5,regression,Suite green with executor package,executor package present,pytest tests -q,all pass,PENDING,no regression
+ME-P2-01,phase2,engine-contract,PostgresEngine passes EngineContract,DIRACDATA_TEST_PG_DSN set to a test PG,pytest tests/test_engine_contract.py,PG conforms; SKIPPED cleanly when DSN unset,PENDING,skips w/o postgres (not installed here yet)
+ME-P2-02,phase2,registry,from_env builds mixed sources,DIRACDATA_SOURCES=orders_pg,users_lake + per-source keys,SourceRegistry.from_env(),postgres + duckdb engines built lazily; correct dialects,PENDING,multi-source ENV
+ME-P2-03,phase2,registry,from_yaml interpolates ENV secrets,sources.yaml with dsn ${ORDERS_DSN},SourceRegistry.from_yaml(),DSN read from ENV; no secret literal in yaml; redacted in repr,PENDING,secret hygiene
+ME-P2-04,phase2,safety,Read-only enforced,PG source read_only=true,attempt an INSERT via run_sql,rejected; connection is read-only,PENDING,no writes to sources
+ME-P2-05,phase2,types,Complex type canonicalization,PG table with jsonb+array+timestamptz,fetch to parquet then combine in reconciler,jsonb->canonical JSON text; array->list; timestamptz->UTC; values correct,PENDING,arrow.py canonicalization
+ME-P2-06,phase2,packaging,Missing driver gives a clear hint,postgres extra not installed,build PostgresEngine,raises install hint (pip install diracdata[postgres]); no opaque ImportError,PENDING,framework ergonomics
+ME-P3a-01,phase3a,tools,run_sql(source) selects engine + dialect,two sources registered,run_sql('orders_pg' 'SELECT ...'),runs on postgres; validates in postgres dialect; echoes dialect used,PENDING,sourced query tool
+ME-P3a-02,phase3a,regression,run_sql without source uses default,single default source,run_sql('SELECT ...') (no source arg),works exactly as today,PENDING,back-compat signature
+ME-P3a-03,phase3a,tools,Navigation tools accept source,two sources,describe_columns(table source='orders_pg'),returns postgres table columns,PENDING,sourced navigation
+ME-P3a-04,phase3a,skeleton,Agent accepts SourceRegistry,build agent with a registry,V4Agent(... sources=registry),single-engine construction still supported (wrapped into one-source registry),PENDING,skeleton back-compat
+ME-P3b-01,phase3b,catalog,EstateCatalog renders the estate map,registry + bindings.json,catalog.render(),per-source dialect/tables/freshness + verified bindings block,PENDING,prompt context
+ME-P3b-02,phase3b,routing,Framing picks the right source(s),a question answerable from one source,frame_intent(...),selects that source; cross-source question selects both,PENDING,agentic source selection
+ME-P3b-03,phase3b,e2e,Cross-source question end-to-end,PG orders + duckdb/lake facts,ask.py a question joining them,per-source reduce -> combine_results -> verified answer with as-of label,PENDING,the headline cross-engine run
+ME-P3b-04,phase3b,verify,Verifier catches freshness/grain mismatch,a naive cross-source join ignoring as-of,run verify,flags the temporal/grain inconsistency,PENDING,semantic guard
+ME-P4-01,phase4,learning,Per-source learning writes under the estate,two sources,learn.py --estate fintech_estate,fabric/<estate>/<source>/metadata+value_domains+join_graph written per source,PENDING,per-source fabric
+ME-P4-02,phase4,learning,Binding discovery finds a real key,two sources sharing user_id (overlap),run binding discovery,edge orders_pg.user_id=users_lake.user_id with overlap %,PENDING,cross-source map
+ME-P4-03,phase4,learning,No false binding on disjoint ids,two sources with disjoint ids,run binding discovery,no binding proposed,PENDING,precision
+ME-P4-04,phase4,learning,learn.py --estate runs N sources + bindings,estate of 2 sources,learn.py --estate ...,both sources learned; bindings.json written,PENDING,CLI
+ME-P4-05,phase4,catalog,Catalog reads bindings.json,bindings.json present,catalog.render(),bindings shown in the estate map,PENDING,wire learning->prompt
+ME-P5-01,phase5,lifecycle,Cited survive gc; scratch swept,a turn with cited + scratch results,gc(run_id keep=cited),cited kept; scratch parquet removed,PENDING,retention
+ME-P5-02,phase5,lifecycle,Object-store keys deleted on sweep,results past ttl,sweep(older_than_turns),object-store keys removed,PENDING,durable retention
+ME-P5-03,phase5,lifecycle,Temp cleaned on close,after a run,ResultStore.close(),local temp dir removed,PENDING,teardown
+ME-P5-04,phase5,lifecycle,Retention modes honored,retention inf and 0,run turns,inf keeps all; 0 keeps nothing uncited,PENDING,policy knobs
+ME-P5-05,phase5,observability,Per-source query log in transcript,a multi-source turn,inspect transcript.md,per-source sql/rows/bytes/ms logged,PENDING,audit
+ME-P6-01,phase6,engine-contract,MySQL engine conforms,DIRACDATA_TEST_MYSQL_DSN set,pytest tests/test_engine_contract.py,MySQL conforms; skips w/o DSN,PENDING,new connector
+ME-P6-02,phase6,engine-contract,Trino engine conforms,DIRACDATA_TEST_TRINO_DSN set,pytest tests/test_engine_contract.py,Trino conforms; skips w/o DSN,PENDING,new connector
+ME-P6-03,phase6,e2e,Three-store reconcile,postgres + lake + mysql,ask.py a 3-source question,per-source reduce -> combine -> correct answer,PENDING,N-store proof
+ME-P6-04,phase6,optimization,DuckDB-attach single statement,an attachable postgres source,run a pushdown attach path,single statement pushes filter+aggregate down; result matches connector path,PENDING,optional optimisation
+ME-FIN-01,final,setup,Simulate orders + payments in Postgres,a running postgres,python scripts/setup_fintech_pg.py,orders + payments tables created and seeded in postgres; row counts reported,PENDING,user-verifiable setup
+ME-FIN-02,final,learning,Run learning pipeline over the Postgres source,fintech pg source registered,learn.py --estate fintech --source orders_pg,fabric compiled for orders+payments (descriptions+value domains+joins); written to store,PENDING,learning agent on postgres
+ME-FIN-03,final,e2e,Main agent single-source Postgres answer,fintech pg learned,ask.py --source orders_pg 'total payment amount in 2024',correct total pushed down to postgres; faithful + verified,PENDING,postgres query e2e
+ME-FIN-04,final,e2e,Main agent cross-source answer,orders/payments in pg + a dim in duckdb/lake,ask.py a question joining pg payments with the lake dimension,per-source reduce -> combine_results -> correct combined answer with as-of note,PENDING,cross-engine headline
+ME-FIN-05,final,e2e,Full CLI transcript is reproducible,all fintech setup done,the exact CLI commands in the final report,user runs them and reproduces FIN-02..04,PENDING,hand-verifiable by user
