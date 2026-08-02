@@ -22,85 +22,136 @@ _DEFAULTS = Config()
 
 def build_navigation_tools(*, workspace: Workspace, engine: DuckDBEngine,
                            max_rows: int = _DEFAULTS.nav_max_rows,
-                           value_cache: ColumnValueCache | None = None) -> list[Any]:
+                           value_cache: ColumnValueCache | None = None,
+                           sources: Any = None) -> list[Any]:
     from langchain.tools import tool
 
     cache = value_cache if value_cache is not None else ColumnValueCache(None)
+    multi = sources is not None and len(sources.names()) > 1
+    default_name = getattr(engine, "name", None)
+
+    def _engine_for(source: str | None):
+        return sources.get(source) if (source and sources is not None) else engine
+
+    def _resolve(table_name: str, source: str | None):
+        """(engine, source_name) for a table: an explicit source, else the source that has the table,
+        else the default. Lets the analyst explore ANY source's tables, not just the default fabric."""
+        if source:
+            return sources.get(source), source
+        if not multi:
+            return engine, default_name
+        for nm in sources.names():
+            if table_name in set(sources.get(nm).list_tables()):
+                return sources.get(nm), nm
+        return engine, default_name
+
+    def _key(nm: str | None, table: str) -> str:
+        return f"{nm}.{table}" if multi else table
 
     # --- Tiered retrieval: scan (short) -> detail (long, on demand as a tie-breaker) --------
     @tool("get_tables")
     def get_tables() -> str:
         """SCAN: list EVERY table with a one-line description. Start here to see what data exists
-        and pick the few tables relevant to the question. Then describe_tables() to tie-break
-        candidates, and get_columns() to see a chosen table's columns."""
-        return "\n".join(f"- {name}: {desc}" for name, desc in workspace.tables())
+        and pick the few tables relevant to the question. In a MULTI-SOURCE estate tables are grouped
+        by source -- note the source, then pass source= to get_columns/profile_column/run_sql."""
+        if not multi:
+            return "\n".join(f"- {name}: {desc}" for name, desc in workspace.tables())
+        blocks = []
+        for nm in sources.names():
+            ws_tables = workspace.tables() if (nm == default_name and workspace is not None) else None
+            if ws_tables:
+                rows = [f"  - {name}: {desc}" for name, desc in ws_tables]
+            else:
+                rows = [f"  - {t}" for t in sources.get(nm).list_tables()]
+            blocks.append(f"[source: {nm}]\n" + ("\n".join(rows) or "  (no tables)"))
+        return ("TABLES across the estate -- pass source= to get_columns / profile_column / run_sql:\n\n"
+                + "\n\n".join(blocks))
 
     @tool("describe_tables")
-    def describe_tables(tables: list[str]) -> str:
+    def describe_tables(tables: list[str], source: str | None = None) -> str:
         """DETAIL: the full description (and column count) for one or more candidate tables. Use
-        to tie-break which table you need when the one-liners from get_tables() aren't decisive."""
+        to tie-break which table you need when the one-liners from get_tables() aren't decisive.
+        Pass source= for a non-default store."""
         out = []
         for t in tables or []:
-            desc = workspace.table_description(t)
-            if desc is None:
+            eng, nm = _resolve(t, source)
+            if nm == default_name and workspace is not None and workspace.table_description(t) is not None:
+                n = len(workspace.column_names(t) or [])
+                out.append(f"TABLE {t} ({n} columns): {workspace.table_description(t)}")
+            elif eng is not None and t in set(eng.list_tables()):
+                out.append(f"TABLE {nm}.{t} ({len(eng.list_columns(t))} columns) [source={nm}]")
+            else:
                 out.append(f"No such table: {t}.")
-                continue
-            n = len(workspace.column_names(t) or [])
-            out.append(f"TABLE {t} ({n} columns): {desc}")
         return "\n\n".join(out) or "No tables given."
 
     @tool("get_columns")
-    def get_columns(table_name: str) -> str:
-        """SCAN: a table's columns, compact -- each column's name, one-line description, and a few
+    def get_columns(table_name: str, source: str | None = None) -> str:
+        """SCAN: a table's columns, compact -- name, one-line description (if learned), and a few
         example values. Read this to pick the right columns; describe_columns() for a full
-        description when a choice is close; profile_column() for the real distinct values."""
-        rows = workspace.columns_compact(table_name)
-        if rows is None:
-            return f"No such table: {table_name}. Call get_tables() to see valid names."
-        lines = [f"COLUMNS of {table_name}:"]
-        for c in rows:
-            ex = f"  [ex: {c['examples']}]" if c.get("examples") else ""
-            lines.append(f"  - {c['name']}: {c['description']}{ex}")
-        return "\n".join(lines)
+        description; profile_column() for the real distinct values. Pass source= for a non-default
+        store (e.g. get_columns('payments', source='orders_pg'))."""
+        eng, nm = _resolve(table_name, source)
+        if nm == default_name and workspace is not None:
+            rows = workspace.columns_compact(table_name)
+            if rows is not None:
+                lines = [f"COLUMNS of {table_name}:"]
+                for c in rows:
+                    ex = f"  [ex: {c['examples']}]" if c.get("examples") else ""
+                    lines.append(f"  - {c['name']}: {c['description']}{ex}")
+                return "\n".join(lines)
+        cols = eng.describe_columns(table_name) if eng is not None else []
+        if not cols:
+            return f"No such table: {table_name}" + (f" in source '{nm}'" if multi else "") + ". Call get_tables()."
+        head = f"COLUMNS of {nm}.{table_name} (source={nm}):" if multi else f"COLUMNS of {table_name}:"
+        return head + "\n" + "\n".join(f"  - {c['column_name']} ({c['column_type']})" for c in cols)
 
     @tool("describe_columns")
-    def describe_columns(table_name: str, columns: list[str]) -> str:
-        """DETAIL: the full description + value domain for one or more columns of a table. Use to
-        tie-break near-synonym columns (e.g. which *_price / *_paid is revenue) when the compact
-        lines from get_columns() aren't decisive."""
+    def describe_columns(table_name: str, columns: list[str], source: str | None = None) -> str:
+        """DETAIL: the full description + value domain (if learned), else the type, for one or more
+        columns. Use to tie-break near-synonym columns. Pass source= for a non-default store."""
+        eng, nm = _resolve(table_name, source)
+        types = None
+        if not (nm == default_name and workspace is not None and workspace.column_names(table_name)):
+            types = {c["column_name"]: c["column_type"] for c in (eng.describe_columns(table_name) if eng else [])}
         out = []
         for c in columns or []:
-            d = workspace.column_detail(table_name, c)
-            if d is None:
-                out.append(f"No column '{c}' in {table_name}.")
-                continue
-            line = f"{table_name}.{c}: {d['description']}"
-            if d.get("values"):
-                line += f"\n  [{d['values']}]"
-            out.append(line)
+            if types is None:
+                d = workspace.column_detail(table_name, c)
+                if d is None:
+                    out.append(f"No column '{c}' in {table_name}.")
+                    continue
+                line = f"{table_name}.{c}: {d['description']}"
+                if d.get("values"):
+                    line += f"\n  [{d['values']}]"
+                out.append(line)
+            elif c in types:
+                out.append(f"{nm}.{table_name}.{c}: type {types[c]}")
+            else:
+                out.append(f"No column '{c}' in {nm}.{table_name}.")
         return "\n\n".join(out) or f"No columns given for {table_name}."
 
     @tool("profile_column")
-    def profile_column(table_name: str, column_name: str) -> str:
-        """Return a column's actual DISTINCT values (up to 1000), from cache or by scanning the
-        column. Use before filtering on a column to confirm the exact values that exist (casing,
-        codes, an 'Unknown'/NULL bucket) so a filter can't silently match nothing."""
-        if table_name not in set(engine.list_tables()):
-            return f"No such table: {table_name}."
-        if column_name not in (workspace.column_names(table_name) or []):
-            return f"No column '{column_name}' in {table_name}. Check get_columns('{table_name}')."
+    def profile_column(table_name: str, column_name: str, source: str | None = None) -> str:
+        """Return a column's actual DISTINCT values (up to 1000), from cache or by scanning it. Use
+        before filtering to confirm the exact values that exist (casing, codes, a NULL bucket). Pass
+        source= for a non-default store (e.g. profile_column('orders','status',source='orders_pg'))."""
+        eng, nm = _resolve(table_name, source)
+        if eng is None or table_name not in set(eng.list_tables()):
+            return f"No such table: {table_name}" + (f" in source '{nm}'" if multi else "") + "."
+        if column_name not in eng.list_columns(table_name):
+            return f"No column '{column_name}' in {nm}.{table_name}. Check get_columns."
         cap = _DEFAULTS.profile_distinct_cap
         show = _DEFAULTS.profile_values_display
-        vals = cache.get(table_name, column_name)
+        vals = cache.get(_key(nm, table_name), column_name)
         if vals is None:
             try:
-                res = engine.query(
+                res = eng.query(
                     f'SELECT DISTINCT "{column_name}" AS v FROM "{table_name}" '
                     f'WHERE "{column_name}" IS NOT NULL ORDER BY 1 LIMIT {cap}', cap)
             except Exception as exc:  # noqa: BLE001
                 return f"Could not profile {table_name}.{column_name}: {type(exc).__name__}: {exc}"
             vals = [r[0] for r in res.rows]
-            cache.put(table_name, column_name, vals)
+            cache.put(_key(nm, table_name), column_name, vals)
         n = len(vals)
         shown = ", ".join(str(v) for v in vals[:show])
         capped = f" (capped at {cap})" if n >= cap else ""
@@ -143,34 +194,36 @@ def build_navigation_tools(*, workspace: Workspace, engine: DuckDBEngine,
         return "\n\n".join(blocks)
 
     @tool("run_sql")
-    def run_sql(sql: str) -> str:
+    def run_sql(sql: str, source: str | None = None) -> str:
         """Execute a read-only SELECT and return the columns and rows. Use it to check a CTE, a
-        filter's selectivity, or a join before you trust it -- and to produce your final answer."""
+        filter's selectivity, or a join before you trust it. Pass source= for a non-default store."""
+        eng = _engine_for(source)
         clean = (sql or "").strip().rstrip(";")
-        check = validate_sql(clean, available_tables=set(engine.list_tables()))
+        check = validate_sql(clean, available_tables=set(eng.list_tables()))
         if check.get("status") != "ok":
             return f"SQL rejected: {check.get('error') or check}"
         try:
-            result = engine.query(clean, max_rows=max_rows)
+            result = eng.query(clean, max_rows=max_rows)
         except Exception as exc:  # noqa: BLE001
             return f"SQL error: {type(exc).__name__}: {exc}"
         rows = [list(r) for r in result.rows]
         return json.dumps({"columns": result.columns, "rows": rows, "row_count": len(rows)}, default=str)
 
     @tool("data_check")
-    def data_check(sql: str) -> str:
+    def data_check(sql: str, source: str | None = None) -> str:
         """Run both stewardship gates on a query before you trust its number:
         DATA QUALITY on the inputs (null rates, value ranges/negatives/zeros, join orphan % =
         referential integrity, fan-out = grain inflation) AND SANITY on the output it returns
         (empty result, NULL cells, a rate/share out of [0,100], negative counts, grain leak).
         Pass your draft final query; use it to catch a distortion before committing."""
         from diracdata.utils.stewardship import probe_footprint, sanity_check
-        dq = probe_footprint(engine, sql)
+        eng = _engine_for(source)
+        dq = probe_footprint(eng, sql)
         result = None
         clean = (sql or "").strip().rstrip(";")
-        if validate_sql(clean, available_tables=set(engine.list_tables())).get("status") == "ok":
+        if validate_sql(clean, available_tables=set(eng.list_tables())).get("status") == "ok":
             try:
-                r = engine.query(clean, max_rows=max_rows)
+                r = eng.query(clean, max_rows=max_rows)
                 result = {"columns": r.columns, "rows": [list(x) for x in r.rows], "row_count": len(r.rows)}
             except Exception:  # noqa: BLE001
                 result = None

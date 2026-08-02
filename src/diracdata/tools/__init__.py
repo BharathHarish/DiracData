@@ -32,7 +32,8 @@ def build_tools(*, workspace: Any, engine: Any, result_store: Any, memory: Any,
 
     ask = asker or _no_asker
     # tiered navigation + define/find_examples/join_path/data_check; drop its row-dumping run_sql
-    nav = [t for t in build_navigation_tools(workspace=workspace, engine=engine, value_cache=value_cache)
+    nav = [t for t in build_navigation_tools(workspace=workspace, engine=engine,
+                                             value_cache=value_cache, sources=sources)
            if t.name != "run_sql"]
     query = build_query_tools(engine=engine, result_store=result_store, memory=memory,
                               sources=sources, max_rows=max_rows)

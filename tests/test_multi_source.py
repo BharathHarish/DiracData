@@ -69,6 +69,32 @@ class MultiSourceTests(unittest.TestCase):
         self.assertIn("[duckdb]", md)
         self.assertIn("(default)", md)
 
+    def test_navigation_tools_are_source_aware(self):
+        from diracdata.tools.navigation import build_navigation_tools
+
+        class _WS:   # no fabric -> tools must introspect from each engine
+            semantic_layer = None
+            def tables(self): return []
+            def columns_compact(self, t): return None
+            def column_names(self, t): return []
+            def table_description(self, t): return None
+            def column_detail(self, t, c): return None
+
+        nav = {t.name: t for t in build_navigation_tools(
+            workspace=_WS(), engine=self.reg.get("a"), sources=self.reg)}
+        listing = str(nav["get_tables"].invoke({}))
+        self.assertIn("source: a", listing)
+        self.assertIn("orders", listing)          # source a's table
+        self.assertIn("customers", listing)        # source b's table -- BOTH sources listed
+        # get_columns routes to the named source (was "No such table" before the fix)
+        cols = str(nav["get_columns"].invoke({"table_name": "customers", "source": "b"}))
+        self.assertIn("user_id", cols)
+        # ...and finds the right source when none is given
+        self.assertIn("user_id", str(nav["get_columns"].invoke({"table_name": "customers"})))
+        # profile_column runs on the named source
+        prof = str(nav["profile_column"].invoke({"table_name": "customers", "column_name": "seg", "source": "b"}))
+        self.assertIn("distinct value", prof)
+
     def test_combine_across_two_sources(self):
         r1 = self._run("SELECT user_id, amount FROM orders", source="a")["result_id"]
         r2 = self._run("SELECT user_id, seg FROM customers", source="b")["result_id"]
