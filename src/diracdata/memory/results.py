@@ -19,6 +19,7 @@ from typing import Any
 
 from diracdata.config import Config
 from diracdata.engines.duckdb import Reconciler
+from diracdata.execution import InlineExecutor
 
 _DEFAULTS = Config()
 
@@ -27,7 +28,7 @@ class ResultStore:
     def __init__(self, *, engine: Any, store: Any, schema: str,
                  preview_rows: int = _DEFAULTS.preview_rows,
                  preview_all_max: int = _DEFAULTS.preview_all_max,
-                 reconciler: Any = None,
+                 reconciler: Any = None, executor: Any = None,
                  reconciler_memory_limit: str = _DEFAULTS.reconciler_memory_limit,
                  reconciler_temp_dir: str | None = _DEFAULTS.reconciler_temp_dir,
                  reconciler_threads: int | None = _DEFAULTS.reconciler_threads) -> None:
@@ -44,6 +45,8 @@ class ResultStore:
             memory_limit=reconciler_memory_limit,
             temp_dir=reconciler_temp_dir or str(self._local / "spill"),
             threads=reconciler_threads)
+        # EXECUTOR: runs the two demanding materialize calls with memory/time bounding (default inline).
+        self.executor = executor or InlineExecutor()
 
     def _key(self, rid: str) -> str:
         return f"results/{self.schema}/{rid}.parquet"
@@ -62,7 +65,7 @@ class ResultStore:
         """Execute a SELECT on the source, persist the full result as parquet, return an envelope."""
         rid = self._next_rid()
         local = self._local / f"{rid}.parquet"
-        row_count = self.engine.copy_to_parquet(sql, str(local))
+        row_count = self.executor.run(self.engine, lambda: self.engine.copy_to_parquet(sql, str(local)))
         return self._persist(rid, local, sql, row_count)
 
     def query(self, result_id: str, sql: str, max_rows: int = _DEFAULTS.result_query_max_rows) -> dict:
@@ -78,7 +81,7 @@ class ResultStore:
             self.reconciler.register_view(rid, self._path(rid).as_posix())
         rid = self._next_rid()
         local = self._local / f"{rid}.parquet"
-        row_count = self.reconciler.copy_to_parquet(sql, str(local))
+        row_count = self.executor.run(self.reconciler, lambda: self.reconciler.copy_to_parquet(sql, str(local)))
         return self._persist(rid, local, sql, row_count)
 
     # ---- internals -------------------------------------------------------------------

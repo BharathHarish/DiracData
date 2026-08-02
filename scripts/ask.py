@@ -32,6 +32,7 @@ from diracdata.context.workspace import Workspace  # noqa: E402
 from diracdata.agent import V4Agent  # noqa: E402
 from diracdata.memory.conversation import Conversation  # noqa: E402
 from diracdata.memory.results import ResultStore  # noqa: E402
+from diracdata.execution import make_executor  # noqa: E402
 from diracdata.streaming import mode_sink  # noqa: E402
 
 
@@ -100,7 +101,8 @@ def main() -> int:
                                preview_rows=settings.preview_rows, preview_all_max=settings.preview_all_max,
                                reconciler_memory_limit=settings.reconciler_memory_limit,
                                reconciler_temp_dir=settings.reconciler_temp_dir,
-                               reconciler_threads=settings.reconciler_threads)
+                               reconciler_threads=settings.reconciler_threads,
+                               executor=make_executor(settings))
     # One wrap point governs the whole live stream: model output (token/reasoning/usage) + loop (tools/info).
     mode = "off" if args.no_stream else (args.stream_mode or settings.stream_mode)
     sink = mode_sink(_make_sink(args.quiet), mode)

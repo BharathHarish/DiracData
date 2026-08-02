@@ -192,69 +192,50 @@ The envelope the agent already receives is the shape view: `columns`, `dtypes`, 
 
 ### 3.6 Execution and isolation model (runtime infra)
 
-**The requirement:** the agent (LLM) loop must survive a large/expensive combine, an engine OOM, a
-native driver crash, or a hang — with a clean error it can re-plan from, never a dead process.
+**The requirement:** the agent (LLM) loop must survive a large/expensive combine, an engine OOM, or a
+hang — with a clean error it can re-plan from — AND the reconciler must not be able to over-provision
+the agent's host. Same-machine isolation (thread *or* process) contains a *crash* but does **not** give
+the reconciler its own CPU/RAM budget; a pathological sort can still starve the box. Scalability
+therefore requires running the heavy SQL **off-host, in a separately provisioned sandbox.**
 
-**The seam: the agent process never executes SQL.** Tools are thin *clients*. A `run_sql(source,sql)`
-or `combine_results(ids,sql)` call **submits a job** to an `Executor` and waits on a future; it does
-not open a DB connection or hold result data. All source drivers *and* the DuckDB reconciler live in
-**worker processes**, not the agent process.
+**The enabler: bulk data already lives in the object store, not the agent's memory.** Result parquets
+are keyed `results/<schema>/<rid>.parquet` in S3/MinIO. So the reconciler can run *anywhere that can
+reach the object store*: it pulls the input result-keys from S3, combines, writes the output parquet
+back to S3, and returns only the envelope. **Bulk never transits the agent host** — the host ships
+`{result-keys, sql}` and gets back `{result-key, envelope}`.
 
-```
-agent process (LLM loop, tools)           execution service (bounded pool of worker PROCESSES)
-  run_sql(src, sql) ──submit(job)──▶  ┌─ worker: source driver + fresh DuckDB reconciler
-  combine_results(ids, sql) ─────────▶│    runs one job, memory_limit + spill + timeout + rlimit
-        ▲                             │    streams FULL result → parquet in the object store
-        └──── envelope + result_id ───┘    returns ONLY the small envelope (never the megabytes)
-```
+**The seam: `Executor` — one interface, backend selected by ENV (`DIRACDATA_EXECUTOR`).** The agent /
+`ResultStore` depend only on this interface.
 
-Only picklable **envelopes** (columns/dtypes/row_count/preview + `result_id`) cross the process
-boundary. Bulk data is handed off through the **store** (parquet keyed by `result_id` in the object
-store / shared spill dir), so any worker can pick up any job and the agent's memory + IPC stay tiny
-regardless of result size.
+| backend | isolation | data path | when |
+|---|---|---|---|
+| `inline` (default) | in-process DuckDB, **bounded**: `memory_limit`→catchable OOM + interrupt-on-timeout for hangs | local temp → object store | dev / small / self-contained (no extra deps) |
+| `sandbox` | remote DuckDB runtime with its **own CPU/RAM**, independently scaled | reads+writes the **same object store** by key; host never sees bulk | production / demanding SQL |
 
-**Why a process, not a thread.** A thread shares the agent's address space: a DuckDB abort, a
-segfaulting native driver, or an OS OOM-kill would take the agent down too. A process boundary turns
-all three into a future that *raises* → the tool returns a structured error ("combine exceeded
-memory/time; reduce the inputs or push the join down") → the agent re-plans and survives. (The async
-memory curator stays a thread — it is trusted, tiny, bounded. *Unbounded, untrusted SQL execution*
-gets a process.)
+- OOM survival is delivered **without a subprocess**: the reconciler's `memory_limit` turns an
+  over-budget combine into a *catchable* `OutOfMemoryException` → the tool returns a clean error → the
+  agent re-plans. Hangs: an interrupt watchdog (`con.interrupt()` on `exec_job_timeout_s`).
+- The `sandbox` backend is a **pip extra** (`pip install diracdata[sandbox]`) + ENV
+  (`DIRACDATA_SANDBOX_URL`/token/image) — nothing heavy in the core install. Its contract is
+  **provider-agnostic** (`{result-keys, sql}` → `{result-key, envelope}`), so a self-hosted DuckDB
+  container, E2B, Modal, or a remote reconciler-service all drop into the same seam.
+- **Reference sandbox:** one small DuckDB sandbox server — the *same code* runs as a subprocess (local
+  tests, real OS isolation on one host) or as a container (prod, off-host). The remote is that
+  interface pointed at a URL.
 
-**Five layers of OOM / runaway containment (defense in depth):**
-1. **Push-down invariant** — reconciler inputs are `O(answer)`, never `O(source)` (§3.4).
-2. **Pre-flight guard** — refuse a fetch/combine input over `Config.fetch_max_rows/bytes` *before* it
-   runs; tell the agent to add a reducing predicate.
-3. **DuckDB is out-of-core** — `memory_limit` + `temp_directory` make it **spill to disk, not OOM**;
-   "large result" ≠ "OOM". Bounded by disk, and it streams.
-4. **Worker OS memory cap** — `rlimit`/cgroup per worker: a pathological case kills *only that worker*
-   (auto-respawned), not the box.
-5. **Timeout + interrupt** — soft `con.interrupt()` on `Config.exec_job_timeout_s`, hard worker-kill
-   backstop for a true hang.
+**Defense in depth (still holds):** push-down keeps inputs `O(answer)` (§3.4); a pre-flight guard
+refuses inputs over `Config.fetch_max_rows/bytes`; DuckDB `memory_limit` + `temp_directory` spill to
+disk; the `sandbox` backend adds true host isolation + independent provisioning; timeout+interrupt
+turns hangs into errors.
 
-**Scalability:**
-- **Bounded persistent pool** — `min(cpu-2, Config.exec_workers)` long-lived workers (connections
-  cached across jobs via a pool initializer); a *fresh* reconciler connection per job, disposed after.
-  No fork-per-query cost, no unbounded growth.
-- **Backpressure** — a bounded job queue (`Config.exec_queue_max`); when full, agent turns *wait*
-  (fair), they don't spawn more processes.
-- **Stateless workers + store handoff** → scale **horizontally** behind the same `Executor` interface:
-  `LocalProcessPoolExecutor` today, a remote/Ray/Dask/service executor later, zero agent changes.
-- **Under many concurrent turns** the bottleneck is the pool + the source engines (which own their own
-  concurrency) — the agent layer adds none. Each combine is small (push-down) and spills if not.
+**Config:** `executor` (`inline`|`sandbox`), `exec_job_timeout_s`, `sandbox_url`, `sandbox_token`,
+`fetch_max_rows/bytes`, plus the reconciler knobs — all `Config` fields, no literals.
 
-**Implementation note:** the stdlib `ProcessPoolExecutor` cannot kill a single hung job without
-tearing the whole pool, so the default is a **small custom process pool** (submit via a queue,
-per-job soft-interrupt, kill-and-respawn on hard timeout) — still a stdlib-only, ~120-line component.
+**Back-compat:** `executor="inline"` (the default) runs exactly as today; the single-source path is
+unchanged and needs no extra process or dependency. `sandbox` turns on explicitly via ENV.
 
-**Framework seam — `diracdata.execution`** (new optional package): an `Executor` protocol
-(`submit(job) -> Future[Envelope]`), `LocalProcessPoolExecutor` as the default, pluggable remote. The
-agent and `ResultStore` depend on the **interface**; a consumer can inject their own backend. All
-knobs (`exec_workers`, `exec_queue_max`, `exec_job_timeout_s`, `reconciler_memory_limit`,
-`reconciler_temp_dir`, `worker_memory_cap_mb`, `fetch_max_rows/bytes`) are `Config` fields.
-
-**Back-compat:** with one in-process source and the executor disabled (`Config.executor="inline"`),
-execution runs inline exactly as today — the single-source path is unchanged and needs no worker
-processes. The pool turns on with multi-source or explicitly.
+**Build order:** 1.5a = the `Executor` seam + bounded `inline` backend (OOM+hang survival) — the
+default, ships now. 1.5b = the `sandbox` backend + reference DuckDB sandbox (off-host scaling).
 
 ## 4. Ephemeral result lifecycle (cleanup policy)
 
@@ -432,19 +413,26 @@ Every phase lists **Touches** (the concrete modules changed — engines, `Result
   (`"inline"` default).
 - **Tests:** two-DuckDB combine, ASOF freshness, nulls, nested round-trip, spill-on-large.
 
-### Phase 1.5 — `diracdata.execution` (process isolation, §3.6)
-- **Execution (new pkg):** `Executor` protocol + `LocalProcessPoolExecutor` (bounded pool,
-  store-based handoff, per-job memory_limit/timeout/rlimit, kill-and-respawn); worker initializer
-  builds the `SourceRegistry` + reconciler once per worker.
-- **ResultStore / tools:** `run` and `combine` go **through the executor** (submit job → wait on
-  future → envelope); on worker death return a structured error string the agent can re-plan from.
-- **Agent skeleton:** `agent.py` builds/owns the `Executor`, injects into `ResultStore`; **loop and
-  tool call-sites unchanged** (still call `run_sql`/`combine_results`). `flush`/`close` on exit.
-- **Prompts:** none.
-- **Config:** `exec_workers`, `exec_queue_max`, `exec_job_timeout_s`, `worker_memory_cap_mb`,
-  `fetch_max_rows`, `fetch_max_bytes`; `executor` flips to `"process"` when multi-source.
-- **Tests:** worker OOM → clean tool error + agent survives; timeout → interrupt; backpressure on a
-  full queue; only envelopes cross the boundary.
+### Phase 1.5a — `diracdata.execution` seam + bounded `inline` backend (§3.6)
+- **Execution (new pkg):** `Executor` protocol + `InlineExecutor` — wraps each materialize with the
+  reconciler's `memory_limit` (OOM → catchable) and an interrupt watchdog (`con.interrupt()` on
+  `exec_job_timeout_s`) so hangs become errors. No multiprocessing.
+- **ResultStore / tools:** `run`/`combine` go **through the executor**; the tool try/except turns an
+  OOM/timeout into a clean error string the agent re-plans from.
+- **Agent skeleton:** `ResultStore` owns/receives the executor (default `InlineExecutor`); loop + tool
+  call-sites unchanged.
+- **Config:** `executor` (`inline`), `exec_job_timeout_s`.
+- **Tests:** combine OOM (tiny memory_limit) → clean error + agent survives; a hang → interrupt →
+  error; inline is the default; suite green.
+
+### Phase 1.5b — `sandbox` backend + reference DuckDB sandbox (off-host scaling)
+- **Execution:** `SandboxExecutor` — submits `{result-keys, sql}` to a sandbox that reads/writes the
+  **same object store** and returns `{result-key, envelope}`; provider-agnostic contract; client as a
+  `diracdata[sandbox]` pip extra, selected by `DIRACDATA_EXECUTOR=sandbox` + `sandbox_url`/token ENV.
+- **Reference sandbox:** one small DuckDB sandbox server, the same code as a subprocess (local test,
+  real OS isolation) or a container (prod, off-host).
+- **Tests:** subprocess sandbox does a real combine via object-store handoff (bulk never touches the
+  host); host crash/OOM in the sandbox → clean error; `inline` still the default.
 
 ### Phase 2.0 — Provision + seed the fintech Postgres (test/UAT data)
 The connector is worthless without a real Postgres to point it at. This is an explicit deliverable.

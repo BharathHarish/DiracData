@@ -101,7 +101,8 @@ class Config:
     reconciler_memory_limit: str = "2GB"    # DuckDB reconciler memory cap; spills to temp beyond it
     reconciler_temp_dir: str | None = None   # spill dir; None -> a subdir of the result store's temp
     reconciler_threads: int | None = None    # None -> DuckDB default
-    executor: str = "inline"                 # inline | process (isolated worker pool -> Phase 1.5)
+    executor: str = "inline"                 # inline | sandbox (off-host DuckDB sandbox -> Phase 1.5b)
+    exec_job_timeout_s: float | None = None  # interrupt a materialize past this many seconds (None=off)
 
     # --- display / truncation widths ---
     obs_cap: int = 12000             # tool observation fed back to the loop
@@ -227,6 +228,7 @@ class Config:
             reconciler_temp_dir=_str_or_none("DIRACDATA_RECONCILER_TEMP_DIR") or d.reconciler_temp_dir,
             reconciler_threads=_opt_int("DIRACDATA_RECONCILER_THREADS", default=d.reconciler_threads),
             executor=_str("DIRACDATA_EXECUTOR", d.executor),
+            exec_job_timeout_s=_opt_float("DIRACDATA_EXEC_JOB_TIMEOUT_S", default=d.exec_job_timeout_s),
             obs_cap=_int("DIRACDATA_OBS_CAP", d.obs_cap),
             tool_call_display=_int("DIRACDATA_TOOL_CALL_DISPLAY", d.tool_call_display),
             tool_result_display=_int("DIRACDATA_TOOL_RESULT_DISPLAY", d.tool_result_display),

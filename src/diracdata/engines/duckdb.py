@@ -49,6 +49,10 @@ class _DuckDBRuntime:
                 f"SELECT COUNT(*) FROM read_parquet('{_lit(out_path)}')").fetchone()
         return int(row[0]) if row else 0
 
+    def interrupt(self) -> None:
+        """Cancel the currently-running query (used by the executor's timeout watchdog)."""
+        self._con.interrupt()
+
 
 class DuckDBEngine(_DuckDBRuntime, AbstractEngine):
     dialect = "duckdb"
