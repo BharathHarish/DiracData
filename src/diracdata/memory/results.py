@@ -28,11 +28,12 @@ class ResultStore:
     def __init__(self, *, engine: Any, store: Any, schema: str,
                  preview_rows: int = _DEFAULTS.preview_rows,
                  preview_all_max: int = _DEFAULTS.preview_all_max,
-                 reconciler: Any = None, executor: Any = None,
+                 reconciler: Any = None, executor: Any = None, sources: Any = None,
                  reconciler_memory_limit: str = _DEFAULTS.reconciler_memory_limit,
                  reconciler_temp_dir: str | None = _DEFAULTS.reconciler_temp_dir,
                  reconciler_threads: int | None = _DEFAULTS.reconciler_threads) -> None:
-        self.engine = engine            # SOURCE: materializes its query to parquet
+        self.engine = engine            # DEFAULT source: materializes its query to parquet
+        self._sources = sources         # optional SourceRegistry -> run(sql, source=...) routes here
         self.store = store
         self.schema = schema
         self.preview_rows = preview_rows
@@ -61,11 +62,13 @@ class ResultStore:
         self._paths[rid] = p
         return p
 
-    def run(self, sql: str) -> dict:
-        """Execute a SELECT on the source, persist the full result as parquet, return an envelope."""
+    def run(self, sql: str, source: str | None = None) -> dict:
+        """Execute a SELECT on a source (the default, or `source` from the registry), persist the full
+        result as parquet, return an envelope."""
+        eng = self._sources.get(source) if (source and self._sources) else self.engine
         rid = self._next_rid()
         local = self._local / f"{rid}.parquet"
-        row_count = self.executor.run(self.engine, lambda: self.engine.copy_to_parquet(sql, str(local)))
+        row_count = self.executor.run(eng, lambda: eng.copy_to_parquet(sql, str(local)))
         return self._persist(rid, local, sql, row_count)
 
     def query(self, result_id: str, sql: str, max_rows: int = _DEFAULTS.result_query_max_rows) -> dict:

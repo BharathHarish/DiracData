@@ -17,23 +17,34 @@ _DEFAULTS = Config()
 
 
 def build_query_tools(*, engine: Any, result_store: ResultStore, memory: WorkingMemory,
-                      max_rows: int = _DEFAULTS.query_max_rows) -> list[Any]:
+                      sources: Any = None, max_rows: int = _DEFAULTS.query_max_rows) -> list[Any]:
     from langchain.tools import tool
 
+    def _engine(source: str | None):
+        return sources.get(source) if (source and sources is not None) else engine
+
     @tool("run_sql")
-    def run_sql(sql: str) -> str:
-        """Execute a read-only SELECT. The FULL result is stored (as `result_id`); you get back the
+    def run_sql(sql: str, source: str | None = None) -> str:
+        """Execute a read-only SELECT and store the FULL result (as `result_id`); you get back the
         schema, row_count, and a preview (up to 100 rows, or ALL if <=200). Report numbers ONLY from
-        this preview or from query_result -- never invent them. To drill into a large result, use
-        query_result(result_id, ...) instead of re-running the query."""
+        this preview or query_result -- never invent them. In a MULTI-SOURCE estate, pass `source` to
+        pick the data store (e.g. run_sql('SELECT ...', source='orders_pg')) and write that source's
+        SQL dialect; omit `source` for the default. To combine results from different sources, reduce
+        each with run_sql then join them with combine_results (DuckDB)."""
         clean = (sql or "").strip().rstrip(";")
-        check = validate_sql(clean, available_tables=set(engine.list_tables()))
+        try:
+            eng = _engine(source)
+        except KeyError as exc:
+            return f"Unknown source: {exc}"
+        check = validate_sql(clean, available_tables=set(eng.list_tables()))
         if check.get("status") != "ok":
             return f"SQL rejected: {check.get('error') or check}"
         try:
-            env = result_store.run(clean)
+            env = result_store.run(clean, source=source)
         except Exception as exc:  # noqa: BLE001
             return f"SQL error: {type(exc).__name__}: {exc}"
+        env["source"] = eng.name
+        env["dialect"] = eng.dialect
         memory.note_result(env)
         memory.register_numbers(env.get("preview"))
         return json.dumps(env, default=str)

@@ -21,6 +21,7 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from diracdata.utils.model_factory import ChatModelFactory  # noqa: E402
 from diracdata.utils.duckdb_engine import DuckDBEngine  # noqa: E402
+from diracdata.engines import SourceRegistry  # noqa: E402
 from diracdata.config import settings_from_env  # noqa: E402
 from diracdata.utils.object_store import object_store_from_settings  # noqa: E402
 
@@ -86,18 +87,27 @@ def main() -> int:
     settings = replace(settings_from_env(args.env_file),
                        agent_model_profile=args.model_profile, stream_tokens=True)
     model = ChatModelFactory(settings=settings).create_chat_model(profile_id=args.model_profile)
-    engine = DuckDBEngine(data_root=Path(args.data_root), schema_name=args.schema)
+    # Multi-source: DIRACDATA_SOURCES=a,b + per-source keys -> a SourceRegistry (default = first source).
+    # Single-source (default): one DuckDB engine over --schema, wrapped as a one-source registry.
+    registry = SourceRegistry.from_env()
+    if registry is not None:
+        engine = registry.get_default()
+        schema = engine.name
+    else:
+        engine = DuckDBEngine(data_root=Path(args.data_root), schema_name=args.schema)
+        registry = SourceRegistry.of(engine)
+        schema = args.schema
     fabric = fabric_store_from_settings(settings)
     obj_store = object_store_from_settings(settings)
 
     gold = ROOT / "data" / "evals" / "Goldset_retail_queries.csv"
-    history = ROOT / "data" / "query_history" / f"{args.schema}_query_history.csv"
+    history = ROOT / "data" / "query_history" / f"{schema}_query_history.csv"
     workspace = Workspace.from_store(
-        store=fabric, schema=args.schema,
+        store=fabric, schema=schema,
         gold_pairs_path=gold if gold.exists() else None,
         query_history_path=history if history.exists() else None)
-    value_cache = ColumnValueCache(fabric, args.schema)
-    result_store = ResultStore(engine=engine, store=obj_store, schema=args.schema,
+    value_cache = ColumnValueCache(fabric, schema)
+    result_store = ResultStore(engine=engine, store=obj_store, schema=schema, sources=registry,
                                preview_rows=settings.preview_rows, preview_all_max=settings.preview_all_max,
                                reconciler_memory_limit=settings.reconciler_memory_limit,
                                reconciler_temp_dir=settings.reconciler_temp_dir,
@@ -114,17 +124,18 @@ def main() -> int:
         except (EOFError, KeyboardInterrupt):
             return ""
 
-    experience_book = ExperienceBook(args.schema, obj_store)  # schema-scoped agentic memory (async curator)
+    experience_book = ExperienceBook(schema, obj_store)  # schema-scoped agentic memory (async curator)
     agent = V4Agent(model=model, workspace=workspace, engine=engine, result_store=result_store,
                     sink=sink, config=settings, max_steps=args.max_steps, value_cache=value_cache,
-                    asker=asker, experience_book=experience_book)
+                    asker=asker, experience_book=experience_book, sources=registry)
 
     # Durable conversation memory: transcript.md + running summary.md carry follow-ups across turns
     # AND across sessions (resume a prior id). A fresh REPL session gets a new id by default.
     conv_id = args.conversation_id or f"repl-{uuid.uuid4().hex[:8]}"
     conversation = Conversation(conv_id, store=obj_store, config=settings)  # durable in the object store
-    print(f"[fabric] {args.schema}: {len(workspace.tables())} tables | {len(workspace.examples)} examples "
-          f"(gold/history) | {'✓' if workspace.semantic_layer else '—'} business definitions "
+    print(f"[fabric] default={schema} | sources: {', '.join(registry.names())} "
+          f"| {len(workspace.tables())} fabric tables | {len(workspace.examples)} examples "
+          f"| {'✓' if workspace.semantic_layer else '—'} definitions "
           f"| conversation {conv_id} ({conversation.turns} prior turns)", file=sys.stderr)
 
     def ask(q: str) -> None:

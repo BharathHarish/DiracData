@@ -33,7 +33,7 @@ _DEFAULTS = Config()
 def run_subagent(*, task: str, context: str, model: Any, workspace: Any, engine: Any,
                  result_store: Any, value_cache: Any, confirmed_intent: dict, system_prompt: str,
                  sink: Any, asker: Any, max_steps: int, depth: int, max_depth: int,
-                 dialect_note: str = "", config: Config = _DEFAULTS) -> dict:
+                 dialect_note: str = "", config: Config = _DEFAULTS, sources: Any = None) -> dict:
     """Run one subagent to completion and return its distilled result. Shares the engine + result
     store (so result_ids are globally unique and persisted once) but has an isolated context."""
     memory = WorkingMemory(goal=task)
@@ -43,7 +43,7 @@ def run_subagent(*, task: str, context: str, model: Any, workspace: Any, engine:
         memory.add_fact(context)
 
     data_tools = build_tools(workspace=workspace, engine=engine, result_store=result_store,
-                             memory=memory, value_cache=value_cache, asker=asker,
+                             memory=memory, value_cache=value_cache, asker=asker, sources=sources,
                              max_rows=config.query_max_rows)
     gate = FinishGate(memory=memory,
                       verifier=make_verifier(model, sink=sink, workspace=workspace,
@@ -54,7 +54,7 @@ def run_subagent(*, task: str, context: str, model: Any, workspace: Any, engine:
             model=model, workspace=workspace, engine=engine, result_store=result_store,
             value_cache=value_cache, parent_memory=memory, system_prompt=system_prompt, sink=sink,
             asker=asker, max_steps=max_steps, depth=depth, max_depth=max_depth, on_tokens=None,
-            dialect_note=dialect_note, config=config))
+            dialect_note=dialect_note, config=config, sources=sources))
 
     out = run_loop(model=model, tools=tools, system_prompt=system_prompt, memory=memory,
                    sink=sink, max_steps=max_steps, stage="subagent", finish_gate=gate, config=config)
@@ -72,7 +72,8 @@ def run_subagent(*, task: str, context: str, model: Any, workspace: Any, engine:
 def build_subagent_tool(*, model: Any, workspace: Any, engine: Any, result_store: Any,
                         value_cache: Any, parent_memory: WorkingMemory, system_prompt: str,
                         sink: Any, asker: Any, max_steps: int, depth: int, max_depth: int,
-                        on_tokens: Any = None, dialect_note: str = "", config: Config = _DEFAULTS) -> Any:
+                        on_tokens: Any = None, dialect_note: str = "", config: Config = _DEFAULTS,
+                        sources: Any = None) -> Any:
     """The `spawn_subagent` tool. On return it MERGES the sub's result index + seen numbers + a few
     facts into the parent's memory, so the parent can cite and re-verify the sub's numbers."""
     from langchain.tools import tool
@@ -90,7 +91,7 @@ def build_subagent_tool(*, model: Any, workspace: Any, engine: Any, result_store
                            engine=engine, result_store=result_store, value_cache=value_cache,
                            confirmed_intent=parent_memory.confirmed_intent, system_prompt=system_prompt,
                            sink=sink, asker=asker, max_steps=max_steps, depth=depth + 1,
-                           max_depth=max_depth, dialect_note=dialect_note, config=config)
+                           max_depth=max_depth, dialect_note=dialect_note, config=config, sources=sources)
         parent_memory.results.update(res["results"])          # sub's result_ids become citable
         parent_memory.seen_numbers.update(res["seen_numbers"])  # sub's numbers become faithful
         for fact in res["facts"][:config.subagent_facts_merge]:

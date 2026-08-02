@@ -26,7 +26,7 @@ def _no_asker(question: str) -> str:
 
 
 def build_tools(*, workspace: Any, engine: Any, result_store: Any, memory: Any,
-                value_cache: Any = None, asker: Any = None,
+                value_cache: Any = None, asker: Any = None, sources: Any = None,
                 max_rows: int = _DEFAULTS.query_max_rows) -> list[Any]:
     from langchain.tools import tool
 
@@ -34,7 +34,8 @@ def build_tools(*, workspace: Any, engine: Any, result_store: Any, memory: Any,
     # tiered navigation + define/find_examples/join_path/data_check; drop its row-dumping run_sql
     nav = [t for t in build_navigation_tools(workspace=workspace, engine=engine, value_cache=value_cache)
            if t.name != "run_sql"]
-    query = build_query_tools(engine=engine, result_store=result_store, memory=memory, max_rows=max_rows)
+    query = build_query_tools(engine=engine, result_store=result_store, memory=memory,
+                              sources=sources, max_rows=max_rows)
 
     @tool("ask_user")
     def ask_user(question: str) -> str:

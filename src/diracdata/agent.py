@@ -49,10 +49,11 @@ class V4Agent:
                  sink: Sink = null_sink, config: Config | None = None, max_steps: int | None = None,
                  value_cache: Any = None, asker: Any = None, frame: bool = True, subagents: bool = True,
                  max_subagent_depth: int | None = None, model_registry: ModelRegistry | None = None,
-                 experience_book: Any = None) -> None:
+                 experience_book: Any = None, sources: Any = None) -> None:
         self.model = model
         self.workspace = workspace
         self.engine = engine
+        self.sources = sources          # optional SourceRegistry; None -> single-source (self.engine)
         self.result_store = result_store
         self.sink = sink
         # Config is the single source of runtime constants; explicit args override just those two.
@@ -130,13 +131,16 @@ class V4Agent:
 
         data_tools = build_tools(workspace=self.workspace, engine=self.engine,
                                  result_store=self.result_store, memory=memory,
-                                 value_cache=self.value_cache, asker=self.asker,
+                                 value_cache=self.value_cache, asker=self.asker, sources=self.sources,
                                  max_rows=self.config.query_max_rows)
         if conversation is not None:                          # let both phases pull exact past detail
             data_tools = data_tools + [build_transcript_tool(conversation=conversation)]
         dnote = dialect_note(getattr(self.engine, "dialect", ""))
         learned = self._learned_context()
+        estate = self._estate_context()
         system_prompt = _SYSTEM_PROMPT + "\n\n" + dnote
+        if estate:
+            system_prompt += "\n\n## " + estate
         if learned:
             system_prompt += ("\n\n## LEARNED KNOWLEDGE FOR THIS SCHEMA (reuse these patterns; honor the "
                               "gotchas/bindings; use RCA leads when investigating a metric)\n" + learned)
@@ -151,13 +155,15 @@ class V4Agent:
                 result_store=self.result_store, value_cache=self.value_cache, parent_memory=memory,
                 system_prompt=system_prompt, sink=self.sink, asker=self.asker, max_steps=self.max_steps,
                 depth=0, max_depth=self.max_subagent_depth, on_tokens=sub_tokens.append,
-                dialect_note=dnote, config=self.config))
+                dialect_note=dnote, config=self.config, sources=self.sources))
         # Conversation memory (the running summary) resolves follow-ups into a standalone intent.
         recent = conversation.summary() if conversation is not None else ""
         tokens = 0
         if self.frame:
             self.sink("framing", "info", "framing intent")
             definitions = self.workspace.definitions_index() if self.workspace else ""
+            if estate:
+                definitions = (estate + "\n\n" + definitions) if definitions else estate
             tokens += frame_intent(model=self._stage_model(Stage.FRAMING), tools=data_tools,
                                    memory=memory, sink=self.sink,
                                    definitions=definitions, recent_turns=recent, learned=learned,
@@ -198,6 +204,16 @@ class V4Agent:
         if self.config.agentic_memory_enabled and self._book is not None:
             return self._book.read()
         return ""
+
+    def _estate_context(self) -> str:
+        """The estate map (sources + dialects + tables + verified bindings) for a MULTI-source run;
+        empty for single-source (so nothing changes on the default path)."""
+        if self.sources is None or len(self.sources.names()) <= 1:
+            return ""
+        from diracdata.context.estate import render_estate
+        bindings = getattr(self.workspace, "bindings", None) if self.workspace is not None else None
+        return render_estate(self.sources, default_name=getattr(self.engine, "name", None),
+                             bindings=bindings)
 
     def flush_memory(self) -> None:
         """Synchronously drain any pending memory candidates -- call at process exit so a single-shot
