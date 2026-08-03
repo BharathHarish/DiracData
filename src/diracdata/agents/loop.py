@@ -41,15 +41,20 @@ def run_loop(*, model: Any, tools: list[Any], system_prompt: str, memory: Workin
 
     for i in range(max_steps):
         last = i == max_steps - 1
-        system = SystemMessage(content=f"{system_prompt}\n\n## WORKING MEMORY (authoritative)\n{memory.render()}")
-        model_use = model if last else bound  # final turn: withdraw tools -> must answer
-        out = collect(model=model_use, messages=[system] + conversation, stage=stage,
+        sys_text = f"{system_prompt}\n\n## WORKING MEMORY (authoritative)\n{memory.render()}"
+        if last:  # final turn: force a finish instead of withdrawing tools (withdrawing them makes some
+                  # providers -- e.g. Bedrock Kimi/qwen3 -- degrade tool history to text and stall)
+            sys_text += ("\n\n## STEP LIMIT REACHED -- do NOT start new exploration. Give your FINAL "
+                         "answer now: call `finish` with your answer + result_ids, or reply in plain text.")
+        out = collect(model=bound, messages=[SystemMessage(content=sys_text)] + conversation, stage=stage,
                       sink=sink, config=config)
         tokens += out["tokens"]
         conversation.append(out.get("message") or to_ai_message(out["text"], out["tool_calls"]))
 
-        if out["tool_calls"] and not last:
-            for call in out["tool_calls"]:
+        # On the final turn, only a `finish` call is actionable -- no new exploration.
+        calls = [c for c in (out["tool_calls"] or []) if not last or c.get("name") == "finish"]
+        if calls:
+            for call in calls:
                 name, args = call.get("name", ""), call.get("args", {}) or {}
                 sink(stage, "tool_call", f"{name}({json.dumps(args, default=str)[:config.tool_call_display]})")
                 tool = by_name.get(name)
@@ -66,9 +71,10 @@ def run_loop(*, model: Any, tools: list[Any], system_prompt: str, memory: Workin
                 conversation.append(ToolMessage(content=obs[:config.obs_cap], tool_call_id=call.get("id", name)))
             if finish_gate is not None and finish_gate.result is not None:  # finish tool accepted
                 return _done(finish_gate, tokens, i + 1)
-            continue
+            if not last:
+                continue
 
-        # No tool calls, or the last (tool-withdrawn) turn: a final-answer attempt.
+        # No actionable tool call, or the last turn: a final-answer attempt.
         text = out["text"]
         if last or finish_gate is None:
             return {"text": text, "tokens": tokens, "steps": i + 1,

@@ -60,7 +60,8 @@ class Config:
     deterministic_sampling: bool = True
     agent_llm_seed: int | None = None
     stream_tokens: bool = False
-    stream_envelope_enabled: bool = False   # route model streams through diracdata.streaming (envelope)
+    stream_envelope_enabled: bool = True    # route model streams through diracdata.streaming (envelope):
+                                            # keeps reasoning OUT of the answer (reasoning models like gpt-oss)
     stream_mode: str = "messages"           # off | messages | updates | all (display filter)
     llm_timeout_seconds: int | None = 120
     llm_max_retries: int = 1
