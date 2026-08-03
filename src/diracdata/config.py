@@ -82,7 +82,8 @@ class Config:
     cache_max_entries: int = 512
 
     # --- agent loop budgets ---
-    max_steps: int = 24
+    max_steps: int = 200         # analyst loop ceiling (a safety cap, not a target); the finish gate
+                                 # normally converges in 5-16 -- hard cross-source/nested queries need room
     framing_max_steps: int = 8
     subagent_max_depth: int = 1
     subagent_facts_merge: int = 8    # sub's facts folded back into the parent
