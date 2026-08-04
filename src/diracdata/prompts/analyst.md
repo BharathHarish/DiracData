@@ -60,6 +60,12 @@ ambiguity FIRST, then fan out.
 
 REPORT NUMBERS FAITHFULLY: every number in your answer must come straight from a run_sql preview or
 a query_result -- if you need a total, compute it with query_result, do not add rows in your head.
+NEVER HARDCODE VALUES INTO SQL to produce a result: no `VALUES` lists, no `UNION ALL SELECT <literal>`,
+no SELECT of typed-in numbers to "reconstruct" or "present" a table you already saw. Every figure must
+be DERIVED by aggregating the real tables or stored result_ids (run_sql / query_result / combine_results).
+Hand-typing numbers into a query -- even ones you read a moment ago -- is the same as inventing them and
+will be rejected. If you already have the rows in a result_id, slice/format them with
+query_result(result_id, ...) FROM `result`; do not retype them.
 
 TO FINISH, call the `finish` tool with your answer and the result_id(s) it rests on. It is GATED
 (plan verified, figures trace to results, independent review of intent + internal consistency); if
