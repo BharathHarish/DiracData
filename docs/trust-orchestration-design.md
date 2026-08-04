@@ -44,28 +44,37 @@ including "is this drift *material to this question*?" — is **agentic judgment
 facts**: the harness *measures* drift/freshness deterministically and *feeds* it to the verifier, which
 *judges* materiality. Facts measured, materiality judged — same shape as faithfulness.
 
-## 2. Outer loop: Plan → Execute → Verify (first-class TODO DAG)
+## 2. Outer loop: a first-class agentic TODO (Claude-Code shape) — NOT a typed DAG
 
-Replace the flat ReAct loop's role with a **planner-orchestrator**; the ReAct loop becomes the *executor*
-of a single plan item, not the whole turn.
+We explicitly reject a typed-DAG orchestrator / deterministic scheduler. The outer loop stays an
+**agentic loop like Claude Code**: the agent keeps a running **TODO**, decides the next step itself,
+spawns sub-agents when *it* judges parallelism helps, and calls verification/sanity when *it* judges it
+needed. There is no graph a deterministic executor walks; the agent's reasoning is the orchestration.
 
 ```
-FRAME  -> bind concept -> source·table·column; pin intent (layer 2 up front)
-PLAN   -> decompose the question into a TODO DAG of VERIFIABLE steps:
-            reduce-at-source(s), reconcile, + explicit verification checkpoints.
-            The plan is persisted -- it is the audit-trail spine.
-EXECUTE-> work each item; independent items FAN OUT to sub-agents (see §3)
-VERIFY -> per-item + final, LAYERED + harness-enforced (see §1, §5)
-ASSEMBLE -> answer + AUDIT TRAIL (§7)
+FRAME   -> bind concept -> source·table·column; pin intent (layer 2 up front)
+loop (the agent drives):
+  the agent reads its TODO (rendered into working memory each turn) and decides:
+    explore | plan/update TODO | reduce-at-source | reconcile | spawn parallel sub-agents |
+    check data health | draft answer | request deeper verification | finish
+FINISH  -> faithfulness (deterministic fact-check) + an AGENTIC verifier is invoked
+           (it may consider data-sanity evidence, request a differential re-check, etc.)
+           -> answer + AUDIT TRAIL (§7, a byproduct of what the agent actually did)
 ```
 
-- The plan is a real DAG (`WorkingMemory.Plan` promoted from advisory to authoritative): nodes are
-  typed (`reduce{source}`, `reconcile`, `sanity{table.col}`, `verify`, `rca-driver{metric}`), edges are
-  data dependencies. The orchestrator, not the model's whim, drives execution + checks items off.
-- **Verification is a harness property, not a tool.** Just as a coding harness *runs* the test suite,
-  the gate *runs* the data-sanity + differential + faithfulness checks; the agent cannot skip them. This
-  is what lets the tool surface shrink (§8) while assurance grows.
-- Deep vs normal (§5) is simply *how many verification nodes the plan contains*.
+- **The TODO is a capability the AGENT maintains** — `WorkingMemory.Plan` promoted from a thin advisory
+  note to a real, persisted, status-bearing TODO (pending/in-progress/done) that is rendered back at the
+  top of context every turn, so the agent stays coherent across long autonomous runs. It is a *scratchpad
+  the agent reasons over*, not a schedule the harness enforces. (This is the Claude-Code `TodoWrite`
+  analog, not a workflow engine.)
+- **The harness offers, the agent decides.** Parallel sub-agents, drift measurement, deep verification,
+  the metric tree — all *capabilities* the agent invokes by judgement, steered by prompts. The harness
+  never encodes "if X then verify" — it makes verification easy and cheap to invoke and prompts strongly
+  for it.
+- **The one guaranteed step is FINISH**, which runs the deterministic faithfulness fact-check and invokes
+  the *agentic* verifier. That guarantee already exists (`FinishGate` + `make_verifier`); we deepen what
+  the agentic verifier can consider (data-sanity, differential), not add deterministic gates.
+- Deep vs normal (§5) is *how hard the agent is prompted/budgeted to verify*, not a count of DAG nodes.
 
 ## 3. Sub-agents as the parallelism substrate
 
@@ -83,10 +92,11 @@ Natural fan-out points:
 - **Parallel differential verify (deep)** — the twin author + multiple verify lenses run side-by-side.
 - **Parallel RCA drivers (§6)** — one sub per driver branch of the metric tree.
 
-Fan-out is a *planner decision*: the DAG's independent nodes are dispatched together; a barrier gathers
-them before a dependent node (reconcile/synthesize). This is the Claude-Code pattern (parallel subtasks →
-join) applied to data. Cost guard: concurrency is bounded and each sub is budgeted, so fan-out trades
-wall-clock for a fixed token ceiling, not an unbounded blowup.
+Fan-out is the **agent's** decision: when it judges branches independent, it spawns several sub-agents at
+once; the harness provides the concurrency (bounded pool) and a join, the agent chooses to use it. No
+scheduler dispatches nodes. This is the Claude-Code pattern (the agent launches parallel subtasks, then
+synthesizes) applied to data. Cost guard: concurrency is bounded and each sub is budgeted, so fan-out
+trades wall-clock for a fixed token ceiling, not an unbounded blowup.
 
 ## 4. The data-sanity layer (opportunistic, from learned baselines)
 
@@ -188,9 +198,11 @@ Net: fewer, simpler tools; the intelligence is in the **harness** (plan, fan-out
 
 ## 11. Phases (each shippable, tested, behind flags, 0 regression on the single-source happy path)
 
-- **T0 — Plan as first-class.** Promote `Plan`/`PlanItem` to a typed DAG the orchestrator drives (nodes:
-  reduce/reconcile/verify). No new behavior beyond structure + the audit-trail skeleton. Tests: plan DAG
-  built + executed; existing e2e unchanged.
+- **T0 — Agentic TODO as first-class.** Promote `Plan`/`PlanItem` from a thin advisory note to a
+  persisted, status-bearing TODO the AGENT maintains + reasons over, rendered at the top of context every
+  turn (Claude-Code `TodoWrite` analog). No scheduler, no DAG — the agent drives. Behind a flag; the
+  single-source path stays byte-identical. Tests: TODO round-trips + statuses + render; existing e2e
+  unchanged.
 - **T1 — Parallel sub-agents.** Concurrent fan-out over the execution pool; barrier-join. Tests: two
   independent reductions run concurrently; result_ids stay unique; token ceiling respected.
 - **T2 — Data-sanity layer.** Baselines-with-tolerance from the profiler; opportunistic footprint check

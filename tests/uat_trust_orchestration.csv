@@ -1,0 +1,9 @@
+id,phase,category,title,precondition,input,expected,status,notes
+TO-00,baseline,regression,Existing suite stays green,clean multi-engine branch,PYTHONPATH=src pytest tests -q,all pass,PASS,run before + after every phase
+TO-T0-01,T0,todo-core,Plan round-trips items + statuses + evidence,unit,Plan.add/get/update/render,item added; status set through pending->in_progress->done->verified; evidence merged; render shows [status] id: goal (= number),PASS,structure already exists
+TO-T0-02,T0,todo-tool,plan_update add + set,unit,plan_update(action=add,goal=..) then (action=set,id=..,status=verified,result_id=..),returns confirmation; memory.plan reflects the change,PASS,tool wiring
+TO-T0-03,T0,todo-render,TODO rendered in working memory when non-empty,unit,memory with 2 plan items -> memory.render(),render contains a PLAN: block listing both items; empty plan -> no PLAN block,PASS,prominence
+TO-T0-04,T0,gate,Finish gate respects TODO verification (agentic not new-deterministic),unit,plan with an unverified item -> gate.submit,rejected citing the unverified item id; all-verified or empty plan -> not blocked by this check,PASS,existing guarantee unchanged
+TO-T0-05,T0,elicitation,Agent maintains a TODO on a multi-part question,integration (fake model scripted to plan),run a 2-part task,agent calls plan_update to add items + marks progress; TODO visible in the trace,PASS,activation via prompt
+TO-T0-06,T0,regression,Simple single-part question unchanged,retail/fintech simple query,ask a 1-part question,agent answers without being forced to plan; behaviour matches pre-T0 (no deterministic must-plan gate),PASS,no regression + no forced determinism
+TO-T0-07,T0,config,No magic numbers introduced,code review,grep new literals,any new constant is a Config field (DIRACDATA_*),PASS,conventions rule 3
