@@ -58,7 +58,7 @@ def run_subagent(*, task: str, context: str, model: Any, workspace: Any, engine:
                              max_rows=config.query_max_rows, config=config)
     gate = FinishGate(memory=memory,
                       verifier=make_verifier(model, sink=sink, workspace=workspace,
-                                             dialect_note=dialect_note, config=config))
+                                             dialect_note=dialect_note, config=config), config=config)
     tools = data_tools + build_control_tools(memory=memory, gate=gate)
     if depth < max_depth:                                    # allow one more level, capped
         tools.extend(build_subagent_tool(

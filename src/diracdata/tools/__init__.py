@@ -57,6 +57,6 @@ def build_tools(*, workspace: Any, engine: Any, result_store: Any, memory: Any,
         from diracdata.tools.quality import build_quality_tools
         dq = build_quality_tools(engine=engine, store=store,
                                  schema=getattr(result_store, "schema", _DEFAULTS.schema),
-                                 sources=sources, config=config)
+                                 sources=sources, memory=memory, config=config)
 
     return nav + query + [ask_user] + dq

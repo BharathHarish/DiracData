@@ -24,10 +24,20 @@ _DEFAULTS = Config()
 
 
 def build_quality_tools(*, engine: Any, store: Any, schema: str, sources: Any = None,
-                        config: Config = _DEFAULTS) -> list[Any]:
+                        memory: Any = None, config: Config = _DEFAULTS) -> list[Any]:
     from langchain.tools import tool
 
     hist = DQHistory(store, schema=schema, keep=config.dq_history_keep)
+
+    def _register(snapshot: dict) -> None:
+        """A probe runs real SQL, so its measured numbers (row count, null%, distinct, range, mean) are
+        faithful -- register them so the agent can report a DQ fact without the finish gate flagging it."""
+        if memory is None:
+            return
+        nums: list[Any] = [snapshot.get("row_count")]
+        for col in (snapshot.get("columns") or {}).values():
+            nums += [col.get(k) for k in ("null_pct", "distinct", "min", "max", "avg")]
+        memory.register_numbers([nums])
     multi = sources is not None and len(sources.names()) > 1
     default_name = getattr(engine, "name", None) or "default"
 
@@ -50,7 +60,8 @@ def build_quality_tools(*, engine: Any, store: Any, schema: str, sources: Any = 
         current shape plus any DRIFT evidence vs the previous run (a null spike, a range/row-count jump,
         a distinct collapse, stale data). Pass the KEY columns to keep it cheap; source= for a
         non-default store. Findings are EVIDENCE -- weigh whether they're material to your answer;
-        read_dq_history to see the full trend."""
+        read_dq_history to see the full trend. These DQ facts are CONTEXT -- report them in your CHECKS
+        line if material, but do NOT pass this table as a finish result_id (it is not a query result)."""
         eng, nm = _resolve(table, source)
         if eng is None or table not in set(eng.list_tables()):
             return f"No such table: {table}" + (f" in source '{nm}'" if multi else "") + ". Call get_tables()."
@@ -63,6 +74,7 @@ def build_quality_tools(*, engine: Any, store: Any, schema: str, sources: Any = 
         snapshot = {"run_ts": datetime.now(timezone.utc).isoformat(timespec="seconds"),
                     "source": nm, "table": table, **snap}
         hist.append(nm, table, snapshot)
+        _register(snapshot)                       # DQ facts are measured -> faithful to report
         return json.dumps({"snapshot": snapshot, "drift": drift, "history_len": len(prior) + 1}, default=str)
 
     @tool("read_dq_history")

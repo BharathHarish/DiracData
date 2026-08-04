@@ -140,6 +140,18 @@ class ToolTests(unittest.TestCase):
     def test_unknown_table_is_reported_not_raised(self):
         self.assertIn("No such table", str(self.tools["data_health"].invoke({"table": "nope"})))
 
+    def test_probe_numbers_are_registered_faithful(self):
+        # a probe runs real SQL, so its measured numbers must be citable without the finish gate
+        # flagging them (regression: DQ facts in an RCA answer were rejected as unfaithful).
+        from diracdata.memory.working_memory import WorkingMemory
+        mem = WorkingMemory(goal="dq")
+        tools = {t.name: t for t in build_quality_tools(
+            engine=self.eng, store=LocalObjectStore(tempfile.mkdtemp()), schema="s",
+            sources=None, memory=mem, config=Config())}
+        tools["data_health"].invoke({"table": "t", "columns": ["amount"]})
+        self.assertIn(3.0, mem.seen_numbers)                     # row_count = 3 registered
+        self.assertIn(30.0, mem.seen_numbers)                    # amount max = 30.0 registered
+
 
 if __name__ == "__main__":
     unittest.main()

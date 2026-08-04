@@ -3,29 +3,32 @@
 v3's orchestrator free-wrote its final answer with no editor: it reported a total that didn't match
 its own rows and drifted from the framed intent. Here, finishing goes through a GATE that composes:
 
-  1. plan      -- every plan item must be `verified` (a blocked/ambiguous item routes to ask_user);
-  2. cited     -- any result_id cited as backing must actually exist;
-  3. faithful  -- every aggregate figure in the answer must trace to a number a query actually
-                  returned (memory.seen_numbers), within tolerance -- no free-typed numbers;
-  4. verify    -- an INDEPENDENT reviewer (a one-shot model call that did not build the analysis)
-                  confirms the answer honors the confirmed intent and is internally consistent
-                  (a stated total equals the sum of its parts). A genuine request ambiguity is
-                  flagged so the loop asks the user instead of guessing.
+  1. plan    -- every plan item must be `verified` (a blocked/ambiguous item routes to ask_user);
+  2. cited   -- any result_id cited as backing must actually exist;
+  3. verify  -- an INDEPENDENT reviewer (a one-shot model call that did not build the analysis) judges
+                HOW the answer was authored: did it bind the confirmed intent, are the joins/grain
+                right, was data-health/sanity considered, is it internally consistent (a stated total
+                equals the sum of its parts)? It is handed the AUTHORING ARTIFACTS -- the plan trail,
+                the facts/DQ ledger, the queries, and a sample of the values those queries returned --
+                so it reasons about the DERIVATION, not string-matches numbers. A genuine request
+                ambiguity is flagged so the loop asks the user instead of guessing.
 
-Only when all four pass is the answer accepted; otherwise the reason is fed back and the loop
-continues (or asks the user).
+Faithfulness is deliberately NOT a separate deterministic gate: scraping figures out of prose with a
+regex mis-tokenised money/percent/ranges/list-markers and dead-looped on false positives. Number
+provenance is a judgement the reviewer makes with the evidence in front of it. As a backstop, a
+verifier that rejects `verify_max_rejects` times in a row yields the best answer WITH its unresolved
+concern surfaced -- a deadlocked judgement must never burn the whole step budget.
 """
 
 from __future__ import annotations
 
 import json
-import re
 from typing import Any
 
 from diracdata.utils.streaming import loads_json, null_sink
 
 from diracdata.config import Config
-from diracdata.memory.working_memory import WorkingMemory, as_number
+from diracdata.memory.working_memory import WorkingMemory
 from diracdata.prompts import load_prompt
 from diracdata.streaming import collect
 
@@ -33,18 +36,26 @@ _DEFAULTS = Config()
 _VERIFY_PROMPT = load_prompt("verify") + "\n\n" + load_prompt("sql_rules")
 
 
-def build_verify_payload(answer: str, memory: WorkingMemory, workspace: Any = None) -> dict:
-    """The context the independent verifier judges against -- MUST carry the user clarifications, or
-    it re-litigates the raw (possibly corrected/contradictory) question and never converges. When a
-    workspace is given, also grounds the check in the customer's defined terms and proven precedents."""
+def build_verify_payload(answer: str, memory: WorkingMemory, workspace: Any = None,
+                         config: Config = _DEFAULTS) -> dict:
+    """The context the independent verifier judges against. It carries the AUTHORING ARTIFACTS (plan
+    trail, facts/DQ ledger, queries, and a sample of the numbers the queries returned) so the reviewer
+    judges HOW the answer was derived -- intent binding, joins/grain, DQ/sanity, internal consistency --
+    rather than matching exact result values. MUST carry the user clarifications, or it re-litigates the
+    raw (possibly corrected) question and never converges; grounded in defined terms + precedents when a
+    workspace is given."""
+    values = sorted(memory.seen_numbers, key=abs, reverse=True)[:config.verify_evidence_values]
     payload = {
         "question": memory.goal,
         "confirmed_intent": memory.confirmed_intent or "(not framed)",
         "user_clarifications": [{"asked": q, "answer": a} for q, a in memory.clarifications]
                                or "(none)",
         "answer": answer,
+        "plan": memory.plan.render() or "(no plan)",
+        "authoring_notes": memory.facts or "(none)",   # verified bindings + data-health/sanity findings
         "queries": [{"result_id": rid, "sql": r.get("sql"), "row_count": r.get("row_count")}
                     for rid, r in memory.results.items()],
+        "values_returned_by_queries": values,          # EVIDENCE the headline figures should derive from
     }
     if workspace is not None:
         try:
@@ -72,7 +83,7 @@ def make_verifier(model: Any, sink: Any = null_sink, workspace: Any = None, dial
     system = _VERIFY_PROMPT + (("\n\n" + dialect_note) if dialect_note else "")
 
     def verify(answer: str, memory: WorkingMemory) -> tuple[dict, int]:
-        payload = build_verify_payload(answer, memory, workspace=workspace)
+        payload = build_verify_payload(answer, memory, workspace=workspace, config=config or _DEFAULTS)
         out = collect(model=model, stage="verify", sink=sink, config=config,
                       messages=[SystemMessage(content=system),
                                 HumanMessage(content=json.dumps(payload, default=str))])
@@ -85,11 +96,13 @@ def make_verifier(model: Any, sink: Any = null_sink, workspace: Any = None, dial
 
 
 class FinishGate:
-    def __init__(self, *, memory: WorkingMemory, verifier: Any) -> None:
+    def __init__(self, *, memory: WorkingMemory, verifier: Any, config: Config = _DEFAULTS) -> None:
         self.memory = memory
         self.verifier = verifier
         self.result: dict | None = None
         self.tokens = 0
+        self._max_rejects = config.verify_max_rejects
+        self._rejects = 0
 
     def submit(self, answer: str, result_ids: list[str] | None) -> str:
         answer = (answer or "").strip()
@@ -103,46 +116,20 @@ class FinishGate:
         missing = [r for r in (result_ids or []) if r not in self.memory.results]
         if missing:
             return f"REJECTED: cited result_id(s) not found: {missing}. Cite the run_sql results your numbers came from."
-        bad = _unfaithful_figures(answer, self.memory)
-        if bad:
-            return (f"REJECTED: these figures don't match any query result: {bad}. Compute them with "
-                    f"query_result (don't add rows in your head), then finish.")
+        # Faithfulness is the reviewer's job now (it sees the queries + returned values), not a regex.
         verdict, vtok = self.verifier(answer, self.memory)
         self.tokens += vtok
         if not verdict["ok"]:
             if verdict.get("ambiguity"):
                 return (f"REJECTED (ambiguous): {verdict['reason']} Ask the user ONE question with "
                         f"ask_user to resolve it, then finish.")
-            return f"REJECTED: {verdict['reason']} Fix it and finish again."
+            self._rejects += 1
+            if self._rejects < self._max_rejects:
+                return f"REJECTED: {verdict['reason']} Fix it and finish again."
+            # Loop-breaker: a deadlocked judgement must not burn the step budget -- yield the best
+            # answer with the reviewer's unresolved concern surfaced, honestly, for the user to weigh.
+            answer = (answer + f"\n\n> ⚠︎ Reviewer note (unresolved after {self._rejects} revisions): "
+                      f"{verdict['reason']}")
+            verdict = {**verdict, "ok": True, "accepted_with_caveat": True}
         self.result = {"answer": answer, "result_ids": list(result_ids or []), "verdict": verdict}
         return "ACCEPTED"
-
-
-
-
-# ---- faithfulness (deterministic) -----------------------------------------------------
-def _unfaithful_figures(answer: str, memory: WorkingMemory) -> list[str]:
-    """Aggregate-like figures in the answer that don't match any number a query returned. Small
-    counts, years, and numbers taken straight from the question/clarifications are not checked --
-    only 'data-like' magnitudes (>=100, or decimal/comma-formatted), to avoid false positives."""
-    seen = memory.seen_numbers
-    context = " ".join([memory.goal] + [a for _, a in memory.clarifications])
-    ctx_nums = {as_number(t) for t in re.findall(r"\d[\d,]*\.?\d*", context)}
-    flagged: list[str] = []
-    for m in re.finditer(r"\$?(\d[\d,]*\.?\d*)\s*(million|billion|thousand|[MKBmkb])?\b", answer):
-        tok, suffix = m.group(1), m.group(2)
-        val = as_number(tok)
-        if val is None or suffix:                            # explicit approximation ($29.5M) -> skip
-            continue
-        aggregate = ("." in tok) or ("," in tok) or (val >= _DEFAULTS.faithfulness_min_magnitude)
-        if not aggregate:
-            continue
-        if 1900 <= val <= 2100 and val == int(val):          # a year, not a measured figure
-            continue
-        if any(c is not None and abs(val - c) < 1e-6 for c in ctx_nums):
-            continue
-        if any(abs(val - s) <= max(_DEFAULTS.faithfulness_rel_tol * abs(s), _DEFAULTS.faithfulness_abs_tol)
-               for s in seen):
-            continue
-        flagged.append(tok)
-    return flagged

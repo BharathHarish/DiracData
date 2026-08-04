@@ -1,5 +1,6 @@
-"""The finish gate: plan-verified + faithfulness + independent verify, with a stub verifier (no
-model). Plus the deterministic faithfulness parser, and the loop routing a finish through the gate.
+"""The finish gate: plan-verified + cited-exist + independent verify (which now OWNS faithfulness,
+judging the authoring artifacts -- no regex), a loop-breaker after N verifier rejections, and the
+loop routing a finish through the gate. Stub verifier (no model).
 """
 
 import sys
@@ -10,8 +11,9 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT / "src") not in sys.path:
     sys.path.insert(0, str(ROOT / "src"))
 
+from diracdata.config import Config  # noqa: E402
 from diracdata.memory.working_memory import WorkingMemory  # noqa: E402
-from diracdata.agents.verify import FinishGate, _unfaithful_figures, build_verify_payload  # noqa: E402
+from diracdata.agents.verify import FinishGate, build_verify_payload  # noqa: E402
 from diracdata.tools import build_control_tools  # noqa: E402
 
 
@@ -49,27 +51,27 @@ class VerifyPayloadTests(unittest.TestCase):
         self.assertEqual(p["reference_precedents"][0]["sql"], "SELECT SUM(net_paid) ...")
 
 
-class FaithfulnessTests(unittest.TestCase):
-    def test_flags_a_fabricated_aggregate(self) -> None:
-        m = WorkingMemory(goal="how many online purchases in 2001?")
-        m.seen_numbers = {49.0, 52.0}
-        self.assertEqual(_unfaithful_figures("There were 147,024 online purchases.", m), ["147,024"])
+class VerifyArtifactsTests(unittest.TestCase):
+    """The verifier now judges the AUTHORING ARTIFACTS -- plan trail, facts/DQ ledger, queries, and a
+    sample of returned values -- instead of a regex over prose. The payload must carry them."""
 
-    def test_passes_a_number_a_query_returned(self) -> None:
-        m = WorkingMemory(goal="q")
-        m.seen_numbers = {147024.0}
-        self.assertEqual(_unfaithful_figures("There were 147,024 online purchases.", m), [])
+    def test_payload_carries_authoring_artifacts(self) -> None:
+        m = WorkingMemory(goal="rca")
+        m.plan.add("quantify revenue")
+        m.add_fact("orders: 5000 rows, 0% nulls, no drift (data_health)")
+        m.results["r1"] = {"columns": ["revenue"], "row_count": 1, "sql": "SELECT SUM(amount) ..."}
+        m.seen_numbers = {-16054.0, 478848.0}
+        p = build_verify_payload("Revenue declined by $16,054.", m)
+        self.assertIn("quantify revenue", p["plan"])
+        self.assertTrue(any("data_health" in f for f in p["authoring_notes"]))
+        self.assertEqual(p["queries"][0]["result_id"], "r1")
+        self.assertIn(478848.0, p["values_returned_by_queries"])   # returned values passed as evidence
 
-    def test_ignores_years_small_counts_and_question_numbers(self) -> None:
-        m = WorkingMemory(goal="top 3 categories in 2001")
-        m.seen_numbers = {15287.0}
-        # 2001 = year (skip), 3 = small count (skip), 15,287 = in seen -> nothing flagged
-        self.assertEqual(_unfaithful_figures("In 2001 the top 3 led with 15,287 purchases.", m), [])
-
-    def test_tolerates_rounding_and_magnitude_suffix(self) -> None:
-        m = WorkingMemory(goal="revenue?")
-        m.seen_numbers = {29547953.78}
-        self.assertEqual(_unfaithful_figures("Revenue was $29,547,954 (about $29.5M).", m), [])
+    def test_values_sample_is_bounded(self) -> None:
+        m = WorkingMemory(goal="g")
+        m.seen_numbers = {float(i) for i in range(500)}
+        p = build_verify_payload("a", m, config=Config())
+        self.assertLessEqual(len(p["values_returned_by_queries"]), Config().verify_evidence_values)
 
 
 class FinishGateTests(unittest.TestCase):
@@ -86,12 +88,25 @@ class FinishGateTests(unittest.TestCase):
         gate = FinishGate(memory=m, verifier=_stub_verifier())
         self.assertIn("not found", gate.submit("answer", ["r9"]))
 
-    def test_rejects_unfaithful_number(self) -> None:
+    def test_no_regex_faithfulness_gate(self) -> None:
+        # a big number the verifier is happy with is ACCEPTED -- provenance is the reviewer's call now,
+        # not a deterministic string match (which used to dead-loop on false positives).
         m = WorkingMemory(goal="g")
         m.seen_numbers = {52.0}
-        gate = FinishGate(memory=m, verifier=_stub_verifier())
-        out = gate.submit("The total is 999,999.", [])
-        self.assertIn("don't match", out)
+        gate = FinishGate(memory=m, verifier=_stub_verifier(ok=True))
+        self.assertEqual(gate.submit("The total is 999,999.", []), "ACCEPTED")
+
+    def test_loop_breaker_accepts_with_caveat_after_max_rejects(self) -> None:
+        m = WorkingMemory(goal="g")
+        gate = FinishGate(memory=m, verifier=_stub_verifier(ok=False, reason="MECE concern"),
+                          config=Config(verify_max_rejects=3))
+        self.assertIn("REJECTED", gate.submit("ans", []))          # 1
+        self.assertIn("REJECTED", gate.submit("ans", []))          # 2
+        out = gate.submit("ans", [])                               # 3 -> loop-breaker
+        self.assertEqual(out, "ACCEPTED")
+        self.assertTrue(gate.result["verdict"].get("accepted_with_caveat"))
+        self.assertIn("Reviewer note", gate.result["answer"])      # concern surfaced honestly
+        self.assertIn("MECE concern", gate.result["answer"])
 
     def test_ambiguity_routes_to_ask_user(self) -> None:
         m = WorkingMemory(goal="g")

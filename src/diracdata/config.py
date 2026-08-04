@@ -148,10 +148,10 @@ class Config:
     # --- metric tree / RCA (structured decomposition the analyst walks; judgement stays agentic) ---
     metric_tree_max_depth: int = 4        # recursion bound when expanding a metric's depends_on tree
 
-    # --- faithfulness gate (numbers in the answer must trace to a query result) ---
-    faithfulness_min_magnitude: float = 100.0  # below this a bare int is a count, not an aggregate
-    faithfulness_rel_tol: float = 0.005        # relative rounding tolerance when matching a figure
-    faithfulness_abs_tol: float = 1.0          # absolute tolerance floor
+    # --- finish gate ---
+    verify_max_rejects: int = 4          # after this many verifier rejections, accept the best answer
+                                         # with the reviewer's unresolved concern surfaced (no dead loop)
+    verify_evidence_values: int = 80     # sample of query-returned numbers passed to the verifier as evidence
 
     # --- durable conversation memory ---
     conversations_dir: Path = Path(".diracdata/conversations")
@@ -276,9 +276,8 @@ class Config:
             dq_drift_pct=_float("DIRACDATA_DQ_DRIFT_PCT", d.dq_drift_pct),
             dq_drift_null_delta=_float("DIRACDATA_DQ_DRIFT_NULL_DELTA", d.dq_drift_null_delta),
             metric_tree_max_depth=_int("DIRACDATA_METRIC_TREE_MAX_DEPTH", d.metric_tree_max_depth),
-            faithfulness_min_magnitude=_float("DIRACDATA_FAITHFULNESS_MIN_MAGNITUDE", d.faithfulness_min_magnitude),
-            faithfulness_rel_tol=_float("DIRACDATA_FAITHFULNESS_REL_TOL", d.faithfulness_rel_tol),
-            faithfulness_abs_tol=_float("DIRACDATA_FAITHFULNESS_ABS_TOL", d.faithfulness_abs_tol),
+            verify_max_rejects=_int("DIRACDATA_VERIFY_MAX_REJECTS", d.verify_max_rejects),
+            verify_evidence_values=_int("DIRACDATA_VERIFY_EVIDENCE_VALUES", d.verify_evidence_values),
             conversations_dir=_path("DIRACDATA_CONVERSATIONS_DIR", d.conversations_dir),
             transcript_result_cap=_int("DIRACDATA_TRANSCRIPT_RESULT_CAP", d.transcript_result_cap),
             agentic_memory_enabled=_bool("DIRACDATA_AGENTIC_MEMORY_ENABLED", d.agentic_memory_enabled),

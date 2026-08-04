@@ -32,6 +32,12 @@ class FabricStore:
     def has(self, schema: str, name: str) -> bool:
         return self._store.exists(self._fabric_key(schema, name))
 
+    def read_text(self, schema: str, name: str, default: Any = None) -> Any:
+        """Raw text of a fabric artifact (e.g. a YAML semantic layer authored by hand). `default` if
+        absent."""
+        key = self._fabric_key(schema, name)
+        return self._store.read_text(key) if self._store.exists(key) else default
+
     def list(self, schema: str) -> list[str]:
         return self._store.list_keys(f"fabric/{schema}/")
 

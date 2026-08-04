@@ -96,7 +96,7 @@ class Workspace:
             metadata=store.get(schema, "metadata_descriptions.json") or {},
             value_domains=store.get(schema, "value_domains.json") or {},
             join_graph=store.get(schema, "join_graph.json") or [],
-            semantic_layer=store.get(schema, "semantic_layer.json") or None,
+            semantic_layer=_semantic_layer_from_store(store, schema),
             **kwargs,
         )
 
@@ -484,6 +484,17 @@ def _short_desc(meta: Any) -> str:
     if isinstance(meta, dict):
         return " ".join(str(meta.get("short_description") or meta.get("long_description") or "").split())
     return ""
+
+
+def _semantic_layer_from_store(store: Any, schema: str) -> dict | None:
+    """The customer's business-definitions/metrics layer from the object store. Authored as YAML
+    (semantic_layer.yaml/.yml, preferred -- humans hand-write the metric tree) or JSON
+    (semantic_layer.json). None if neither exists."""
+    for name in ("semantic_layer.yaml", "semantic_layer.yml"):
+        if store.has(schema, name):
+            import yaml
+            return yaml.safe_load(store.read_text(schema, name)) or None
+    return store.get(schema, "semantic_layer.json") or None
 
 
 def _sample_values(dom: Any, limit: int = _DEFAULTS.example_values_shown) -> str:

@@ -147,7 +147,7 @@ class V4Agent:
                               "gotchas/bindings; use RCA leads when investigating a metric)\n" + learned)
         verifier = make_verifier(self._stage_model(Stage.VERIFY), sink=self.sink,
                                  workspace=self.workspace, dialect_note=dnote, config=self.config)
-        gate = FinishGate(memory=memory, verifier=verifier)
+        gate = FinishGate(memory=memory, verifier=verifier, config=self.config)
         tools = data_tools + build_control_tools(memory=memory, gate=gate)
         sub_tokens: list[int] = []
         if self.subagents:
