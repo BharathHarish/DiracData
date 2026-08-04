@@ -28,7 +28,7 @@ from diracdata.memory.results import ResultStore
 from diracdata.prompts import dialect_note, load_prompt
 from diracdata.agents.subagents import build_subagent_tool
 from diracdata.tools import build_control_tools, build_tools, build_transcript_tool
-from diracdata.agents.verify import FinishGate, make_verifier
+from diracdata.agents.verify import FinishGate, make_verifier, estate_dialects_note
 from diracdata.experiences import MemoryConsolidator, make_curator
 
 _SYSTEM_PROMPT = load_prompt("analyst") + "\n\n" + load_prompt("sql_rules")
@@ -145,8 +145,12 @@ class V4Agent:
         if learned:
             system_prompt += ("\n\n## LEARNED KNOWLEDGE FOR THIS SCHEMA (reuse these patterns; honor the "
                               "gotchas/bindings; use RCA leads when investigating a metric)\n" + learned)
+        # The verifier also needs the per-source dialects: in a multi-engine estate each query runs in
+        # its source's dialect and combine_results runs on the reconciler -- else it flags valid
+        # cross-source SQL as "won't execute / fabricated". (The analyst already gets this via the estate map.)
         verifier = make_verifier(self._stage_model(Stage.VERIFY), sink=self.sink,
-                                 workspace=self.workspace, dialect_note=dnote, config=self.config)
+                                 workspace=self.workspace,
+                                 dialect_note=estate_dialects_note(self.sources, dnote), config=self.config)
         gate = FinishGate(memory=memory, verifier=verifier, config=self.config)
         tools = data_tools + build_control_tools(memory=memory, gate=gate)
         sub_tokens: list[int] = []

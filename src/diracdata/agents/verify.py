@@ -73,6 +73,20 @@ def build_verify_payload(answer: str, memory: WorkingMemory, workspace: Any = No
     return payload
 
 
+def estate_dialects_note(sources: Any, base: str = "") -> str:
+    """The per-source dialects the verifier needs: in a MULTI-ENGINE estate each query runs in its
+    source's dialect and combine_results runs on the DuckDB reconciler. Without this the verifier
+    assumes one dialect and wrongly flags valid cross-source SQL as "won't execute / fabricated".
+    Returns `base` unchanged for a single source (nothing to disambiguate)."""
+    names = list(sources.names()) if sources is not None else []
+    if len(names) <= 1:
+        return base
+    lines = [f"  - source `{nm}`: {getattr(sources.get(nm), 'dialect', '?')} dialect" for nm in names]
+    note = ("ESTATE ENGINES (each query runs in ITS source's dialect; combine_results / query_result run "
+            "on the DuckDB reconciler over stored result_ids):\n" + "\n".join(lines))
+    return (base + "\n\n" + note) if base else note
+
+
 def make_verifier(model: Any, sink: Any = null_sink, workspace: Any = None, dialect_note: str = "",
                   config: Any = None):
     """Return verify(answer, memory) -> (verdict dict, tokens). One independent model call, grounded

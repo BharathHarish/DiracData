@@ -13,8 +13,37 @@ if str(ROOT / "src") not in sys.path:
 
 from diracdata.config import Config  # noqa: E402
 from diracdata.memory.working_memory import WorkingMemory  # noqa: E402
-from diracdata.agents.verify import FinishGate, build_verify_payload  # noqa: E402
+from diracdata.agents.verify import FinishGate, build_verify_payload, estate_dialects_note  # noqa: E402
 from diracdata.tools import build_control_tools  # noqa: E402
+
+
+class _FakeSources:
+    def __init__(self, dialects: dict):
+        self._d = dialects
+
+    def names(self):
+        return list(self._d)
+
+    def get(self, name):
+        from types import SimpleNamespace
+        return SimpleNamespace(dialect=self._d[name])
+
+
+class EstateDialectsNoteTests(unittest.TestCase):
+    """The verifier must be told each source's dialect + the reconciler contract, or it flags valid
+    cross-source SQL as 'won't execute / fabricated' (the multi-engine RCA spiral)."""
+
+    def test_multi_source_lists_per_source_dialects(self) -> None:
+        note = estate_dialects_note(_FakeSources({"fintech_lake": "duckdb", "orders_pg": "postgres"}), "BASE")
+        self.assertTrue(note.startswith("BASE"))
+        self.assertIn("orders_pg", note)
+        self.assertIn("postgres", note)
+        self.assertIn("duckdb", note)
+        self.assertIn("reconciler", note)              # explains combine_results result_id views
+
+    def test_single_source_and_none_are_unchanged(self) -> None:
+        self.assertEqual(estate_dialects_note(_FakeSources({"only": "duckdb"}), "BASE"), "BASE")
+        self.assertEqual(estate_dialects_note(None, "BASE"), "BASE")
 
 
 def _stub_verifier(ok=True, reason="ok", ambiguity=False):

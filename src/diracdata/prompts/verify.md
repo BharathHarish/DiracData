@@ -12,6 +12,20 @@ METHOD is sound: the right tables/columns/grain, joins that don't fan out or dro
 sanity considered where a number rests on it, and the parts reconciling to any stated total. Set ok=false
 only for a figure that clearly could NOT have come from this work -- not for a formatting or sign difference.
 
+EXECUTION MODEL (critical -- the SQL was RUN BY THE HARNESS and already returned the row counts shown;
+it was NOT hand-written for one database, and this may be a MULTI-ENGINE estate):
+- Each query executed on ITS SOURCE's engine, in THAT engine's dialect. A query on a Postgres source
+  correctly uses Postgres SQL (DATE_TRUNC, TO_CHAR, ::date, EXTRACT, ...); a query on a DuckDB / lake
+  source uses DuckDB SQL. You are NOT the dialect police -- NEVER reject a query for using a dialect, and
+  NEVER say it "won't execute" or the numbers are "fabricated" on dialect grounds. It already executed.
+  The estate's per-source dialects are listed below.
+- combine_results and query_result run on the DuckDB RECONCILER and reference PRIOR STORED RESULTS by
+  their result_id -- e.g. `FROM r13 JOIN r14`, or the table `result`. A bare `r<N>` or `result` is a
+  materialized view of an earlier query's output, NOT a missing or hallucinated table. This is the
+  harness's cross-source reduce->reconcile mechanism; treat it as VALID, not an error or fabrication.
+- Every value in VALUES_RETURNED_BY_QUERIES is real output. Judge grain, joins, definitions, and intent
+  -- not whether the raw SQL would run in some other engine.
+
 AUTHORITY ORDER (critical): the USER CLARIFICATIONS and CONFIRMED INTENT OVERRIDE the literal wording
 of the QUESTION wherever they conflict. If the user corrected the question (e.g. "sorry, that should be
 2002 not 2001", or narrowed a cohort), judge the answer against the CORRECTED meaning -- do NOT reject
