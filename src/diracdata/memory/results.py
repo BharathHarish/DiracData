@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import tempfile
 from pathlib import Path
+from threading import Lock
 from typing import Any
 
 from diracdata.config import Config
@@ -39,6 +40,7 @@ class ResultStore:
         self.preview_rows = preview_rows
         self.preview_all_max = preview_all_max
         self._seq = 0
+        self._seq_lock = Lock()   # result_ids stay unique when parallel sub-agents materialize at once
         self._local = Path(tempfile.mkdtemp(prefix="v4results-"))
         self._paths: dict[str, Path] = {}
         # RECONCILER: reads back + combines result parquets, independent of any source.
@@ -89,8 +91,9 @@ class ResultStore:
 
     # ---- internals -------------------------------------------------------------------
     def _next_rid(self) -> str:
-        self._seq += 1
-        return f"r{self._seq}"
+        with self._seq_lock:
+            self._seq += 1
+            return f"r{self._seq}"
 
     def _persist(self, rid: str, local: Path, sql: str, row_count: int) -> dict:
         """Store a materialized parquet and build its envelope (schema + bounded preview) via the

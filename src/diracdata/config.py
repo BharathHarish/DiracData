@@ -88,6 +88,7 @@ class Config:
     framing_max_steps: int = 8
     subagent_max_depth: int = 1
     subagent_facts_merge: int = 8    # sub's facts folded back into the parent
+    subagent_max_parallel: int = 4   # max sub-agents run concurrently by spawn_subagents (bounded fan-out)
     learn_max_steps: int = 20
 
     # --- row caps ---
@@ -220,6 +221,7 @@ class Config:
             framing_max_steps=_int("DIRACDATA_FRAMING_MAX_STEPS", d.framing_max_steps),
             subagent_max_depth=_int("DIRACDATA_SUBAGENT_MAX_DEPTH", d.subagent_max_depth),
             subagent_facts_merge=_int("DIRACDATA_SUBAGENT_FACTS_MERGE", d.subagent_facts_merge),
+            subagent_max_parallel=_int("DIRACDATA_SUBAGENT_MAX_PARALLEL", d.subagent_max_parallel),
             learn_max_steps=_int("DIRACDATA_LEARN_MAX_STEPS", d.learn_max_steps),
             nav_max_rows=_int("DIRACDATA_NAV_MAX_ROWS", d.nav_max_rows),
             query_max_rows=_int("DIRACDATA_QUERY_MAX_ROWS", d.query_max_rows),

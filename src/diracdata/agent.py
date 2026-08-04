@@ -151,7 +151,7 @@ class V4Agent:
         tools = data_tools + build_control_tools(memory=memory, gate=gate)
         sub_tokens: list[int] = []
         if self.subagents:
-            tools.append(build_subagent_tool(
+            tools.extend(build_subagent_tool(
                 model=self._stage_model(Stage.AUTHORING), workspace=self.workspace, engine=self.engine,
                 result_store=self.result_store, value_cache=self.value_cache, parent_memory=memory,
                 system_prompt=system_prompt, sink=self.sink, asker=self.asker, max_steps=self.max_steps,

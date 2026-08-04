@@ -26,11 +26,15 @@ class SpawnMergeTests(unittest.TestCase):
     def tearDown(self) -> None:
         subagents.run_subagent = self._orig
 
-    def _tool(self, parent, on_tokens=None):
-        return subagents.build_subagent_tool(
+    def _tools(self, parent, on_tokens=None):
+        tools = subagents.build_subagent_tool(
             model=None, workspace=None, engine=None, result_store=None, value_cache=None,
             parent_memory=parent, system_prompt="p", sink=lambda *a: None, asker=None,
             max_steps=8, depth=0, max_depth=1, on_tokens=on_tokens)
+        return {t.name: t for t in tools}   # now returns [spawn_subagent, spawn_subagents]
+
+    def _tool(self, parent, on_tokens=None):
+        return self._tools(parent, on_tokens)["spawn_subagent"]
 
     def test_merges_sub_results_numbers_and_facts(self) -> None:
         parent = WorkingMemory(goal="AZ then CA")
@@ -65,6 +69,72 @@ class SpawnMergeTests(unittest.TestCase):
         acc: list[int] = []
         self._tool(parent, on_tokens=acc.append).invoke({"task": "t", "context": ""})
         self.assertEqual(acc, [4200])
+
+    def test_spawn_subagents_runs_all_branches_and_merges(self) -> None:
+        parent = WorkingMemory(goal="A and B")
+        subagents.run_subagent = lambda **kw: {
+            "answer": f"{kw['task']}: done", "result_ids": [f"r_{kw['task']}"],
+            "results": {f"r_{kw['task']}": {"row_count": 1}}, "seen_numbers": [1.0],
+            "facts": [f"fact for {kw['task']}"], "verdict": {"ok": True}, "tokens": 100}
+        out = json.loads(str(self._tools(parent)["spawn_subagents"].invoke(
+            {"tasks": [{"task": "A"}, {"task": "B", "context": "c"}]})))
+        self.assertEqual(len(out), 2)                                   # both branches ran
+        self.assertIn("r_A", parent.results)                           # both result indexes merged
+        self.assertIn("r_B", parent.results)
+        self.assertTrue(any("fact for A" in f for f in parent.facts))  # both fact sets merged
+        self.assertTrue(any("fact for B" in f for f in parent.facts))
+
+    def test_spawn_subagents_rejects_empty(self) -> None:
+        parent = WorkingMemory(goal="g")
+        self.assertIn("needs", str(self._tools(parent)["spawn_subagents"].invoke({"tasks": []})))
+
+
+class ParallelPrimitiveTests(unittest.TestCase):
+    def test_run_parallel_is_concurrent_and_bounded(self) -> None:
+        import time
+        from diracdata.agents.subagents import _run_parallel
+
+        def sleepy():
+            time.sleep(0.2)
+            return 1
+
+        t0 = time.perf_counter()
+        self.assertEqual(_run_parallel([sleepy, sleepy, sleepy], max_workers=3), [1, 1, 1])
+        concurrent = time.perf_counter() - t0
+        t0 = time.perf_counter()
+        _run_parallel([sleepy, sleepy, sleepy], max_workers=1)          # bounded to one at a time
+        serial = time.perf_counter() - t0
+        self.assertLess(concurrent, 0.45)                              # 3 slots run as ~1
+        self.assertGreater(serial, 0.55)                               # ...vs ~3 when bounded to 1
+
+    def test_concurrent_result_ids_are_distinct(self) -> None:
+        import tempfile
+        import threading
+        from _engine_fixture import make_duckdb_source
+        from diracdata.memory.results import ResultStore
+        from diracdata.utils.object_store import LocalObjectStore
+
+        tmp, eng = make_duckdb_source()
+        try:
+            with tempfile.TemporaryDirectory() as sd:
+                rs = ResultStore(engine=eng, store=LocalObjectStore(sd), schema="s")
+                ids: list[str] = []
+                lock = threading.Lock()
+
+                def one():
+                    rid = rs.run("SELECT 1 AS x")["result_id"]
+                    with lock:
+                        ids.append(rid)
+
+                threads = [threading.Thread(target=one) for _ in range(20)]
+                for t in threads:
+                    t.start()
+                for t in threads:
+                    t.join()
+                self.assertEqual(len(ids), 20)
+                self.assertEqual(len(set(ids)), 20)                    # no _seq race -> all unique
+        finally:
+            tmp.cleanup()
 
 
 class _FakeWorkspace:

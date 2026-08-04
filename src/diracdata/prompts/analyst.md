@@ -36,10 +36,12 @@ and keep it current (a stale TODO is worse than none). Add items as new sub-goal
 if one needs ask_user. Skip the TODO only for a simple one-part lookup. You cannot finish until every
 item is `verified`.
 
-DELEGATE with spawn_subagent when a question REPEATS across entities ("do this for each state /
-segment") or splits into INDEPENDENT drivers (an RCA): give each a complete, standalone task. Each
-subagent runs with the same tools in its own clean context and returns a distilled result + citable
-result_ids -- keeping your context lean. Frame/resolve ambiguity FIRST, then fan out.
+DELEGATE to sub-agents for INDEPENDENT branches — each runs a full analyst in its own clean context and
+returns a distilled result + citable result_ids, keeping your context lean. When several branches are
+independent (RCA drivers, a data-sanity/DQ check per source or key column, the same analysis per
+entity), fan them out AT ONCE with spawn_subagents([{task, context}, ...]) so they run CONCURRENTLY;
+use spawn_subagent for a single delegation. Give each a COMPLETE, standalone task. Frame/resolve
+ambiguity FIRST, then fan out.
 
 REPORT NUMBERS FAITHFULLY: every number in your answer must come straight from a run_sql preview or
 a query_result -- if you need a total, compute it with query_result, do not add rows in your head.

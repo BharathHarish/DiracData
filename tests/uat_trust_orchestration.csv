@@ -7,3 +7,9 @@ TO-T0-04,T0,gate,Finish gate respects TODO verification (agentic not new-determi
 TO-T0-05,T0,elicitation,Agent maintains a TODO on a multi-part question,integration (fake model scripted to plan),run a 2-part task,agent calls plan_update to add items + marks progress; TODO visible in the trace,PASS,activation via prompt
 TO-T0-06,T0,regression,Simple single-part question unchanged,retail/fintech simple query,ask a 1-part question,agent answers without being forced to plan; behaviour matches pre-T0 (no deterministic must-plan gate),PASS,no regression + no forced determinism
 TO-T0-07,T0,config,No magic numbers introduced,code review,grep new literals,any new constant is a Config field (DIRACDATA_*),PASS,conventions rule 3
+TO-T1-01,T1,concurrency,run_parallel runs thunks concurrently + bounded,unit,run_parallel([sleep,sleep,sleep] max=3),wall-clock ~1 slot not the sum; respects max_workers,PASS,concurrency primitive
+TO-T1-02,T1,thread-safety,Concurrent result materialization yields DISTINCT result_ids,unit,K threads each call result_store.run,K unique result_ids; no _seq race/collision,PASS,ResultStore id lock
+TO-T1-03,T1,fan-out,spawn_subagents runs N subs + merges all into parent,integration (thread-safe fake model),spawn_subagents([taskA,taskB]),both subs run concurrently; their results (facts/seen_numbers/result_ids) merge into parent memory,PASS,parallel delegation
+TO-T1-04,T1,regression,spawn_subagent (singular) still works,integration,spawn_subagent(task),runs one sub + merges; unchanged behaviour,PASS,no regression on existing tool
+TO-T1-05,T1,config,subagent_max_parallel is ENV-driven,code review,grep,bound is a Config field DIRACDATA_SUBAGENT_MAX_PARALLEL; no literal,PASS,rule 3
+TO-T1-06,T1,regression,Full suite green + simple path unchanged,pytest tests -q,run,all pass; simple single-source query does not fan out,PASS,no regression
