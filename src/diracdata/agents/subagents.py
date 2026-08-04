@@ -55,7 +55,7 @@ def run_subagent(*, task: str, context: str, model: Any, workspace: Any, engine:
 
     data_tools = build_tools(workspace=workspace, engine=engine, result_store=result_store,
                              memory=memory, value_cache=value_cache, asker=asker, sources=sources,
-                             max_rows=config.query_max_rows)
+                             max_rows=config.query_max_rows, config=config)
     gate = FinishGate(memory=memory,
                       verifier=make_verifier(model, sink=sink, workspace=workspace,
                                              dialect_note=dialect_note, config=config))

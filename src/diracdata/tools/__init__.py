@@ -27,7 +27,7 @@ def _no_asker(question: str) -> str:
 
 def build_tools(*, workspace: Any, engine: Any, result_store: Any, memory: Any,
                 value_cache: Any = None, asker: Any = None, sources: Any = None,
-                max_rows: int = _DEFAULTS.query_max_rows) -> list[Any]:
+                max_rows: int = _DEFAULTS.query_max_rows, config: Config = _DEFAULTS) -> list[Any]:
     from langchain.tools import tool
 
     ask = asker or _no_asker
@@ -49,4 +49,14 @@ def build_tools(*, workspace: Any, engine: Any, result_store: Any, memory: Any,
         memory.record_clarification(question, answer or "(no answer -- proceed on best reading)")
         return answer or "(no answer available -- proceed on your most reasonable reading and state it)"
 
-    return nav + query + [ask_user]
+    # DATA-SANITY layer: opportunistic, source-aware data_health + read_dq_history. Sourced from the
+    # result store's object store + schema (no extra plumbing); off if the flag is cleared.
+    dq: list[Any] = []
+    store = getattr(result_store, "store", None)
+    if config.data_quality_enabled and store is not None:
+        from diracdata.tools.quality import build_quality_tools
+        dq = build_quality_tools(engine=engine, store=store,
+                                 schema=getattr(result_store, "schema", _DEFAULTS.schema),
+                                 sources=sources, config=config)
+
+    return nav + query + [ask_user] + dq

@@ -13,3 +13,12 @@ TO-T1-03,T1,fan-out,spawn_subagents runs N subs + merges all into parent,integra
 TO-T1-04,T1,regression,spawn_subagent (singular) still works,integration,spawn_subagent(task),runs one sub + merges; unchanged behaviour,PASS,no regression on existing tool
 TO-T1-05,T1,config,subagent_max_parallel is ENV-driven,code review,grep,bound is a Config field DIRACDATA_SUBAGENT_MAX_PARALLEL; no literal,PASS,rule 3
 TO-T1-06,T1,regression,Full suite green + simple path unchanged,pytest tests -q,run,all pass; simple single-source query does not fan out,PASS,no regression
+TO-T2-01,T2,dq-probe,One-pass type-aware probe,unit,probe_table(engine table [cols]),single query returns per-column cnt/null_pct/distinct + min/max/avg(numeric) + max_ts(timestamp); complex types -> cnt/distinct only (no unorderable MIN/MAX),PASS,cheap measurement
+TO-T2-02,T2,dq-history,History append + trim to keep=N + read,unit,DQHistory.append x(N+3) keep=N; read,object-store jsonl holds only the last N snapshots in order; read returns them,PASS,DIRACDATA_DQ_HISTORY_KEEP
+TO-T2-03,T2,dq-drift,Drift vs previous + freshness,unit,detect_drift(current prev-history),flags null% jump / range shift / distinct collapse / row-count drop / stale max_ts as findings (evidence not verdict),PASS,measured facts agentic judgement
+TO-T2-04,T2,dq-tool,data_health probes fresh + drifts + appends,integration,data_health(source table cols) twice,each call runs a FRESH probe (no reuse-cache); 2nd call reports drift vs 1st; history grows by 1 each call,PASS,opportunistic on touch
+TO-T2-05,T2,dq-tool,read_dq_history returns the series,integration,read_dq_history(source table),returns the stored snapshots (up to keep) so the agent can inspect the trend + decide,PASS,agent reads JSONL
+TO-T2-06,T2,dq-firstrun,First run has no history -> record no-drift,integration,data_health on a fresh table,snapshot recorded; findings say 'first observation / no history'; no false drift,PASS,self-bootstrapping
+TO-T2-07,T2,config,DQ knobs are ENV-driven,code review,grep,dq_history_keep/dq_sample_pct/data_quality_enabled are Config fields; no literals,PASS,rule 3
+TO-T2-08,T2,regression,Full suite green + simple path unchanged,pytest tests -q,run,all pass; a simple query is not forced to run DQ (agentic),PASS,no regression
+TO-T2-09,T2,live,data_health on Postgres orders,DIRACDATA_TEST_PG_DSN,data_health(orders_pg orders [amount status]),real probe: null_pct/min/max/avg on amount; distinct on status; max_ts on order_ts; snapshot persisted,PASS,skips w/o PG

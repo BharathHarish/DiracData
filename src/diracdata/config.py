@@ -138,6 +138,13 @@ class Config:
     steward_fanout_max: float = 1.5      # ...and at/below this fan-out ratio
     steward_flags_shown: int = 3         # flags / row-counts shown in the trust line
 
+    # --- data health / DQ drift (the data_health tool; object-store snapshot history over time) ---
+    data_quality_enabled: bool = True     # expose data_health + read_dq_history to the analyst/subagents
+    dq_history_keep: int = 20             # DQ snapshots kept per table in the object store (the drift window)
+    dq_sample_pct: float | None = None    # sample % for the probe on huge tables (None -> full one-pass scan)
+    dq_drift_pct: float = 20.0            # relative % move (row_count/distinct/avg/range) surfaced as drift evidence
+    dq_drift_null_delta: float = 5.0      # absolute null-% point move surfaced as drift evidence
+
     # --- faithfulness gate (numbers in the answer must trace to a query result) ---
     faithfulness_min_magnitude: float = 100.0  # below this a bare int is a count, not an aggregate
     faithfulness_rel_tol: float = 0.005        # relative rounding tolerance when matching a figure
@@ -260,6 +267,11 @@ class Config:
             steward_orphan_pct_max=_float("DIRACDATA_STEWARD_ORPHAN_PCT_MAX", d.steward_orphan_pct_max),
             steward_fanout_max=_float("DIRACDATA_STEWARD_FANOUT_MAX", d.steward_fanout_max),
             steward_flags_shown=_int("DIRACDATA_STEWARD_FLAGS_SHOWN", d.steward_flags_shown),
+            data_quality_enabled=_bool("DIRACDATA_DATA_QUALITY_ENABLED", d.data_quality_enabled),
+            dq_history_keep=_int("DIRACDATA_DQ_HISTORY_KEEP", d.dq_history_keep),
+            dq_sample_pct=_opt_float("DIRACDATA_DQ_SAMPLE_PCT", default=d.dq_sample_pct),
+            dq_drift_pct=_float("DIRACDATA_DQ_DRIFT_PCT", d.dq_drift_pct),
+            dq_drift_null_delta=_float("DIRACDATA_DQ_DRIFT_NULL_DELTA", d.dq_drift_null_delta),
             faithfulness_min_magnitude=_float("DIRACDATA_FAITHFULNESS_MIN_MAGNITUDE", d.faithfulness_min_magnitude),
             faithfulness_rel_tol=_float("DIRACDATA_FAITHFULNESS_REL_TOL", d.faithfulness_rel_tol),
             faithfulness_abs_tol=_float("DIRACDATA_FAITHFULNESS_ABS_TOL", d.faithfulness_abs_tol),

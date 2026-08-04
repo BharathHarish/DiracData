@@ -133,7 +133,7 @@ class V4Agent:
         data_tools = build_tools(workspace=self.workspace, engine=self.engine,
                                  result_store=self.result_store, memory=memory,
                                  value_cache=self.value_cache, asker=self.asker, sources=self.sources,
-                                 max_rows=self.config.query_max_rows)
+                                 max_rows=self.config.query_max_rows, config=self.config)
         if conversation is not None:                          # let both phases pull exact past detail
             data_tools = data_tools + [build_transcript_tool(conversation=conversation)]
         dnote = dialect_note(getattr(self.engine, "dialect", ""))

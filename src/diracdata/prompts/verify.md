@@ -22,6 +22,11 @@ violation -- MOST OFTEN a silent one: a nullable join/filter key that drops rows
 inflates an aggregate, a non-exhaustive CASE where the breakdown does NOT sum to the stated total,
 or a look-alike column used instead of a defined term.
 
+If the analyst surfaced DATA-HEALTH / drift findings (from data_health), weigh whether a MATERIAL one
+(a null spike, a range or row-count jump, a distinct collapse, or stale data on a table the headline
+number rests on) undermines the answer or should have been disclosed. Judge materiality yourself --
+findings are measured evidence, not an automatic failure; a minor or irrelevant drift is not a defect.
+
 If the ONLY problem is a genuine, still-unresolved AMBIGUITY that the clarifications did NOT settle and
 that needs the user, set ambiguity=true and put the question to ask in `reason`. Do NOT re-raise an
 ambiguity the clarifications already answered.

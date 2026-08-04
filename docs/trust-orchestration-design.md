@@ -205,8 +205,13 @@ Net: fewer, simpler tools; the intelligence is in the **harness** (plan, fan-out
   unchanged.
 - **T1 — Parallel sub-agents.** Concurrent fan-out over the execution pool; barrier-join. Tests: two
   independent reductions run concurrently; result_ids stay unique; token ceiling respected.
-- **T2 — Data-sanity layer.** Baselines-with-tolerance from the profiler; opportunistic footprint check
-  (freshness + drift) fed to verify as evidence. Tests: stale/ drifted fixture flagged; healthy passes.
+- **T2 — Data-sanity layer. [DONE]** `diracdata/quality/` (probe + object-store JSONL history, last
+  `DIRACDATA_DQ_HISTORY_KEEP=20` snapshots + drift-vs-previous) exposed as two source-aware agent tools:
+  `data_health` (fresh one-pass type-aware probe on every touch — no reuse-cache, since data is ingested
+  frequently — appends a snapshot + returns drift EVIDENCE) and `read_dq_history` (inspect the trend).
+  Drift is measured; materiality is the analyst's/verifier's agentic call (prompt-steered, no hard gate).
+  Verified: unit (probe/history/drift/tools) + live Postgres (5000-row orders; jsonb/ARRAY skipped for
+  MIN/MAX; freshness captured; seeded-baseline drift flagged). All green, zero regression.
 - **T3 — Deep mode + differential.** The verification-depth dial; twin-author differential re-compute +
   full drift sweep in deep. Tests: deep catches an induced logical error normal misses.
 - **T4 — Metric tree + RCA.** Metrics with decomposition; RCA walks the tree with parallel driver subs;
