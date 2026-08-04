@@ -212,10 +212,21 @@ Net: fewer, simpler tools; the intelligence is in the **harness** (plan, fan-out
   Drift is measured; materiality is the analyst's/verifier's agentic call (prompt-steered, no hard gate).
   Verified: unit (probe/history/drift/tools) + live Postgres (5000-row orders; jsonb/ARRAY skipped for
   MIN/MAX; freshness captured; seeded-baseline drift flagged). All green, zero regression.
-- **T3 — Deep mode + differential.** The verification-depth dial; twin-author differential re-compute +
-  full drift sweep in deep. Tests: deep catches an induced logical error normal misses.
-- **T4 — Metric tree + RCA.** Metrics with decomposition; RCA walks the tree with parallel driver subs;
-  experiences suggest decompositions/leads. Tests: a metric-move RCA fans out drivers + ranks the mover.
+- **T3 — Deep mode + differential. [DEFERRED — build last; twin mode likely dropped.]** Independent
+  verify is already baked in by default (every finish is re-judged), so a twin-author differential must
+  first prove it catches a class of error the default verify misses before it earns its 2× cost. Likely
+  reduces to a verification-DEPTH dial over the existing verifier (normal vs deep = wider drift/consistency
+  sweep), not a second author. Revisit after T4/T5.
+- **T4 — Metric tree + RCA. [DONE]** Structured `Workspace.metric()` + recursive `metric_tree()`
+  (cycle/depth-safe) over the existing user-authored `semantic_layer.json`, exposed as a `metric_tree`
+  tool (gated on a real tree, beside `define`): one call returns a metric's whole driver decomposition
+  (each node's SQL/formula + additive/multiplicative). The analyst prompt makes RCA a systematic WALK --
+  get the tree, `spawn_subagents` one per driver to quantify contributions (reusing T1 fan-out), rank the
+  mover, recurse. Structure is authored/measured; ranking is the agent's judgement (no deterministic
+  walker/ranker, no typed DAG). RCA leads reused from the experiences memory. Config:
+  DIRACDATA_METRIC_TREE_MAX_DEPTH. Verified: 10 unit/integration tests + live fintech metric tree over
+  the real Postgres estate (revenue -> order_volume/aov -> ...). Example: docs/examples/semantic_layer.fintech.json.
+  All green, zero regression.
 - **T5 — Audit trail + tool-surface trim.** Emit the structured trail; remove/fold join_path/data_check/
   describe_tables; source-scope examples. Tests: trail completeness; no-regression on trimmed tools.
 

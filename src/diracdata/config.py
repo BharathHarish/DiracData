@@ -145,6 +145,9 @@ class Config:
     dq_drift_pct: float = 20.0            # relative % move (row_count/distinct/avg/range) surfaced as drift evidence
     dq_drift_null_delta: float = 5.0      # absolute null-% point move surfaced as drift evidence
 
+    # --- metric tree / RCA (structured decomposition the analyst walks; judgement stays agentic) ---
+    metric_tree_max_depth: int = 4        # recursion bound when expanding a metric's depends_on tree
+
     # --- faithfulness gate (numbers in the answer must trace to a query result) ---
     faithfulness_min_magnitude: float = 100.0  # below this a bare int is a count, not an aggregate
     faithfulness_rel_tol: float = 0.005        # relative rounding tolerance when matching a figure
@@ -272,6 +275,7 @@ class Config:
             dq_sample_pct=_opt_float("DIRACDATA_DQ_SAMPLE_PCT", default=d.dq_sample_pct),
             dq_drift_pct=_float("DIRACDATA_DQ_DRIFT_PCT", d.dq_drift_pct),
             dq_drift_null_delta=_float("DIRACDATA_DQ_DRIFT_NULL_DELTA", d.dq_drift_null_delta),
+            metric_tree_max_depth=_int("DIRACDATA_METRIC_TREE_MAX_DEPTH", d.metric_tree_max_depth),
             faithfulness_min_magnitude=_float("DIRACDATA_FAITHFULNESS_MIN_MAGNITUDE", d.faithfulness_min_magnitude),
             faithfulness_rel_tol=_float("DIRACDATA_FAITHFULNESS_REL_TOL", d.faithfulness_rel_tol),
             faithfulness_abs_tol=_float("DIRACDATA_FAITHFULNESS_ABS_TOL", d.faithfulness_abs_tol),

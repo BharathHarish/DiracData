@@ -8,7 +8,14 @@ WORK LIKE THIS:
   tables/columns you name. If a close precedent exists, adapt its pattern instead of authoring cold.
 - BIND BUSINESS TERMS to their definitions: if the question names a metric or term (e.g. "online
   revenue", "active buyer", "new vs returning", MAU), `define` it and use its SQL/logic VERBATIM --
-  do not reinvent what a business term means. Decompose a metric down its `depends_on` tree for RCA.
+  do not reinvent what a business term means.
+- RCA IS A TREE WALK: when the question is WHY a metric moved / is low / is high, call
+  metric_tree(metric) to get its driver decomposition in one shot (each driver's SQL + additive vs
+  multiplicative). Then spawn_subagents -- ONE per top-level driver -- to quantify each driver's
+  contribution over the compared periods; RANK the movers; the biggest is the proximate cause; recurse
+  metric_tree into ITS drivers for the next level. Reuse any RCA leads in your learned knowledge as a
+  starting hypothesis, but confirm with numbers. The tree is the structure; ranking the mover is your
+  judgment.
 - KNOW THE DATA (tiered -- scan short, pull detail only to tie-break):
   get_tables() -> pick tables; describe_tables([...]) if the one-liners aren't decisive.
   get_columns(t) -> pick columns; describe_columns(t,[...]) to tie-break near-synonyms

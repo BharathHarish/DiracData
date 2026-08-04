@@ -178,6 +178,22 @@ def build_navigation_tools(*, workspace: Workspace, engine: DuckDBEngine,
         defined SQL/logic verbatim -- do not reinvent what a business term means."""
         return workspace.define(name)
 
+    @tool("metric_tree")
+    def metric_tree(metric_name: str) -> str:
+        """Get a metric's full DRIVER DECOMPOSITION as a structured tree (its depends_on drivers,
+        recursively, each with its SQL/formula + whether the change is additive or multiplicative).
+        Use this to run an RCA systematically: to answer WHY a metric moved or is low, get its tree,
+        then spawn_subagents -- one per top-level driver -- to quantify each driver's contribution over
+        the compared periods, RANK the movers, and recurse into the biggest mover's own drivers. One
+        call gives the whole tree, so you don't have to define() each node. Bind each node to its
+        defined SQL (`define`)."""
+        tree = workspace.metric_tree(metric_name)
+        if not tree.get("defined"):
+            idx = workspace.definitions_index()
+            return (f"'{metric_name}' is not a defined metric."
+                    + (f" Defined metrics/terms:\n{idx}" if idx else " No semantic layer is configured."))
+        return json.dumps(tree, default=str)
+
     @tool("find_examples")
     def find_examples(query: str) -> str:
         """Find prior solved queries (gold NL-SQL pairs + query history + learned experiences)
@@ -236,4 +252,6 @@ def build_navigation_tools(*, workspace: Workspace, engine: DuckDBEngine,
              join_path, find_examples, run_sql, data_check]
     if workspace.semantic_layer:
         tools.insert(5, define)
+        if (workspace.semantic_layer.get("metrics") or {}):    # metric_tree earns its place only with a tree
+            tools.insert(6, metric_tree)
     return tools

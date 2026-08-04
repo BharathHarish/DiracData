@@ -1,0 +1,59 @@
+{
+  "_comment": "EXAMPLE semantic layer for the fintech demo (orders + payments in Postgres). This is the user-authored 'metric tree': each metric carries its decomposition into driver metrics via depends_on, so RCA is a systematic walk. Drop a file like this at fabric/<schema>/semantic_layer.json (or pass Workspace.load(semantic_layer_path=...)). Descriptions/SQL are illustrative for the seeded demo data.",
+  "business_terms": {
+    "new_customer": {
+      "description": "A customer whose first-ever order falls within the period under analysis.",
+      "sql": "orders.customer_id IN (SELECT customer_id FROM orders GROUP BY customer_id HAVING MIN(order_ts) >= :period_start)"
+    },
+    "returning_customer": {
+      "description": "A customer who placed an order in the period but whose first-ever order predates it.",
+      "sql": "orders.customer_id IN (SELECT customer_id FROM orders GROUP BY customer_id HAVING MIN(order_ts) < :period_start)"
+    }
+  },
+  "metrics": {
+    "revenue": {
+      "description": "Total captured payment amount over the period.",
+      "sql": "SELECT SUM(amount) FROM payments p JOIN orders o ON o.order_id = p.order_id WHERE o.order_ts BETWEEN :period_start AND :period_end",
+      "grain": "period",
+      "decomposition": "multiplicative",
+      "depends_on": ["order_volume", "aov"]
+    },
+    "order_volume": {
+      "description": "Count of distinct orders placed in the period.",
+      "sql": "SELECT COUNT(DISTINCT order_id) FROM orders WHERE order_ts BETWEEN :period_start AND :period_end",
+      "grain": "period",
+      "decomposition": "additive",
+      "depends_on": ["new_customer_volume", "returning_customer_volume"]
+    },
+    "aov": {
+      "description": "Average order value = revenue / order_volume.",
+      "formula": "revenue / order_volume",
+      "grain": "period",
+      "decomposition": "multiplicative",
+      "depends_on": ["avg_unit_price", "segment_mix"]
+    },
+    "new_customer_volume": {
+      "description": "Distinct orders in the period placed by new customers (first-ever order in period).",
+      "sql": "SELECT COUNT(DISTINCT o.order_id) FROM orders o WHERE o.order_ts BETWEEN :period_start AND :period_end AND o.customer_id IN (SELECT customer_id FROM orders GROUP BY customer_id HAVING MIN(order_ts) >= :period_start)",
+      "grain": "period"
+    },
+    "returning_customer_volume": {
+      "description": "Distinct orders in the period placed by returning customers.",
+      "sql": "SELECT COUNT(DISTINCT o.order_id) FROM orders o WHERE o.order_ts BETWEEN :period_start AND :period_end AND o.customer_id IN (SELECT customer_id FROM orders GROUP BY customer_id HAVING MIN(order_ts) < :period_start)",
+      "grain": "period"
+    },
+    "avg_unit_price": {
+      "description": "Average captured amount per order line (price component of AOV).",
+      "sql": "SELECT AVG(amount) FROM payments",
+      "grain": "order"
+    },
+    "segment_mix": {
+      "description": "Share of order volume by customer segment / region (mix component of AOV). A driver spanning the lake customers dimension.",
+      "grain": "period"
+    }
+  },
+  "dimensions": {
+    "status": {"description": "Order lifecycle status.", "values": ["placed", "shipped", "delivered", "cancelled"]},
+    "method": {"description": "Payment method on the payments table.", "values": ["card", "bank_transfer", "wallet"]}
+  }
+}

@@ -199,6 +199,43 @@ class Workspace:
         return (f"No definition found for '{name}'.{avail} "
                 "If what you need isn't a defined term, use describe_table for the raw schema.")
 
+    def metric(self, name: str) -> dict | None:
+        """The RAW metric definition (dict) for a name -- the structured counterpart to define().
+        None if the name isn't a defined metric."""
+        metrics = (self.semantic_layer or {}).get("metrics") or {}
+        key = _normalize_question(name).replace(" ", "_")
+        body = metrics.get(name) or metrics.get(key)
+        return body if isinstance(body, dict) else None
+
+    def metric_tree(self, name: str, *, max_depth: int = _DEFAULTS.metric_tree_max_depth) -> dict:
+        """The recursive driver decomposition of a metric, so RCA is a systematic WALK rather than
+        N separate define() calls. Returns a nested node::
+
+            {name, defined, description?, sql?/formula?, decomposition?, grain?,
+             drivers?: [child node, ...] | drivers_truncated?: [name, ...]}
+
+        Structure only (measured/authored) -- quantifying and ranking the drivers stays the agent's
+        job. Cycle- and depth-safe: a driver that recurses back onto an ancestor, or sits past
+        max_depth, is listed under `drivers_truncated` instead of expanded. A driver name that isn't a
+        defined metric becomes a leaf {name, defined: False} (still nameable in a fan-out)."""
+        def build(nm: str, depth: int, path: frozenset) -> dict:
+            body = self.metric(nm)
+            if body is None:
+                return {"name": nm, "defined": False}
+            node: dict[str, Any] = {"name": nm, "defined": True}
+            for f in ("description", "sql", "formula", "decomposition", "grain"):
+                if body.get(f):
+                    node[f] = body[f]
+            deps = list(body.get("depends_on") or [])
+            if not deps:
+                return node
+            if depth >= max_depth or nm in path:            # bound / cycle -> name the drivers, don't expand
+                node["drivers_truncated"] = deps
+            else:
+                node["drivers"] = [build(d, depth + 1, path | {nm}) for d in deps]
+            return node
+        return build(name, 0, frozenset())
+
     # ---- join graph -------------------------------------------------------------------
     def _add_edge(self, lt: str, lc: str, rt: str, rc: str, source: str) -> None:
         cond = _edge_key(f"{lt}.{lc}", f"{rt}.{rc}")
