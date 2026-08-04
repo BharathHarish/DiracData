@@ -1,0 +1,217 @@
+# Trust, Orchestration & Metric-RCA — evolving the analyst harness
+
+Status: **design** (no code). Companion to `docs/multi-engine-design.md`. Owner: analyst-harness.
+
+## 0. Thesis, and the honest gap
+
+The *philosophy* is proven: one analyst reasoning across a multi-engine estate, every number gated by
+faithfulness + independent verify, on a free model, learning the estate as it goes. The *execution* is
+thin in four specific places, and this doc is the plan to make the code match the philosophy:
+
+1. **The outer loop is flat.** `agents/loop.py` is a single ReAct loop; the `Plan`/`PlanItem` in
+   `WorkingMemory` is advisory (a `plan_update` tool the model may ignore), not the spine that
+   decomposes → dispatches → verifies → assembles. There is no first-class TODO orchestrator.
+2. **Sub-agents run one-at-a-time.** `agents/subagents.py::run_subagent` executes a sub to completion,
+   sequentially. Nothing fans out parallel exploration, parallel per-source reduction, parallel
+   data-sanity, or parallel RCA-driver quantification — the naturally parallel parts of a multi-estate
+   question run serially.
+3. **Verify checks the SQL, not the data.** The finish gate = faithfulness + one logical verify against
+   the golden rules. A correct query over stale/drifted data passes clean. **Layer-1 (data sanity) is
+   entirely unverified.**
+4. **Metrics/RCA are a flat glossary, not a tree.** `define`/`semantic_layer` is a lookup of business
+   terms; there is no metric *decomposition* (driver tree), so RCA is ad-hoc, not a systematic walk.
+
+Everything below strengthens execution around a single spine: **an outer Plan→Execute→Verify loop
+(Claude-Code shape), sub-agents as the parallelism substrate, verification baked into the harness
+(not tools) across three trust layers, and a metric tree that makes RCA first-class** — while *shrinking*
+the tool surface and keeping learning to expectations, not derived structures.
+
+## 1. The three-layer trust model
+
+An answer is only as accurate as (a) the data, (b) the logic, (c) the authoring. Guiding principle,
+which also satisfies "minimal tools, clean learning, no over-seeding": **the learning agent produces the
+*expectations*; the query harness *asserts against them*** — the learning agent writes the "fixtures,"
+the harness runs the "tests" (the coding-agent analogy, made literal).
+
+| Layer | Failure mode | Produced by (learning) | Asserted by (query harness) |
+|---|---|---|---|
+| **1 · Data sanity** | stale (a pipeline didn't run); NULL%/range/distinct **drift** in the columns the query uses | **baselines-with-tolerance** (profile → expected NULL%, range, distinct, distribution quantiles) + **freshness** (max-ts + expected recency) | *opportunistic footprint check*: is the source fresh? are the key columns inside their learned envelope? |
+| **2 · Logical / semantic** | SQL ≠ NL intent: wrong join grain, **LEFT vs INNER**, MECE, condition semantics | concept→(source·table·column) bindings + definitions (framing pins intent up front) | independent verify vs intent; **deep mode: differential** — a twin author writes it a different way, answers must agree |
+| **3 · SQL authoring** | NULL handling, **array 1-vs-0 indexing**, engine-specific higher-order fns, complex/nested types | type + nullability + **nested-type shape** (JSON/struct/array fields) + engine **gotchas** (experiences) | result probes (NULL-induced undercount, grain leak, out-of-range); **deep: recompute the key number a second way** |
+
+The one deterministic gate stays **faithfulness** (numbers trace to a stored result). Everything else —
+including "is this drift *material to this question*?" — is **agentic judgment grounded in measured
+facts**: the harness *measures* drift/freshness deterministically and *feeds* it to the verifier, which
+*judges* materiality. Facts measured, materiality judged — same shape as faithfulness.
+
+## 2. Outer loop: Plan → Execute → Verify (first-class TODO DAG)
+
+Replace the flat ReAct loop's role with a **planner-orchestrator**; the ReAct loop becomes the *executor*
+of a single plan item, not the whole turn.
+
+```
+FRAME  -> bind concept -> source·table·column; pin intent (layer 2 up front)
+PLAN   -> decompose the question into a TODO DAG of VERIFIABLE steps:
+            reduce-at-source(s), reconcile, + explicit verification checkpoints.
+            The plan is persisted -- it is the audit-trail spine.
+EXECUTE-> work each item; independent items FAN OUT to sub-agents (see §3)
+VERIFY -> per-item + final, LAYERED + harness-enforced (see §1, §5)
+ASSEMBLE -> answer + AUDIT TRAIL (§7)
+```
+
+- The plan is a real DAG (`WorkingMemory.Plan` promoted from advisory to authoritative): nodes are
+  typed (`reduce{source}`, `reconcile`, `sanity{table.col}`, `verify`, `rca-driver{metric}`), edges are
+  data dependencies. The orchestrator, not the model's whim, drives execution + checks items off.
+- **Verification is a harness property, not a tool.** Just as a coding harness *runs* the test suite,
+  the gate *runs* the data-sanity + differential + faithfulness checks; the agent cannot skip them. This
+  is what lets the tool surface shrink (§8) while assurance grows.
+- Deep vs normal (§5) is simply *how many verification nodes the plan contains*.
+
+## 3. Sub-agents as the parallelism substrate
+
+Sub-agents are the right tool for every *independent* branch of a multi-estate question — today they run
+serially; the evolution is **concurrent fan-out** (bounded by the `diracdata.execution` pool / a thread
+pool), each sub isolated-context, all sharing the one `ResultStore` (result_ids already globally unique).
+Natural fan-out points:
+
+- **Parallel exploration** — one sub per source maps its schema/fabric while the planner drafts the plan.
+- **Parallel data-sanity** — one sub per source (or per key-column group) runs the layer-1 drift/freshness
+  checks *concurrently* with the main reduction — "opportunistic" becomes "opportunistic *and* free of
+  wall-clock cost."
+- **Parallel per-source reduction** — each source's contribution is independent; reduce them at once, then
+  reconcile.
+- **Parallel differential verify (deep)** — the twin author + multiple verify lenses run side-by-side.
+- **Parallel RCA drivers (§6)** — one sub per driver branch of the metric tree.
+
+Fan-out is a *planner decision*: the DAG's independent nodes are dispatched together; a barrier gathers
+them before a dependent node (reconcile/synthesize). This is the Claude-Code pattern (parallel subtasks →
+join) applied to data. Cost guard: concurrency is bounded and each sub is budgeted, so fan-out trades
+wall-clock for a fixed token ceiling, not an unbounded blowup.
+
+## 4. The data-sanity layer (opportunistic, from learned baselines)
+
+The missing Layer-1, built entirely from the profile fabric (no new heavy structure):
+
+- **Scope = the query footprint.** Only the tables/columns the plan actually touched are checked — reuse
+  the `profile_column` evidence the analyst already gathered; don't rescan the estate.
+- **Checks** (measured, then judged): **freshness** (`MAX(ts)` vs the learned recency expectation → "did a
+  pipeline run?"), **NULL% drift**, **range / domain** violation, **distinct-count / distribution** drift
+  vs the learned baseline+tolerance.
+- **Output = evidence, not a gate.** Anomalies are attached to the verify context ("orders.amount NULL%
+  is 12% vs a 0.02% baseline") and the verifier decides materiality to *this* question — and either
+  proceeds with a caveat, or blocks in deep mode.
+- Runs **concurrently** with reduction via a sanity sub-agent (§3), so normal mode pays little wall-clock.
+
+## 5. Deep vs Normal — the verification-depth dial
+
+Same plan, different verification budget (and it maps to cost/trust + the model router):
+
+- **Normal** — faithfulness + one logical verify + a *light* footprint sanity (freshness + key-column
+  NULL%). Fast; the default; pairs with the cheap model.
+- **Deep** — adds **differential re-computation** (twin author; answers must agree), a **full drift sweep**
+  on every touched column, **adversarial multi-lens semantic verify**, and result cross-checks. Slower,
+  board-grade.
+
+Selection is agentic/config: normal for exploration; escalate to deep when the number matters, or *when
+normal's sanity/verify flags something*. The chosen depth + every verdict **is** the audit trail (§7).
+
+## 6. Metrics + RCA: the metric tree
+
+Today `define` is a flat glossary. Evolve the semantic layer into a **metric tree** — each metric carries
+its **decomposition into driver metrics** (a DAG), so RCA is a systematic *walk*, not improvisation.
+
+```
+revenue = Σ payments.amount
+  ├─ volume  (paying-customer / order count)
+  │     ├─ new-customer volume
+  │     └─ returning-customer volume
+  └─ AOV     (avg order value)
+        ├─ price / unit
+        └─ mix (segment / region share)   ← each driver is itself a defined metric
+```
+
+- **RCA = walk the tree.** "Why is revenue low / why did it move?" → quantify each child driver's
+  contribution → the biggest mover is the proximate cause → recurse into *its* children. Deterministic
+  structure, agentic judgment at each node.
+- **Sub-agents quantify branches in parallel** (§3): one sub per driver, each returns a verified
+  contribution; the parent synthesizes and ranks. This is where sub-agents pay off most — an RCA is
+  embarrassingly parallel across drivers.
+- **The tree is user-authored** (the metric "curation tax" — you cannot invent a company's decomposition),
+  BUT the experiences memory can **suggest candidate decompositions** from verified RCAs and query
+  history, and learn **RCA leads** ("when revenue drops, check returning-customer volume first — it moved
+  last time"). So it's authored-then-learned, not learned-from-nothing.
+- Cross-estate native: a driver's SQL can span sources (volume in Postgres, segment mix in the lake) —
+  the same reduce→reconcile pipeline, per driver.
+
+## 7. The audit trail (the product's trust artifact)
+
+Every answer emits a structured trail — the plan DAG, each step's SQL + source + dialect, each result's
+grain, the data-sanity findings (freshness + drift), the verify verdicts (per layer + final), the mode
+(normal/deep), and the differential comparison if run. This is: the *proof* that the harness verified all
+three layers, the *provenance* for the MCP `ask_estate` endpoint, and the *explanation* an analyst trusts
+("here's the number, here's the tree walk, here's why the data is healthy, here's the cross-check").
+
+## 8. Minimal tools + learning-as-baseline-setter
+
+Verification moving into the harness lets the **tool surface shrink**:
+
+- **Keep:** navigation (`get_tables`/`get_columns`/`profile_column`), `run_sql(source)`,
+  `combine_results`, `plan` (now first-class), `finish`, `spawn` (now parallel), `define` (now a metric
+  tree).
+- **Remove / fold in:** `join_path` (over-seeded — inferred from profiles + descriptions), `data_check`
+  (becomes a *harness* gate layer, not a tool the model may skip), `describe_tables` (folds into
+  `get_tables`), source-scope `find_examples` (no cross-schema noise).
+
+Net: fewer, simpler tools; the intelligence is in the **harness** (plan, fan-out, layered verify) and the
+**fabric** (expectations), not in a proliferation of tools or derived graphs.
+
+## 9. Evolving the learning agent: describer → *baseline-setter* + tree-suggester
+
+- **Profiles become baselines-with-tolerance** (expected NULL%, range, distinct, distribution) so drift is
+  *detectable*, not just describable.
+- **Freshness baselines** per timestamp column (the "pipeline didn't run" detector).
+- **Nested-type shape** — profile JSON/struct/array down to fields (the Q-B gap), so authoring is right
+  first-time and Layer-3 has ground truth.
+- **Gotchas** captured as experiences (array 1-indexing, jsonb casts, engine fn quirks).
+- **Candidate metric decompositions + RCA leads** suggested from verified runs (feeds §6; never invents a
+  metric, but proposes a driver tree for a human to confirm).
+- **Still no join graph** — the fabric is *expectations*; the harness infers joins and verifies.
+
+## 10. Evolving the query agent
+
+- **PLAN becomes the spine** (§2) — a persisted, typed TODO DAG; the ReAct loop executes one node.
+- **Sub-agents fan out** (§3) — parallel exploration / reduction / sanity / RCA-driver / differential.
+- **The finish gate becomes the layered, mode-gated verifier** (§1, §5) — data-sanity(footprint) +
+  logical + authoring-probes + faithfulness; deep adds differential re-compute.
+- **RCA walks the metric tree** (§6) with parallel driver sub-agents.
+- **Shrink the toolset** (§8) and **emit the audit trail** (§7) as a first-class output.
+
+## 11. Phases (each shippable, tested, behind flags, 0 regression on the single-source happy path)
+
+- **T0 — Plan as first-class.** Promote `Plan`/`PlanItem` to a typed DAG the orchestrator drives (nodes:
+  reduce/reconcile/verify). No new behavior beyond structure + the audit-trail skeleton. Tests: plan DAG
+  built + executed; existing e2e unchanged.
+- **T1 — Parallel sub-agents.** Concurrent fan-out over the execution pool; barrier-join. Tests: two
+  independent reductions run concurrently; result_ids stay unique; token ceiling respected.
+- **T2 — Data-sanity layer.** Baselines-with-tolerance from the profiler; opportunistic footprint check
+  (freshness + drift) fed to verify as evidence. Tests: stale/ drifted fixture flagged; healthy passes.
+- **T3 — Deep mode + differential.** The verification-depth dial; twin-author differential re-compute +
+  full drift sweep in deep. Tests: deep catches an induced logical error normal misses.
+- **T4 — Metric tree + RCA.** Metrics with decomposition; RCA walks the tree with parallel driver subs;
+  experiences suggest decompositions/leads. Tests: a metric-move RCA fans out drivers + ranks the mover.
+- **T5 — Audit trail + tool-surface trim.** Emit the structured trail; remove/fold join_path/data_check/
+  describe_tables; source-scope examples. Tests: trail completeness; no-regression on trimmed tools.
+
+## 12. Risks / non-goals
+
+- **Keep the one-deterministic-gate discipline** — data-sanity *measures* deterministically but
+  *materiality* is agentic; don't turn drift thresholds into hard gates.
+- **Differential re-compute doubles cost** — deep mode only.
+- **Drift tolerances need tuning** — start conservative; learn them from repeated healthy runs (the memory
+  flywheel), or false alarms will erode trust faster than misses.
+- **Parallelism ≠ free** — bound concurrency + budget each sub; fan-out trades wall-clock for a *fixed*
+  token ceiling, never an open-ended blowup.
+- **The plan phase adds latency** — accepted: it's what makes verification per-step, produces the audit
+  trail, and makes deep/normal a plan-depth choice.
+- **Non-goal:** auto-inventing metric decompositions or join graphs. Metrics are authored-then-learned;
+  joins are inferred-then-verified. The harness *verifies*; it does not *pre-seed*.
