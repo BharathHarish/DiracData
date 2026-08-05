@@ -149,11 +149,36 @@ class FinishGate:
         self.tokens = 0
         self._max_rejects = config.verify_max_rejects
         self._rejects = 0
+        self.best_answer: str = ""            # best non-empty answer seen (retained even if a gate rejects it)
+        self.best_result_ids: list[str] = []
+
+    def _accept_best(self, note: str) -> str:
+        """Surface the best answer seen so far WITH a caveat -- never return blank. Used when the model
+        degrades into empty finishes or the step budget runs out mid-analysis."""
+        answer = self.best_answer + f"\n\n> ⚠︎ Reviewer note: {note}; surfaced the best completed answer."
+        self.result = {"answer": answer, "result_ids": self.best_result_ids,
+                       "verdict": {"ok": True, "accepted_with_caveat": True}}
+        return "ACCEPTED"
+
+    def finalize_best(self, note: str) -> bool:
+        """On step-budget exhaustion the loop calls this: promote the best answer (if any) instead of
+        returning nothing. Returns True if an answer was surfaced."""
+        if self.result is None and self.best_answer:
+            self._accept_best(note)
+            return True
+        return self.result is not None
 
     def submit(self, answer: str, result_ids: list[str] | None) -> str:
         answer = (answer or "").strip()
         if not answer:
-            return "REJECTED: empty answer."
+            # An empty/malformed finish must NOT spin free: count it toward the breaker, and once the
+            # budget is spent surface the best answer we already have rather than looping to a blank.
+            self._rejects += 1
+            if self.best_answer and self._rejects >= self._max_rejects:
+                return self._accept_best("finish was repeatedly called with no answer text")
+            return ("REJECTED: the `answer` field was EMPTY. Call finish with your FULL written answer "
+                    "text AND the result_ids it rests on -- e.g. finish(answer=\"...\", result_ids=[...]).")
+        self.best_answer, self.best_result_ids = answer, list(result_ids or [])  # retain best-so-far
         plan = self.memory.plan
         if plan.items and not plan.all_verified():
             un = [i.id for i in plan.items if i.status != "verified"]

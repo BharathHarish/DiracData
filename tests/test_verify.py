@@ -137,6 +137,34 @@ class FinishGateTests(unittest.TestCase):
         self.assertIn("Reviewer note", gate.result["answer"])      # concern surfaced honestly
         self.assertIn("MECE concern", gate.result["answer"])
 
+    def test_empty_finish_spam_is_bounded_and_surfaces_best_answer(self) -> None:
+        # regression (deep-RCA stress run): the model degraded into finish({}) with no answer, which
+        # returned "empty" WITHOUT counting toward the breaker -> it spun until the budget ran out and
+        # returned BLANK, discarding a good answer it had already produced. Now empty finishes are bounded
+        # and the best prior answer is surfaced.
+        m = WorkingMemory(goal="g")
+        gate = FinishGate(memory=m, verifier=_stub_verifier(ok=True), config=Config(verify_max_rejects=3))
+        self.assertEqual(gate.submit("The decline was $14.6M, driven by fewer buyers.", []), "ACCEPTED")
+        gate.result = None                                          # simulate a later gate/loop rejecting it
+        self.assertIn("EMPTY", gate.submit("", []))                 # empty finish 1 -> bounded reject
+        self.assertIn("EMPTY", gate.submit("", []))                 # 2
+        out = gate.submit("", [])                                   # 3 -> breaker: surface the best answer
+        self.assertEqual(out, "ACCEPTED")
+        self.assertIn("$14.6M", gate.result["answer"])              # the good answer is NOT lost
+        self.assertTrue(gate.result["verdict"].get("accepted_with_caveat"))
+
+    def test_finalize_best_surfaces_answer_on_budget_exhaustion(self) -> None:
+        m = WorkingMemory(goal="g")
+        gate = FinishGate(memory=m, verifier=_stub_verifier(ok=True))
+        gate.submit("Best-effort answer with the numbers.", ["r1"])
+        gate.result = None                                          # loop exhausted before a clean finish
+        self.assertTrue(gate.finalize_best("step budget exhausted"))
+        self.assertIn("Best-effort answer", gate.result["answer"])
+        self.assertEqual(gate.result["result_ids"], ["r1"])
+        # nothing produced -> still blank (finalize returns False)
+        g2 = FinishGate(memory=WorkingMemory(goal="g"), verifier=_stub_verifier(ok=True))
+        self.assertFalse(g2.finalize_best("x"))
+
     def test_ambiguity_routes_to_ask_user(self) -> None:
         m = WorkingMemory(goal="g")
         gate = FinishGate(memory=m, verifier=_stub_verifier(ok=False, reason="channel or exclusivity?", ambiguity=True))

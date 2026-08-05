@@ -84,6 +84,10 @@ def run_loop(*, model: Any, tools: list[Any], system_prompt: str, memory: Workin
             return _done(finish_gate, tokens, i + 1)
         conversation.append(HumanMessage(content=f"Your answer was NOT accepted. {msg}"))
 
+    # Budget exhausted. Never return blank if the analyst produced a good answer earlier that a gate
+    # rejected (or that got lost in an empty-finish loop) -- surface the best one with a caveat.
+    if finish_gate is not None and finish_gate.finalize_best("step budget exhausted mid-analysis"):
+        return _done(finish_gate, tokens, max_steps)
     return {"text": "", "tokens": tokens, "steps": max_steps, "verdict": None}
 
 

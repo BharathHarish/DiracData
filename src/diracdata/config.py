@@ -146,7 +146,7 @@ class Config:
     dq_drift_null_delta: float = 5.0      # absolute null-% point move surfaced as drift evidence
 
     # --- metric tree / RCA (structured decomposition the analyst walks; judgement stays agentic) ---
-    metric_tree_max_depth: int = 4        # recursion bound when expanding a metric's depends_on tree
+    metric_tree_max_depth: int = 8        # recursion bound when expanding a metric's depends_on tree
 
     # --- v5 triage (recall + classify before framing) ---
     triage_precedents: int = 3            # candidate precedents the triage step reasons over

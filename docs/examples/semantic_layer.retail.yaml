@@ -1,0 +1,138 @@
+# Retail Analytics semantic layer -- a DEEP, arithmetically-reconciling metric tree (7 levels) plus
+# attribution dimensions, every node with pre-defined SQL so RCA is a clean tree-walk for the agent.
+#
+# Grain: one row per online_purchases line. The PERIOD is applied by the analyst via
+#   online_purchases.sale_calendar_day_ref = calendar_days.calendar_day_record  (filter calendar_days.year).
+# Every metric SQL is an EXPRESSION over online_purchases (refunds over online_refunds); the analyst
+# supplies FROM + the period filter. Ratios use ::DOUBLE + NULLIF to avoid integer/zero-division.
+version: 2
+
+business_terms:
+  active_online_buyer:
+    description: A customer who made at least one ONLINE purchase in the period.
+    definition: A distinct online_purchases.billing_client_ref whose sale_calendar_day_ref year is the period.
+  first_online_purchase_year:
+    description: The earliest year in which a customer made any online purchase.
+    definition: MIN(calendar_days.year) over ALL of that billing_client_ref's rows in online_purchases (every year, not just the period).
+  new_online_buyer:
+    description: An active online buyer whose FIRST-EVER online purchase happened in the period.
+    definition: An active_online_buyer in period P whose first_online_purchase_year = P.
+  returning_online_buyer:
+    description: An active online buyer who had already purchased online in an earlier year.
+    definition: An active_online_buyer in period P whose first_online_purchase_year < P.
+
+# ------------------------------------------------------------------------------------------------
+# METRICS -- 15 nodes. depends_on = drivers to attribute a change into; decomposition = how they combine
+# (multiplicative: parent = childA x childB; additive: parent = childA + childB, refund enters negative).
+# ------------------------------------------------------------------------------------------------
+metrics:
+
+  # L1 -- TOP
+  online_net_revenue:
+    description: Online revenue net of refunds -- gross online revenue minus refunded amounts, for the period.
+    formula: online_gross_revenue - online_refund_amount
+    sql: "SUM(online_purchases.net_paid)  -- minus online_refund_amount (see drivers; refunds live in online_refunds)"
+    decomposition: additive
+    depends_on: [online_gross_revenue, online_refund_amount]
+
+  # L2
+  online_gross_revenue:
+    description: Total online net paid (before refunds) in the period.
+    sql: "SUM(online_purchases.net_paid)"
+    decomposition: multiplicative
+    depends_on: [online_active_buyers, revenue_per_buyer]
+  online_refund_amount:
+    description: Total amount refunded on online returns in the period (online_refunds.return_amount).
+    sql: "SUM(online_refunds.return_amount)"
+
+  # L3
+  online_active_buyers:
+    description: Distinct customers who purchased online in the period.
+    sql: "COUNT(DISTINCT online_purchases.billing_client_ref)"
+    decomposition: additive
+    depends_on: [new_active_buyers, returning_active_buyers]
+  revenue_per_buyer:
+    description: Online gross revenue per active buyer.
+    formula: online_gross_revenue / online_active_buyers
+    sql: "SUM(online_purchases.net_paid)::DOUBLE / NULLIF(COUNT(DISTINCT online_purchases.billing_client_ref), 0)"
+    decomposition: multiplicative
+    depends_on: [orders_per_buyer, aov]
+
+  # L4
+  new_active_buyers:
+    description: Active online buyers making their FIRST-EVER online purchase in the period (new_online_buyer).
+    sql: "COUNT(DISTINCT CASE WHEN op.billing_client_ref IN (SELECT billing_client_ref FROM online_purchases o2 JOIN calendar_days c2 ON o2.sale_calendar_day_ref=c2.calendar_day_record GROUP BY billing_client_ref HAVING MIN(c2.year) = :period_year) THEN op.billing_client_ref END)"
+  returning_active_buyers:
+    description: Active online buyers who had already purchased online in an earlier year (returning_online_buyer).
+    sql: "COUNT(DISTINCT CASE WHEN op.billing_client_ref IN (SELECT billing_client_ref FROM online_purchases o2 JOIN calendar_days c2 ON o2.sale_calendar_day_ref=c2.calendar_day_record GROUP BY billing_client_ref HAVING MIN(c2.year) < :period_year) THEN op.billing_client_ref END)"
+  orders_per_buyer:
+    description: Online orders per active buyer (purchase frequency).
+    formula: online_orders / online_active_buyers
+    sql: "COUNT(DISTINCT online_purchases.order_number)::DOUBLE / NULLIF(COUNT(DISTINCT online_purchases.billing_client_ref), 0)"
+  aov:
+    description: Average online order value (gross revenue per distinct order).
+    formula: online_gross_revenue / online_orders
+    sql: "SUM(online_purchases.net_paid)::DOUBLE / NULLIF(COUNT(DISTINCT online_purchases.order_number), 0)"
+    decomposition: multiplicative
+    depends_on: [units_per_order, avg_selling_price]
+
+  # L5
+  units_per_order:
+    description: Average units per online order (basket size).
+    formula: online_units / online_orders
+    sql: "SUM(online_purchases.quantity)::DOUBLE / NULLIF(COUNT(DISTINCT online_purchases.order_number), 0)"
+  avg_selling_price:
+    description: Average realized selling price per unit (gross revenue per unit sold).
+    formula: online_gross_revenue / online_units
+    sql: "SUM(online_purchases.net_paid) / NULLIF(SUM(online_purchases.quantity), 0)"
+    decomposition: multiplicative
+    depends_on: [avg_list_price, price_realization]
+
+  # L6
+  avg_list_price:
+    description: Average list (pre-discount) price per unit.
+    formula: extended_list_amount / online_units
+    sql: "SUM(online_purchases.extended_list_price) / NULLIF(SUM(online_purchases.quantity), 0)"
+  price_realization:
+    description: Fraction of list price actually realized as net revenue (net_paid / extended_list_price).
+    formula: online_gross_revenue / extended_list_amount
+    sql: "SUM(online_purchases.net_paid) / NULLIF(SUM(online_purchases.extended_list_price), 0)"
+    decomposition: multiplicative
+    depends_on: [markdown_ratio, coupon_realization]
+
+  # L7 -- leaves
+  markdown_ratio:
+    description: Fraction of list price kept after markdowns (extended_sales_price / extended_list_price).
+    sql: "SUM(online_purchases.extended_sales_price) / NULLIF(SUM(online_purchases.extended_list_price), 0)"
+  coupon_realization:
+    description: Fraction of marked-down (sales) price kept after coupons/discounts (net_paid / extended_sales_price).
+    sql: "SUM(online_purchases.net_paid) / NULLIF(SUM(online_purchases.extended_sales_price), 0)"
+
+# ------------------------------------------------------------------------------------------------
+# DIMENSIONS -- attribution slices, each with a GROUP-BY expression (sql) + the JOIN to reach it.
+# ------------------------------------------------------------------------------------------------
+dimensions:
+  product_category:
+    description: Top-level merchandise category of the purchased item.
+    sql: "merchandise.category"
+    join: "online_purchases.merchandise_ref = merchandise.merchandise_record"
+  brand:
+    description: Brand of the purchased item.
+    sql: "merchandise.brand"
+    join: "online_purchases.merchandise_ref = merchandise.merchandise_record"
+  income_band:
+    description: Household income bracket of the billing household.
+    sql: "income_ranges.lower_bound || '-' || income_ranges.upper_bound"
+    join: "online_purchases.billing_household_profile_ref = household_profiles.household_profile_record AND household_profiles.income_range_ref = income_ranges.income_range_record"
+  billing_state:
+    description: US state of the billing address.
+    sql: "addresses.state"
+    join: "online_purchases.billing_address_ref = addresses.address_record"
+  gender:
+    description: Gender of the billing customer.
+    sql: "client_profiles.gender"
+    join: "online_purchases.billing_client_profile_ref = client_profiles.client_profile_record"
+  marital_status:
+    description: Marital status of the billing customer.
+    sql: "client_profiles.marital_status"
+    join: "online_purchases.billing_client_profile_ref = client_profiles.client_profile_record"
