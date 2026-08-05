@@ -39,12 +39,14 @@ class TriageParseTests(unittest.TestCase):
 class _ScriptedModel:
     def __init__(self, text):
         self._text = text
+        self.last_messages = None
 
     def bind_tools(self, tools):
         return self
 
     def invoke(self, messages):
         from langchain_core.messages import AIMessage
+        self.last_messages = messages
         return AIMessage(content=self._text)
 
 
@@ -61,6 +63,23 @@ class TriageCallTests(unittest.TestCase):
         tri = make_triage(model)("why did revenue fall in Q2?", _WS())
         self.assertEqual(tri["task_type"], "rca")
         self.assertIn("tokens", tri)
+
+    def test_recall_includes_learned_experience(self):
+        # TO-V5-15: the experience book (learned SQL PATTERNS) is a FIRST-CLASS recall source in triage,
+        # so a learned pattern -- not just gold -- can drive the fast lane. Prior bug: it was invisible.
+        class _WS:
+            def definitions_index(self): return ""
+            def find_examples(self, q, limit=3): return []
+
+        model = _ScriptedModel('{"task_type":"analytics","lane":"fast","precedent_question":"learned pattern",'
+                               '"precedent_sql":"SELECT ... GROUP BY income_range","reasoning":"matches a learned pattern"}')
+        tri = make_triage(model)("revenue decline by income band", _WS(),
+                                 learned="## SQL PATTERNS\n- Revenue decline by segment: SELECT ... GROUP BY income_range")
+        payload = str(model.last_messages[-1].content)
+        self.assertIn("learned_experience", payload)              # learned recall reaches the triage model
+        self.assertIn("Revenue decline by segment", payload)
+        self.assertEqual(tri["lane"], "fast")                     # a learned pattern can seed the fast lane
+        self.assertIn("income_range", tri["precedent_sql"])
 
 
 class V5WiringTests(unittest.TestCase):
@@ -164,6 +183,15 @@ class ModelGardenTests(unittest.TestCase):
         src = inspect.getsource(V5Agent.run)
         self.assertIn("self._route(", src)          # V5 routes the model
         self.assertIn("escalations", src)           # ...and escalates on non-convergence
+
+    def test_escalation_continues_not_restarts(self):
+        # TO-V5-16: on escalation the stronger model is told to BUILD ON prior results (reuse result_ids),
+        # not re-explore from scratch -- the re-derivation that burned ~half the tokens on the RCA run.
+        import inspect
+        from diracdata.agent_v5 import V5Agent
+        src = inspect.getsource(V5Agent.run)
+        self.assertIn("CONTINUE", src)
+        self.assertIn("REUSE those result_ids", src)
 
 
 if __name__ == "__main__":

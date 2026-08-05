@@ -30,7 +30,7 @@ def make_triage(model: Any, sink: Any = null_sink, config: Config = _DEFAULTS):
     precedents; the workspace supplies both (definitions_index + find_examples)."""
     from langchain_core.messages import HumanMessage, SystemMessage
 
-    def triage(goal: str, workspace: Any) -> dict:
+    def triage(goal: str, workspace: Any, learned: str = "") -> dict:
         metrics = ""
         candidates: list[dict] = []
         if workspace is not None:
@@ -44,7 +44,10 @@ def make_triage(model: Any, sink: Any = null_sink, config: Config = _DEFAULTS):
             except Exception:  # noqa: BLE001
                 candidates = []
         payload = {"question": goal, "defined_terms": metrics or "(none)",
-                   "candidate_precedents": candidates or "(none)"}
+                   "candidate_precedents": candidates or "(none)",
+                   # Learned experience (SQL PATTERNS / GOTCHAS / BINDINGS curated from prior runs) is a
+                   # FIRST-CLASS recall source: a matching learned pattern justifies lane=fast + a seed.
+                   "learned_experience": (learned or "").strip() or "(none)"}
         out = collect(model=model, stage="triage", sink=sink, config=config,
                       messages=[SystemMessage(content=_PROMPT),
                                 HumanMessage(content=json.dumps(payload, default=str))])

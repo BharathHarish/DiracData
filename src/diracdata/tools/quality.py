@@ -38,6 +38,17 @@ def build_quality_tools(*, engine: Any, store: Any, schema: str, sources: Any = 
         for col in (snapshot.get("columns") or {}).values():
             nums += [col.get(k) for k in ("null_pct", "distinct", "min", "max", "avg")]
         memory.register_numbers([nums])
+
+    def _record_finding(snapshot: dict, drift: list) -> None:
+        """Write a concise DQ-ledger line into working memory so the SANITY gate can SEE which tables/
+        columns were actually probed (else it re-demands a check that already ran -> a false caveat)."""
+        if memory is None:
+            return
+        cols = snapshot.get("columns") or {}
+        parts = [f"{name} null {c.get('null_pct')}%" for name, c in cols.items() if c.get("null_pct") is not None]
+        tag = f"DRIFT: {len(drift)} finding(s)" if drift else "no drift"
+        memory.add_fact(f"data_health[{snapshot.get('source')}.{snapshot.get('table')}]: "
+                        f"{snapshot.get('row_count')} rows; {', '.join(parts[:8]) or 'probed'}; {tag}")
     multi = sources is not None and len(sources.names()) > 1
     default_name = getattr(engine, "name", None) or "default"
 
@@ -75,6 +86,7 @@ def build_quality_tools(*, engine: Any, store: Any, schema: str, sources: Any = 
                     "source": nm, "table": table, **snap}
         hist.append(nm, table, snapshot)
         _register(snapshot)                       # DQ facts are measured -> faithful to report
+        _record_finding(snapshot, drift)          # DQ ledger -> visible to the sanity gate
         return json.dumps({"snapshot": snapshot, "drift": drift, "history_len": len(prior) + 1}, default=str)
 
     @tool("read_dq_history")

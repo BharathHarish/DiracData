@@ -60,7 +60,7 @@ class V5Agent(V4Agent):
 
         # 1. TRIAGE -- recall + classify, before framing.
         triage = make_triage(self._stage_model(Stage.FRAMING), sink=self.sink, config=self.config)
-        tri = triage(goal, self.workspace)
+        tri = triage(goal, self.workspace, learned=learned)   # recall over gold precedents AND experiences
         self.sink("triage", "info", f"task={tri['task_type']} lane={tri['lane']} :: {tri['reasoning']}")
 
         # 2. PROGRESSIVE PROMPT -- lean core always; the RCA skill body only for a metric-RCA.
@@ -129,7 +129,13 @@ class V5Agent(V4Agent):
             plan, rtok = self._route(goal, signals, failed_profile=plan.authoring_profile)
             tokens += rtok
             self.sink("router", "info", f"escalating -> {plan.authoring_profile or '(global)'} :: {plan.reasoning}")
-            out = self._run_analyst(plan, tools, system_prompt, memory, gate, analyst, task=task)
+            # Continue, don't restart: the prior pass already populated WORKING MEMORY (plan + stored
+            # results). Re-exploring from scratch is what burned tokens; tell the stronger model to build on it.
+            cont = (f"CONTINUE a partially-completed analysis of:\n{goal}\n\nWORKING MEMORY already holds your "
+                    f"prior plan, verified facts, and stored results (r1..). Do NOT re-run exploration, "
+                    f"data_health, or queries you have already done -- REUSE those result_ids. Address the "
+                    f"reviewer's last rejection reason, then finish.")
+            out = self._run_analyst(plan, tools, system_prompt, memory, gate, analyst, task=cont)
             tokens += out["tokens"]
         tokens += gate.tokens + sum(sub_tokens)
         answer = out["text"].strip()

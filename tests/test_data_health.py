@@ -152,6 +152,20 @@ class ToolTests(unittest.TestCase):
         self.assertIn(3.0, mem.seen_numbers)                     # row_count = 3 registered
         self.assertIn(30.0, mem.seen_numbers)                    # amount max = 30.0 registered
 
+    def test_data_health_writes_a_ledger_fact_for_the_sanity_gate(self):
+        # regression: the SANITY gate re-demanded a probe that had already run because the check was
+        # invisible to it. data_health must record a DQ-ledger fact so the gate SEES the table was probed.
+        from diracdata.memory.working_memory import WorkingMemory
+        mem = WorkingMemory(goal="dq")
+        tools = {t.name: t for t in build_quality_tools(
+            engine=self.eng, store=LocalObjectStore(tempfile.mkdtemp()), schema="s",
+            sources=None, memory=mem, config=Config())}
+        tools["data_health"].invoke({"table": "t", "columns": ["amount"]})
+        ledger = [f for f in mem.facts if f.startswith("data_health[")]
+        self.assertTrue(ledger, "expected a data_health[...] ledger fact in working memory")
+        self.assertIn("t]", ledger[0])                            # names the probed table
+        self.assertIn("rows", ledger[0])                          # carries the row count / shape
+
 
 if __name__ == "__main__":
     unittest.main()
