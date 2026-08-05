@@ -32,7 +32,10 @@ from diracdata.memory.working_memory import WorkingMemory
 from diracdata.prompts import dialect_note, load_prompt
 from diracdata.tools import build_control_tools, build_tools, build_transcript_tool
 
-_CORE = load_prompt("analyst_core") + "\n\n" + load_prompt("sql_rules")
+# Lean core: identity + task + the few environment invariants. The golden-SQL checklist (sql_rules)
+# lives on the VERIFIER that ENFORCES it, not stacked onto a competent SQL writer (was ~8k chars of
+# mostly capability-teaching + tool narration -> the clash/overload behind the deep-RCA over-exploration).
+_CORE = load_prompt("analyst_core")
 _RCA_SKILL = load_prompt("skill_rca")
 
 

@@ -87,7 +87,9 @@ class V5WiringTests(unittest.TestCase):
         from diracdata.agent import V4Agent
         from diracdata.agent_v5 import V5Agent, _CORE, _RCA_SKILL
         self.assertTrue(issubclass(V5Agent, V4Agent))            # reuses all of v4, overrides run()
-        self.assertIn("REPORT NUMBERS FAITHFULLY", _CORE)         # lean core carries the invariants
+        self.assertIn("NUMBERS come only from query results", _CORE)   # lean core carries the invariants
+        self.assertLess(len(_CORE), 1200)                              # ...and stays LEAN (was ~8k w/ sql_rules)
+        self.assertNotIn("GOLDEN RULES", _CORE)                        # golden-SQL checklist lives on the verifier now
         self.assertIn("DATA SANITY", _RCA_SKILL)                  # the skill opens with DQ
         self.assertIn("ATTRIBUTE THE CHANGE", _RCA_SKILL)         # ...and owns attribution
         self.assertIn("MINIMISE SERIAL ROUND-TRIPS", _RCA_SKILL)  # ...and is latency-aware (one tree call, wide query, concurrent dims)
