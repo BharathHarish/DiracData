@@ -140,6 +140,94 @@ def build_rca_tools(*, workspace: Any, engine: Any, config: Config = _DEFAULTS) 
             return (f"attribute_change error: {type(exc).__name__}: {exc}. children must be "
                     "[{name,v0,v1}]; ratio needs exactly [numerator, denominator].")
 
+    def _node_values(tree: dict, periods: list) -> dict:
+        """Evaluate every directly-computable node (has `sql`) in the tree over the periods, batched by
+        fact table (one query per fact). Returns name -> {period: value}."""
+        flat: dict[str, dict] = {}
+
+        def walk(n):
+            flat[n["name"]] = n
+            for c in n.get("drivers", []):
+                walk(c)
+        walk(tree)
+        by_fact: dict[str, list] = {}
+        metrics = _layer(workspace).get("metrics") or {}
+        for name, node in flat.items():
+            body = metrics.get(name) or {}
+            if body.get("sql"):
+                fact = _fact_of(_clean_expr(body["sql"]))
+                if fact:
+                    by_fact.setdefault(fact, []).append(name)
+        values: dict[str, dict] = {}
+        for names in by_fact.values():
+            raw = metric_series.func(names, periods)  # type: ignore[attr-defined]
+            data = json.loads(raw) if raw.startswith("{") else None
+            if data is None:
+                continue
+            cols = data["columns"]
+            pi = cols.index("period")
+            for row in data["rows"]:
+                per = row[pi]
+                for nm in names:
+                    if nm in cols:
+                        values.setdefault(nm, {})[per] = float(row[cols.index(nm)] or 0)
+        return values
+
+    @tool("decompose_metric")
+    def decompose_metric(metric: str, period_a, period_b) -> str:
+        """Walk the WHOLE driver tree of a defined metric and return the FULLY-RECONCILED decomposition
+        of its change from period_a to period_b in ONE call -- every driver's exact contribution and %
+        of the move, top-down, with residuals ~0. This is the fast path for a metric root-cause: you do
+        NOT walk the tree node-by-node or hand-compute anything. (Then use rank_movers per dimension for
+        WHERE it concentrated.) Returns nested {name, v0, v1, contribution, pct, drivers:[...]}."""
+        try:
+            tree = workspace.metric_tree(metric)
+            if not tree or not tree.get("defined"):
+                return f"decompose_metric: '{metric}' is not a defined metric tree."
+            periods = [period_a, period_b]
+            vals = _node_values(tree, periods)
+
+            def value_of(node) -> tuple[float, float]:
+                nm = node["name"]
+                if nm in vals:
+                    return vals[nm].get(period_a, 0.0), vals[nm].get(period_b, 0.0)
+                # derived node (no sql): combine children per its decomposition
+                kids = node.get("drivers", [])
+                kv = [value_of(k) for k in kids]
+                dec = (node.get("decomposition") or "additive").lower()
+                if dec == "multiplicative" and len(kv) == 2:
+                    return kv[0][0] * kv[1][0], kv[0][1] * kv[1][1]
+                if dec in ("ratio",) and len(kv) == 2 and kv[1][0] and kv[1][1]:
+                    return kv[0][0] / kv[1][0], kv[0][1] / kv[1][1]
+                return sum(v[0] for v in kv), sum(v[1] for v in kv)   # additive default
+
+            def node_out(node) -> dict:
+                v0, v1 = value_of(node)
+                out = {"name": node["name"], "v0": v0, "v1": v1, "delta": v1 - v0}
+                kids = node.get("drivers", [])
+                if kids:
+                    kind = (node.get("decomposition") or "additive").lower()
+                    triples = [(k["name"], *value_of(k)) for k in kids]
+                    res = attribute(kind, triples)
+                    out["decomposition"] = kind
+                    out["residual"] = res["residual"]
+                    child_contrib = {c.name: c for c in res["contributions"]}
+                    out["drivers"] = []
+                    for k in kids:
+                        sub = node_out(k)
+                        c = child_contrib.get(k["name"])
+                        if c is not None:
+                            sub["contribution"] = c.contribution   # contribution to THIS parent's delta
+                            sub["pct"] = c.pct
+                        out["drivers"].append(sub)
+                return out
+
+            root = node_out(tree)
+            return json.dumps({"metric": metric, "period_a": period_a, "period_b": period_b,
+                               "total_delta": root["delta"], "tree": root}, default=str)
+        except Exception as exc:  # noqa: BLE001
+            return f"decompose_metric error: {type(exc).__name__}: {exc}"
+
     @tool("rank_movers")
     def rank_movers(metric: str, dimension: str, period_a: Any, period_b: Any, top_k: int = 5) -> str:
         """Find WHERE a metric's change concentrated across a DIMENSION -- one grouped query + Adtributor
@@ -168,4 +256,4 @@ def build_rca_tools(*, workspace: Any, engine: Any, config: Config = _DEFAULTS) 
         except Exception as exc:  # noqa: BLE001
             return f"rank_movers error: {type(exc).__name__}: {exc}"
 
-    return [metric_series, attribute_change, rank_movers]
+    return [decompose_metric, metric_series, attribute_change, rank_movers]

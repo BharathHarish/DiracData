@@ -79,6 +79,26 @@ class RcaToolsTests(unittest.TestCase):
         self.assertEqual(_resolve_dim(_LAYER, "category")[0], "product_category")   # tolerant match
         self.assertIsInstance(_resolve_dim(_LAYER, "zzz"), str)                     # miss -> 'did you mean'
 
+    def test_decompose_metric_walks_whole_tree_reconciled(self):
+        # the whole driver tree in ONE call, every level reconciles (residual ~0) -- the fast path that
+        # removes the agent's node-by-node orchestration (and its exploration).
+        ws = SimpleNamespace(semantic_layer={**_LAYER, "metrics": {
+            "revenue": {"sql": "SUM(online_purchases.net_paid)", "decomposition": "multiplicative",
+                        "depends_on": ["buyers", "rev_per_buyer"]},
+            "buyers": {"sql": "COUNT(DISTINCT online_purchases.billing_client_ref)"},
+            "rev_per_buyer": {"sql": "SUM(online_purchases.net_paid)::DOUBLE / "
+                                     "NULLIF(COUNT(DISTINCT online_purchases.billing_client_ref), 0)"}}})
+        # metric_tree lives on the workspace; give the stub a minimal one
+        ws.metric_tree = lambda m: {"name": "revenue", "defined": True, "decomposition": "multiplicative",
+            "drivers": [{"name": "buyers", "defined": True}, {"name": "rev_per_buyer", "defined": True}]}
+        tools = {t.name: t for t in build_rca_tools(workspace=ws, engine=self.eng, config=Config())}
+        out = json.loads(tools["decompose_metric"].invoke({"metric": "revenue", "period_a": 2001, "period_b": 2002}))
+        self.assertAlmostEqual(out["tree"]["residual"], 0.0, places=2)             # top split reconciles
+        kids = {k["name"]: k for k in out["tree"]["drivers"]}
+        self.assertIn("buyers", kids)
+        self.assertAlmostEqual(sum(k["contribution"] for k in out["tree"]["drivers"]),
+                               out["total_delta"], places=2)                       # parts sum to the whole
+
 
 if __name__ == "__main__":
     unittest.main()
