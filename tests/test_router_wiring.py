@@ -55,7 +55,7 @@ class _FakeWorkspace:
 
 
 ROUTE_JSON = ('{"reasoning":"free+strong for a precedented lookup","authoring_profile":'
-              '"bedrock_zai_glm_5_ap_south_1","max_tokens":4000,"temperature":0.0,'
+              '"anthropic_haiku_45","max_tokens":4000,"temperature":0.0,'
               '"max_steps":4,"allow_shortcut":true}')
 
 
@@ -69,10 +69,10 @@ class RouterWiringTests(unittest.TestCase):
         signals = agent._route_signals("count clients", WorkingMemory(goal="q"))
         self.assertTrue(signals.exact_match)
         plan, _ = agent._route("count clients", signals)
-        self.assertEqual(plan.authoring_profile, "bedrock_zai_glm_5_ap_south_1")
+        self.assertEqual(plan.authoring_profile, "anthropic_haiku_45")
         gate = _StubGate()
         agent._run_analyst(plan, [], "sys", WorkingMemory(goal="q"), gate, lambda *a: None)
-        self.assertEqual(built, [("bedrock_zai_glm_5_ap_south_1", 4000)])   # chosen model + budget built
+        self.assertEqual(built, [("anthropic_haiku_45", 4000)])   # chosen model + budget built
         self.assertIsNotNone(gate.result)
 
     def test_router_off_uses_injected_model_no_registry(self) -> None:

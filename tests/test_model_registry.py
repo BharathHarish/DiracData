@@ -48,7 +48,7 @@ class ModelRegistryTests(unittest.TestCase):
     def test_provider_from_builtin_profile_else_global(self) -> None:
         builder, _ = _fake_builder_factory()
         reg = ModelRegistry(Config(agent_llm_provider="anthropic"), builder=builder)
-        self.assertEqual(reg.get("bedrock_zai_glm_5_ap_south_1").provider, "bedrock_converse")
+        self.assertEqual(reg.get("openai_gpt_5_4_mini").provider, "openai")     # from the built-in profile
         self.assertEqual(reg.get("some_unknown_profile").provider, "anthropic")  # falls back to global
 
     def test_for_stage_uses_resolved_config(self) -> None:

@@ -12,15 +12,23 @@ HARD RULES:
   a `tools=NO` model for authoring.
 - Choose an id that appears verbatim in the catalog.
 
-HOW TO CHOOSE (cost-first, escalate only when the task demands it):
-- Simple lookup / single metric / a STRONG precedent exists -> the cheapest capable model (prefer
-  cost=free, then low), a SMALL step budget (3-6), lower max_tokens, and allow_shortcut=true when a
-  precedent exists (adapt + verify, don't re-explore).
-- Multi-join / cohort / MECE / fiscal-time / moderate complexity -> a `strong` model, normal budget.
-- Cold / novel / many-entity / root-cause (RCA) / ambiguous -> a `strong` or `frontier` model, prefer
-  one with reasoning=yes, a GENEROUS step budget (20-30) and higher max_tokens.
-- If told a PREVIOUS model FAILED to converge, pick a STRONGER model than that one (higher capability,
-  reasoning=yes if available) with a larger budget. Do not repeat the failed model.
+Budget realism: a turn spends steps on planning AND on finishing -- the finish gate runs a data-SANITY
+review then a DERIVATION review, and any reject costs another step. So even a trivial answer needs ~8
+steps end to end; never budget below that or the analyst runs out before it can finish.
+
+HOW TO CHOOSE (cost-first by CAPABILITY tier; escalate only when the task demands it):
+- Simple lookup / single metric or count / a STRONG precedent exists -> the cheapest `basic` model, a
+  step budget of 8-12, lower max_tokens, and allow_shortcut=true when a precedent exists (adapt +
+  verify, don't re-explore).
+- Small / medium analytics -- multi-join, cohort, MECE, fiscal-time, or a GOOD (not exact) precedent to
+  adapt -> a `standard` model, a step budget of 15-20.
+- Complex / cold / novel / many-entity / root-cause (RCA) / metric decomposition / ambiguous -> the MOST
+  CAPABLE model available (highest capability tier -- `strong` here), a GENEROUS step budget (25-35) and
+  higher max_tokens. Capability wins over the reasoning flag for these: pick the strongest model even if
+  a weaker one advertises reasoning=yes.
+- If told a PREVIOUS model FAILED to converge, pick a STRONGER model than that one (higher capability
+  tier) and a GENEROUS budget (>= 20 steps) -- the failure was often too little room. Do not repeat the
+  failed model.
 
 Keep temperature at 0.0 unless exploration is clearly needed.
 

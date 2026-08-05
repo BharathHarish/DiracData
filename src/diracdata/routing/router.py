@@ -72,7 +72,7 @@ def _parse_plan(raw: dict, config: Config) -> RunPlan:
         authoring_profile=profile,
         max_tokens=_clamp(raw.get("max_tokens"), 512, 32000, config.agent_llm_max_tokens),
         temperature=temp,
-        max_steps=_clamp(raw.get("max_steps"), 1, 40, config.max_steps),
+        max_steps=_clamp(raw.get("max_steps"), config.router_min_steps, 40, config.max_steps),
         allow_shortcut=bool(raw.get("allow_shortcut")),
         reasoning=str(raw.get("reasoning") or "")[:200],
     )

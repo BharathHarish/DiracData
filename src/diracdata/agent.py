@@ -88,22 +88,21 @@ class V4Agent:
         return RouteSignals(exact_match=exact, slot_match=slot, intent=intent)
 
     def _run_analyst(self, plan: Any, tools: list, system_prompt: str, memory: WorkingMemory,
-                     gate: Any, observe: Any) -> dict:
+                     gate: Any, observe: Any, task: str | None = None) -> dict:
         """Run the analyst loop under a RunPlan. Router off -> the per-stage authoring model at the
         normal budget (today's path). Router on -> the plan's model + budget, with a shortcut hint
-        when a strong precedent exists."""
+        when a strong precedent exists. An explicit `task` (e.g. V5's recall seed) wins over the
+        router's generic shortcut note."""
         if self.config.router_enabled and plan.authoring_profile:
             model = self._registry.get(plan.authoring_profile, max_tokens=plan.max_tokens,
                                        temperature=plan.temperature).model
             max_steps = plan.max_steps
-            task = None
-            if plan.allow_shortcut:
+            if task is None and plan.allow_shortcut:
                 task = (f"Answer this question:\n{memory.goal}\n\nNOTE: a strong precedent for this exact "
                         "question exists among your examples -- adapt and verify it, do not re-explore.")
         else:
             model = self._stage_model(Stage.AUTHORING)
             max_steps = self.max_steps
-            task = None
         return run_loop(model=model, tools=tools, system_prompt=system_prompt, memory=memory,
                         sink=self.sink, max_steps=max_steps, finish_gate=gate, config=self.config,
                         observe=observe, task=task)

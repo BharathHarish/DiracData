@@ -36,7 +36,7 @@ def main() -> int:
                     help="Learn EVERY source in the estate + discover cross-source bindings.")
     ap.add_argument("--sources", default=None,
                     help="YAML manifest declaring the estate (else DIRACDATA_SOURCES).")
-    ap.add_argument("--model-profile", default="bedrock_zai_glm_5_ap_south_1")
+    ap.add_argument("--model-profile", default="anthropic_haiku_45")
     ap.add_argument("--env-file", default=str(ROOT / ".env"))
     ap.add_argument("--data-root", default=str(ROOT / "data"))
     ap.add_argument("--quiet", action="store_true", help="Only progress lines, no streamed thinking.")

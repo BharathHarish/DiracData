@@ -42,22 +42,18 @@ class ChatModelProfile:
     note: str = ""                     # one-line hint for the router
 
 
+# The MODEL GARDEN -- exactly three tiers the router chooses among (cheapest-correct + escalation).
+# Within THIS garden Haiku is the top tier (strong), Mini the mid all-rounder (standard), Nano the
+# cheapest for simple work (basic). The router reads cost_tier + capability + note to pick per query.
 BUILT_IN_MODEL_PROFILES: dict[str, ChatModelProfile] = {
-    "anthropic_sonnet_46": ChatModelProfile(
-        "anthropic_sonnet_46",
-        ModelProvider.ANTHROPIC,
-        "claude-sonnet-4-6",
-        "Claude Sonnet 4.6",
-        cost_tier="mid", capability="frontier", supports_tools=True, supports_reasoning=True,
-        note="strong reasoning; use for cold/complex RCA",
-    ),
     "anthropic_haiku_45": ChatModelProfile(
         "anthropic_haiku_45",
         ModelProvider.ANTHROPIC,
         "claude-haiku-4-5-20251001",
         "Claude Haiku 4.5",
-        cost_tier="low", capability="standard", supports_tools=True, supports_reasoning=False,
-        note="fast, cheap; good for simple/precedented queries",
+        cost_tier="mid", capability="strong", supports_tools=True, supports_reasoning=False,
+        note="MOST CAPABLE in this garden -- use for COMPLEX / cold / root-cause (RCA) / multi-step "
+             "decomposition where correctness matters most",
     ),
     "openai_gpt_5_4_mini": ChatModelProfile(
         "openai_gpt_5_4_mini",
@@ -66,7 +62,8 @@ BUILT_IN_MODEL_PROFILES: dict[str, ChatModelProfile] = {
         "GPT-5.4 Mini",
         credential_source="openai",
         cost_tier="low", capability="standard", supports_tools=True, supports_reasoning=True,
-        note="cheap OpenAI; solid all-rounder",
+        note="all-rounder for SMALL / MEDIUM analytics (multi-join, cohort); prefer when a good "
+             "experience/precedent match exists to adapt",
     ),
     "openai_gpt_5_4_nano": ChatModelProfile(
         "openai_gpt_5_4_nano",
@@ -75,50 +72,8 @@ BUILT_IN_MODEL_PROFILES: dict[str, ChatModelProfile] = {
         "GPT-5.4 Nano",
         credential_source="openai",
         cost_tier="low", capability="basic", supports_tools=True, supports_reasoning=True,
-        note="cheapest OpenAI tier; smallest model - test drives-loop before trusting on RCA",
-    ),
-    "bedrock_qwen3_next_80b_a3b_ap_south_1": ChatModelProfile(
-        "bedrock_qwen3_next_80b_a3b_ap_south_1",
-        ModelProvider.BEDROCK_CONVERSE,
-        "qwen.qwen3-next-80b-a3b",
-        "Qwen3 Next 80B A3B on Bedrock",
-        region_name="ap-south-1",
-        is_moe=True,
-        credential_source="bedrock",
-        cost_tier="free", capability="standard", supports_tools=True, supports_reasoning=False,
-        note="free MoE on Bedrock",
-    ),
-    "bedrock_zai_glm_5_ap_south_1": ChatModelProfile(
-        "bedrock_zai_glm_5_ap_south_1",
-        ModelProvider.BEDROCK_CONVERSE,
-        "zai.glm-5",
-        "Z.ai GLM-5 on Bedrock",
-        region_name="ap-south-1",
-        credential_source="bedrock",
-        cost_tier="free", capability="strong", supports_tools=True, supports_reasoning=False,
-        note="FREE and strong on Bedrock; the default cheap workhorse",
-    ),
-    # Verified on this harness (Converse tool-use + full agentic loop, penny-perfect on a hard
-    # cohort query). gpt-oss-120b also surfaces native reasoning/thinking blocks.
-    "bedrock_kimi_k2_5_ap_south_1": ChatModelProfile(
-        "bedrock_kimi_k2_5_ap_south_1",
-        ModelProvider.BEDROCK_CONVERSE,
-        "moonshotai.kimi-k2.5",
-        "Moonshot Kimi K2.5 on Bedrock",
-        region_name="ap-south-1",
-        credential_source="bedrock",
-        cost_tier="low", capability="strong", supports_tools=True, supports_reasoning=False,
-        note="strong; penny-perfect on a hard cohort query",
-    ),
-    "bedrock_gpt_oss_120b_ap_south_1": ChatModelProfile(
-        "bedrock_gpt_oss_120b_ap_south_1",
-        ModelProvider.BEDROCK_CONVERSE,
-        "openai.gpt-oss-120b-1:0",
-        "OpenAI GPT-OSS 120B on Bedrock",
-        region_name="ap-south-1",
-        credential_source="bedrock",
-        cost_tier="low", capability="strong", supports_tools=True, supports_reasoning=True,
-        note="strong + native reasoning; efficient on hard queries",
+        note="cheapest -- use for SIMPLE single-fact lookups / single-metric counts / strongly "
+             "precedented queries; escalate if it cannot converge",
     ),
 }
 

@@ -7,7 +7,7 @@ then feed the tool result back and ask for a one-word answer. Reports reach / to
 unresponsive Bedrock endpoint) is reported as a failure instead of hanging:
 
     perl -e 'alarm shift; exec @ARGV' 60 \
-        env PYTHONPATH=src .venv/bin/python scripts/model_smoke.py --profile bedrock_kimi_k2_5_ap_south_1
+        env PYTHONPATH=src .venv/bin/python scripts/model_smoke.py --profile anthropic_haiku_45
 """
 
 from __future__ import annotations
@@ -25,13 +25,9 @@ from diracdata.config import settings_from_env  # noqa: E402
 from diracdata.utils.model_factory import ChatModelFactory  # noqa: E402
 
 GARDEN = [
-    "bedrock_zai_glm_5_ap_south_1",
-    "anthropic_haiku_45",
-    "anthropic_sonnet_46",
-    "openai_gpt_5_4_mini",
-    "bedrock_gpt_oss_120b_ap_south_1",
-    "bedrock_qwen3_next_80b_a3b_ap_south_1",
-    "bedrock_kimi_k2_5_ap_south_1",
+    "anthropic_haiku_45",     # complex / RCA
+    "openai_gpt_5_4_mini",    # small / medium
+    "openai_gpt_5_4_nano",    # simple
 ]
 
 

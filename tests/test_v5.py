@@ -142,5 +142,29 @@ class ExperiencesDefaultTests(unittest.TestCase):
         self.assertTrue(Config().agentic_memory_enabled)
 
 
+class ModelGardenTests(unittest.TestCase):
+    """TO-V5-10: the garden is exactly 3 tiers and the router (which picks among them) is ON by default,
+    so V5 auto-routes Haiku=complex / Mini=medium / Nano=simple. Routing behaviour itself is covered by
+    test_router / test_router_wiring; V5.run reuses those same helpers (_route/_run_analyst)."""
+
+    def test_garden_is_exactly_three_tiers(self):
+        from diracdata.utils.model_factory import BUILT_IN_MODEL_PROFILES as P
+        self.assertEqual(set(P), {"anthropic_haiku_45", "openai_gpt_5_4_mini", "openai_gpt_5_4_nano"})
+        self.assertEqual(P["anthropic_haiku_45"].capability, "strong")    # top of THIS garden -> complex
+        self.assertEqual(P["openai_gpt_5_4_mini"].capability, "standard")  # medium
+        self.assertEqual(P["openai_gpt_5_4_nano"].capability, "basic")     # simple
+
+    def test_router_on_by_default(self):
+        from diracdata.config import Config
+        self.assertTrue(Config().router_enabled)
+
+    def test_v5_run_uses_the_router(self):
+        import inspect
+        from diracdata.agent_v5 import V5Agent
+        src = inspect.getsource(V5Agent.run)
+        self.assertIn("self._route(", src)          # V5 routes the model
+        self.assertIn("escalations", src)           # ...and escalates on non-convergence
+
+
 if __name__ == "__main__":
     unittest.main()

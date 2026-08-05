@@ -29,7 +29,7 @@ class _RouterModel:
 
 
 VALID = ('{"reasoning":"free+strong for a simple lookup","authoring_profile":'
-         '"bedrock_zai_glm_5_ap_south_1","max_tokens":4000,"temperature":0.0,'
+         '"anthropic_haiku_45","max_tokens":4000,"temperature":0.0,'
          '"max_steps":4,"allow_shortcut":true}')
 
 
@@ -47,8 +47,8 @@ class AgenticRouterTests(unittest.TestCase):
         m = _RouterModel(VALID)
         route = make_router(m, Config(router_enabled=True))
         plan, _ = route("count clients", RouteSignals(exact_match=True))
-        self.assertEqual(plan.authoring_profile, "bedrock_zai_glm_5_ap_south_1")
-        self.assertEqual(plan.max_steps, 4)
+        self.assertEqual(plan.authoring_profile, "anthropic_haiku_45")
+        self.assertEqual(plan.max_steps, 8)   # scripted 4 -> clamped up to the router_min_steps floor (8)
         self.assertTrue(plan.allow_shortcut)
         self.assertEqual(m.calls, 1)
 

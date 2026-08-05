@@ -23,7 +23,6 @@ from typing import Any
 
 from diracdata.agent import V4Agent, V4Answer
 from diracdata.agents.framing import frame_intent
-from diracdata.agents.loop import run_loop
 from diracdata.agents.subagents import build_subagent_tool
 from diracdata.agents.triage import make_triage
 from diracdata.agents.verify import FinishGate, make_sanity_gate, make_verifier, estate_dialects_note
@@ -110,10 +109,29 @@ class V5Agent(V4Agent):
                     f"it (rebind the literals/period/values) and VERIFY it still holds; do not re-explore "
                     f"from scratch.\nQ: {tri['precedent_q'] or '(prior solved question)'}\nSQL: {tri['precedent_sql']}")
 
-        out = run_loop(model=self._stage_model(Stage.AUTHORING), tools=tools, system_prompt=system_prompt,
-                       memory=memory, sink=self.sink, max_steps=self.max_steps, finish_gate=gate,
-                       config=self.config, observe=_observe("analyst"), task=task)
-        tokens += out["tokens"] + gate.tokens + sum(sub_tokens)
+        # 4. MODEL ROUTE -- the agentic router picks the garden tier (Haiku=complex / Mini=medium /
+        #    Nano=simple) from the catalog + signals; the finish gate stays the correctness authority, so
+        #    a tier that cannot converge is re-routed UPWARD (escalation). Triage already framed rca/lane,
+        #    so pass the precedent signal through. Reuses the exact V4 routing helpers -- no duplicate path.
+        signals = self._route_signals(goal, memory)
+        plan, rtok = self._route(goal, signals)
+        tokens += rtok
+        if self.config.router_enabled:
+            self.sink("router", "info", f"model={plan.authoring_profile or '(global)'} "
+                                        f"max_steps={plan.max_steps} tokens={plan.max_tokens} :: {plan.reasoning}")
+        analyst = _observe("analyst")
+        out = self._run_analyst(plan, tools, system_prompt, memory, gate, analyst, task=task)
+        tokens += out["tokens"]
+        escalations = 0
+        while (gate.result is None and self.config.router_enabled
+               and escalations < self.config.router_max_escalations):
+            escalations += 1
+            plan, rtok = self._route(goal, signals, failed_profile=plan.authoring_profile)
+            tokens += rtok
+            self.sink("router", "info", f"escalating -> {plan.authoring_profile or '(global)'} :: {plan.reasoning}")
+            out = self._run_analyst(plan, tools, system_prompt, memory, gate, analyst, task=task)
+            tokens += out["tokens"]
+        tokens += gate.tokens + sum(sub_tokens)
         answer = out["text"].strip()
         if conversation is not None:
             tokens += self._record(conversation, goal, events, answer)

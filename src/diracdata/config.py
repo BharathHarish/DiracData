@@ -173,8 +173,11 @@ class Config:
     # --- agentic model router (off by default). ON: the main model chooses the analyst's model +
     # budget per turn by reasoning over the model catalog. No routing policy lives here -- only the
     # rollout gate and a safety bound on how many times a failed pick may be re-routed upward. ---
-    router_enabled: bool = False
+    router_enabled: bool = True          # agentic model-garden routing (cheapest-correct + escalation);
+                                         # DIRACDATA_ROUTER_ENABLED=false pins the global model instead
     router_max_escalations: int = 1
+    router_min_steps: int = 8            # floor on the router's per-run step budget: a turn needs room to
+                                         # plan AND finish (sanity + verify gates), so never starve below this
 
     def resolve_stage(self, stage: Stage) -> ResolvedStage:
         """The effective model + sampling for a stage: the stage override if set, else the global
@@ -292,6 +295,7 @@ class Config:
             curator_max_steps=_int("DIRACDATA_CURATOR_MAX_STEPS", d.curator_max_steps),
             router_enabled=_bool("DIRACDATA_ROUTER_ENABLED", d.router_enabled),
             router_max_escalations=_int("DIRACDATA_ROUTER_MAX_ESCALATIONS", d.router_max_escalations),
+            router_min_steps=_int("DIRACDATA_ROUTER_MIN_STEPS", d.router_min_steps),
             stages=_stages_from_env(),
         )
 
