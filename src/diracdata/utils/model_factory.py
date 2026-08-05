@@ -68,6 +68,15 @@ BUILT_IN_MODEL_PROFILES: dict[str, ChatModelProfile] = {
         cost_tier="low", capability="standard", supports_tools=True, supports_reasoning=True,
         note="cheap OpenAI; solid all-rounder",
     ),
+    "openai_gpt_5_4_nano": ChatModelProfile(
+        "openai_gpt_5_4_nano",
+        ModelProvider.OPENAI,
+        "gpt-5.4-nano",
+        "GPT-5.4 Nano",
+        credential_source="openai",
+        cost_tier="low", capability="basic", supports_tools=True, supports_reasoning=True,
+        note="cheapest OpenAI tier; smallest model - test drives-loop before trusting on RCA",
+    ),
     "bedrock_qwen3_next_80b_a3b_ap_south_1": ChatModelProfile(
         "bedrock_qwen3_next_80b_a3b_ap_south_1",
         ModelProvider.BEDROCK_CONVERSE,

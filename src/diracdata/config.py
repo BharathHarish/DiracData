@@ -148,6 +148,9 @@ class Config:
     # --- metric tree / RCA (structured decomposition the analyst walks; judgement stays agentic) ---
     metric_tree_max_depth: int = 4        # recursion bound when expanding a metric's depends_on tree
 
+    # --- v5 triage (recall + classify before framing) ---
+    triage_precedents: int = 3            # candidate precedents the triage step reasons over
+
     # --- finish gate ---
     verify_max_rejects: int = 4          # after this many verifier rejections, accept the best answer
                                          # with the reviewer's unresolved concern surfaced (no dead loop)
@@ -276,6 +279,7 @@ class Config:
             dq_drift_pct=_float("DIRACDATA_DQ_DRIFT_PCT", d.dq_drift_pct),
             dq_drift_null_delta=_float("DIRACDATA_DQ_DRIFT_NULL_DELTA", d.dq_drift_null_delta),
             metric_tree_max_depth=_int("DIRACDATA_METRIC_TREE_MAX_DEPTH", d.metric_tree_max_depth),
+            triage_precedents=_int("DIRACDATA_TRIAGE_PRECEDENTS", d.triage_precedents),
             verify_max_rejects=_int("DIRACDATA_VERIFY_MAX_REJECTS", d.verify_max_rejects),
             verify_evidence_values=_int("DIRACDATA_VERIFY_EVIDENCE_VALUES", d.verify_evidence_values),
             conversations_dir=_path("DIRACDATA_CONVERSATIONS_DIR", d.conversations_dir),
