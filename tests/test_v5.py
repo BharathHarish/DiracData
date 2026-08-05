@@ -90,9 +90,9 @@ class V5WiringTests(unittest.TestCase):
         self.assertIn("NUMBERS come only from query results", _CORE)   # lean core carries the invariants
         self.assertLess(len(_CORE), 1200)                              # ...and stays LEAN (was ~8k w/ sql_rules)
         self.assertNotIn("GOLDEN RULES", _CORE)                        # golden-SQL checklist lives on the verifier now
-        self.assertIn("DATA SANITY", _RCA_SKILL)                  # the skill opens with DQ
-        self.assertIn("ATTRIBUTE THE CHANGE", _RCA_SKILL)         # ...and owns attribution
-        self.assertIn("MINIMISE SERIAL ROUND-TRIPS", _RCA_SKILL)  # ...and is latency-aware (one tree call, wide query, concurrent dims)
+        self.assertIn("spawn_metric_rca", _RCA_SKILL)             # main skill delegates to the specialist
+        self.assertIn("VERIFY, not redo", _RCA_SKILL)             # ...and the main agent's job is to verify
+        self.assertLess(len(_RCA_SKILL), 900)                     # ...and it is TINY (the tool owns the procedure)
         self.assertNotIn("METRIC-RCA SKILL", _CORE)               # the skill is NOT in the core (progressive)
 
 

@@ -30,6 +30,7 @@ from diracdata.agents.verify import FinishGate, make_sanity_gate, make_verifier,
 from diracdata.config import Stage
 from diracdata.memory.working_memory import WorkingMemory
 from diracdata.prompts import dialect_note, load_prompt
+from diracdata.rca.delegate import build_rca_delegate
 from diracdata.tools import build_control_tools, build_tools, build_transcript_tool
 
 # Lean core: identity + task + the few environment invariants. The golden-SQL checklist (sql_rules)
@@ -93,6 +94,14 @@ class V5Agent(V4Agent):
                 system_prompt=system_prompt, sink=self.sink, asker=self.asker, max_steps=self.max_steps,
                 depth=0, max_depth=self.max_subagent_depth, on_tokens=sub_tokens.append,
                 dialect_note=dnote, config=self.config, sources=self.sources))
+        # Metric-RCA: hand the main agent a spawn_metric_rca delegation to the RCA specialist (which has
+        # the deterministic attribution tools). The main agent delegates the decomposition + verifies.
+        if tri["task_type"] == "rca" and self.subagents and (self.workspace and self.workspace.semantic_layer):
+            tools.extend(build_rca_delegate(
+                model=self._stage_model(Stage.AUTHORING), workspace=self.workspace, engine=self.engine,
+                result_store=self.result_store, value_cache=self.value_cache, parent_memory=memory,
+                sink=self.sink, asker=self.asker, max_steps=self.max_steps, dialect_note=dnote,
+                config=self.config, sources=self.sources, on_tokens=sub_tokens.append))
 
         recent = conversation.summary() if conversation is not None else ""
         tokens = tri.get("tokens", 0)

@@ -44,9 +44,11 @@ def _run_parallel(thunks: list, max_workers: int) -> list:
 def run_subagent(*, task: str, context: str, model: Any, workspace: Any, engine: Any,
                  result_store: Any, value_cache: Any, confirmed_intent: dict, system_prompt: str,
                  sink: Any, asker: Any, max_steps: int, depth: int, max_depth: int,
-                 dialect_note: str = "", config: Config = _DEFAULTS, sources: Any = None) -> dict:
+                 dialect_note: str = "", config: Config = _DEFAULTS, sources: Any = None,
+                 extra_tools: list | None = None) -> dict:
     """Run one subagent to completion and return its distilled result. Shares the engine + result
-    store (so result_ids are globally unique and persisted once) but has an isolated context."""
+    store (so result_ids are globally unique and persisted once) but has an isolated context.
+    `extra_tools` adds specialist tools (e.g. the RCA kernels/series tools) on top of the base set."""
     memory = WorkingMemory(goal=task)
     if confirmed_intent:
         memory.confirmed_intent = confirmed_intent           # inherit the parent's framed meaning
@@ -59,7 +61,7 @@ def run_subagent(*, task: str, context: str, model: Any, workspace: Any, engine:
     gate = FinishGate(memory=memory,
                       verifier=make_verifier(model, sink=sink, workspace=workspace,
                                              dialect_note=dialect_note, config=config), config=config)
-    tools = data_tools + build_control_tools(memory=memory, gate=gate)
+    tools = data_tools + (extra_tools or []) + build_control_tools(memory=memory, gate=gate)
     if depth < max_depth:                                    # allow one more level, capped
         tools.extend(build_subagent_tool(
             model=model, workspace=workspace, engine=engine, result_store=result_store,

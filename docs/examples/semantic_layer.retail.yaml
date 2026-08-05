@@ -109,30 +109,41 @@ metrics:
     sql: "SUM(online_purchases.net_paid) / NULLIF(SUM(online_purchases.extended_sales_price), 0)"
 
 # ------------------------------------------------------------------------------------------------
-# DIMENSIONS -- attribution slices, each with a GROUP-BY expression (sql) + the JOIN to reach it.
+# TIME -- how to reach the period dimension per fact table, so a tool can assemble the period filter.
+# ------------------------------------------------------------------------------------------------
+time:
+  online_purchases:
+    join: "JOIN calendar_days ON online_purchases.sale_calendar_day_ref = calendar_days.calendar_day_record"
+    period_column: "calendar_days.year"
+  online_refunds:
+    join: "JOIN calendar_days ON online_refunds.return_calendar_day_ref = calendar_days.calendar_day_record"
+    period_column: "calendar_days.year"
+
+# ------------------------------------------------------------------------------------------------
+# DIMENSIONS -- attribution slices: a GROUP-BY expression (sql) + the full JOIN fragment to reach it.
 # ------------------------------------------------------------------------------------------------
 dimensions:
   product_category:
     description: Top-level merchandise category of the purchased item.
     sql: "merchandise.category"
-    join: "online_purchases.merchandise_ref = merchandise.merchandise_record"
+    join: "JOIN merchandise ON online_purchases.merchandise_ref = merchandise.merchandise_record"
   brand:
     description: Brand of the purchased item.
     sql: "merchandise.brand"
-    join: "online_purchases.merchandise_ref = merchandise.merchandise_record"
+    join: "JOIN merchandise ON online_purchases.merchandise_ref = merchandise.merchandise_record"
   income_band:
     description: Household income bracket of the billing household.
     sql: "income_ranges.lower_bound || '-' || income_ranges.upper_bound"
-    join: "online_purchases.billing_household_profile_ref = household_profiles.household_profile_record AND household_profiles.income_range_ref = income_ranges.income_range_record"
+    join: "JOIN household_profiles ON online_purchases.billing_household_profile_ref = household_profiles.household_profile_record JOIN income_ranges ON household_profiles.income_range_ref = income_ranges.income_range_record"
   billing_state:
     description: US state of the billing address.
     sql: "addresses.state"
-    join: "online_purchases.billing_address_ref = addresses.address_record"
+    join: "JOIN addresses ON online_purchases.billing_address_ref = addresses.address_record"
   gender:
     description: Gender of the billing customer.
     sql: "client_profiles.gender"
-    join: "online_purchases.billing_client_profile_ref = client_profiles.client_profile_record"
+    join: "JOIN client_profiles ON online_purchases.billing_client_profile_ref = client_profiles.client_profile_record"
   marital_status:
     description: Marital status of the billing customer.
     sql: "client_profiles.marital_status"
-    join: "online_purchases.billing_client_profile_ref = client_profiles.client_profile_record"
+    join: "JOIN client_profiles ON online_purchases.billing_client_profile_ref = client_profiles.client_profile_record"
