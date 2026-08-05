@@ -90,7 +90,28 @@ def build_subagent_tool(*, model: Any, workspace: Any, engine: Any, result_store
     parent, so the parent can cite and re-verify them at finish."""
     from langchain.tools import tool
 
+    def _shared_context() -> str:
+        """M3 -- context hand-off: distill the parent's ALREADY-RESOLVED work so a sub-agent starts WARM
+        and does not re-frame, re-probe, or re-derive (the token multiplier on a wide fan-out). Passed
+        automatically to every sub-task, ahead of any caller-supplied context."""
+        facts = parent_memory.facts or []
+        dq = [f for f in facts if f.startswith("data_health[")]
+        other = [f for f in facts if not f.startswith("data_health[")][:config.subagent_facts_merge]
+        lines: list[str] = []
+        intent = (parent_memory.confirmed_intent or {}).get("intent") if parent_memory.confirmed_intent else ""
+        if intent:
+            lines.append("PARENT CONFIRMED INTENT (already framed -- do NOT re-frame): " + str(intent)[:300])
+        if dq:
+            lines.append("DATA HEALTH ALREADY CHECKED (do NOT re-run data_health on these tables):\n"
+                         + "\n".join(f"  - {d}" for d in dq))
+        if other:
+            lines.append("RESOLVED FACTS / BINDINGS / JOINS (REUSE verbatim; do NOT re-explore the schema):\n"
+                         + "\n".join(f"  - {f}" for f in other))
+        return "\n".join(lines)
+
     def _run_one(task: str, context: str):
+        shared = _shared_context()
+        context = f"{shared}\n\n{context}".strip() if shared else context
         try:
             return run_subagent(task=task, context=context, model=model, workspace=workspace,
                                 engine=engine, result_store=result_store, value_cache=value_cache,

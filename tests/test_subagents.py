@@ -57,7 +57,25 @@ class SpawnMergeTests(unittest.TestCase):
             "verdict": None, "tokens": 0}
         self._tool(parent).invoke({"task": "count CA", "context": "gender=F"})
         self.assertEqual(seen["task"], "count CA")
-        self.assertEqual(seen["context"], "gender=F")
+        self.assertIn("gender=F", seen["context"])            # caller context preserved
+
+    def test_m3_hands_off_parent_context_so_subagents_dont_re_derive(self) -> None:
+        # M3: a sub-agent auto-inherits the parent's confirmed intent + DQ ledger + resolved bindings,
+        # told to REUSE them and not re-probe -- the fix for sub-agents re-running data_health/define.
+        parent = WorkingMemory(goal="rca", confirmed_intent={"intent": "why revenue fell", "concepts": []})
+        parent.add_fact("data_health[retail.online_purchases]: 719384 rows; billing_client_ref null 0.02%; no drift")
+        parent.add_fact("online_revenue = SUM(online_purchases.net_paid)")
+        seen = {}
+        subagents.run_subagent = lambda **kw: seen.update(kw) or {
+            "answer": "x", "result_ids": [], "results": {}, "seen_numbers": [], "facts": [],
+            "verdict": None, "tokens": 0}
+        self._tool(parent).invoke({"task": "slice by category", "context": "category dimension"})
+        ctx = seen["context"]
+        self.assertIn("why revenue fell", ctx)                # inherits framed intent (no re-frame)
+        self.assertIn("data_health[retail.online_purchases]", ctx)   # inherits DQ ledger (no re-probe)
+        self.assertIn("do NOT re-run data_health", ctx)
+        self.assertIn("online_revenue = SUM", ctx)            # inherits bindings (no re-derive)
+        self.assertIn("category dimension", ctx)              # ...and still carries the caller's task context
         self.assertEqual(seen["confirmed_intent"], parent.confirmed_intent)  # inherits framed meaning
         self.assertEqual(seen["depth"], 1)                   # main is depth 0 -> child runs at depth 1
 
