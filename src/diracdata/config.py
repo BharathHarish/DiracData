@@ -155,13 +155,16 @@ class Config:
     verify_max_rejects: int = 4          # after this many verifier rejections, accept the best answer
                                          # with the reviewer's unresolved concern surfaced (no dead loop)
     verify_evidence_values: int = 80     # sample of query-returned numbers passed to the verifier as evidence
+    sanity_gate_enabled: bool = True     # run the focused data-sanity gate before the derivation reviewer
+                                         # (a separate lean model call; DIRACDATA_SANITY_GATE_ENABLED=false to skip)
 
     # --- durable conversation memory ---
     conversations_dir: Path = Path(".diracdata/conversations")
     transcript_result_cap: int = 4000  # per tool-call args/result chars kept in transcript.md
 
-    # --- agentic memory (schema-scoped experiences.md, async curator). Off by default. ---
-    agentic_memory_enabled: bool = False
+    # --- agentic memory (schema-scoped experiences.md, async curator). On by default;
+    #     set DIRACDATA_AGENTIC_MEMORY_ENABLED=false to disable. ---
+    agentic_memory_enabled: bool = True
     curator_max_steps: int = 6              # the curator's tool-loop budget
 
     # --- per-stage model + sampling overrides (empty by default -> every stage uses the global model) ---
@@ -282,6 +285,7 @@ class Config:
             triage_precedents=_int("DIRACDATA_TRIAGE_PRECEDENTS", d.triage_precedents),
             verify_max_rejects=_int("DIRACDATA_VERIFY_MAX_REJECTS", d.verify_max_rejects),
             verify_evidence_values=_int("DIRACDATA_VERIFY_EVIDENCE_VALUES", d.verify_evidence_values),
+            sanity_gate_enabled=_bool("DIRACDATA_SANITY_GATE_ENABLED", d.sanity_gate_enabled),
             conversations_dir=_path("DIRACDATA_CONVERSATIONS_DIR", d.conversations_dir),
             transcript_result_cap=_int("DIRACDATA_TRANSCRIPT_RESULT_CAP", d.transcript_result_cap),
             agentic_memory_enabled=_bool("DIRACDATA_AGENTIC_MEMORY_ENABLED", d.agentic_memory_enabled),

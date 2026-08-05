@@ -34,6 +34,7 @@ from diracdata.streaming import collect
 
 _DEFAULTS = Config()
 _VERIFY_PROMPT = load_prompt("verify") + "\n\n" + load_prompt("sql_rules")
+_SANITY_PROMPT = load_prompt("sanity_gate")
 
 
 def build_verify_payload(answer: str, memory: WorkingMemory, workspace: Any = None,
@@ -109,10 +110,41 @@ def make_verifier(model: Any, sink: Any = null_sink, workspace: Any = None, dial
     return verify
 
 
+def make_sanity_gate(model: Any, sink: Any = null_sink, workspace: Any = None, config: Any = None):
+    """Return verify(answer, memory) -> (verdict, tokens) for the FOCUSED data-sanity gate: a small,
+    single-responsibility reviewer that judges ONLY whether the headline figures rest on data whose
+    health was checked and sound. Deliberately lean (no dialect/golden-rules load) so a SMALL model
+    gives the one question its full attention -- the derivation reviewer (make_verifier) owns the rest."""
+    from langchain_core.messages import HumanMessage, SystemMessage
+
+    def verify(answer: str, memory: WorkingMemory) -> tuple[dict, int]:
+        payload = build_verify_payload(answer, memory, workspace=workspace, config=config or _DEFAULTS)
+        out = collect(model=model, stage="sanity", sink=sink, config=config,
+                      messages=[SystemMessage(content=_SANITY_PROMPT),
+                                HumanMessage(content=json.dumps(payload, default=str))])
+        v = loads_json(out["text"])
+        ok = str(v.get("ok")).lower() != "false" and v.get("ok") is not False
+        return ({"ok": bool(ok), "reason": str(v.get("reason") or ""),
+                 "ambiguity": bool(v.get("ambiguity"))}, out["tokens"])
+
+    return verify
+
+
 class FinishGate:
-    def __init__(self, *, memory: WorkingMemory, verifier: Any, config: Config = _DEFAULTS) -> None:
+    """Composes the finish checks: free deterministic ones (plan, cited) then a FAIL-FAST CHAIN of
+    focused agentic reviewers. The sanity gate (data-health) runs BEFORE the derivation reviewer -- it
+    is the precondition (no point reviewing the derivation of a number resting on unchecked data) and
+    the smaller prompt, so failing fast on it saves the bigger call. All reviewers share ONE reject
+    budget so the loop-breaker still bounds the total; a reject names its gate so the analyst knows what
+    to fix. `sanity_verifier` is optional -- omit it (default) and the gate is derivation-only (v3/tests)."""
+
+    def __init__(self, *, memory: WorkingMemory, verifier: Any, sanity_verifier: Any = None,
+                 config: Config = _DEFAULTS) -> None:
         self.memory = memory
         self.verifier = verifier
+        # Chain order = cheap/precondition first: sanity (if wired) then derivation.
+        self._chain = ([("sanity", sanity_verifier)] if sanity_verifier is not None else []) \
+            + [("derivation", verifier)]
         self.result: dict | None = None
         self.tokens = 0
         self._max_rejects = config.verify_max_rejects
@@ -130,20 +162,25 @@ class FinishGate:
         missing = [r for r in (result_ids or []) if r not in self.memory.results]
         if missing:
             return f"REJECTED: cited result_id(s) not found: {missing}. Cite the run_sql results your numbers came from."
-        # Faithfulness is the reviewer's job now (it sees the queries + returned values), not a regex.
-        verdict, vtok = self.verifier(answer, self.memory)
-        self.tokens += vtok
-        if not verdict["ok"]:
+        # Fail-fast chain of focused reviewers (faithfulness/derivation + data-sanity are the reviewers'
+        # job now, seeing the queries + returned values + DQ ledger -- not a regex). First reject wins.
+        verdict = {"ok": True}
+        for name, review in self._chain:
+            verdict, vtok = review(answer, self.memory)
+            self.tokens += vtok
+            if verdict["ok"]:
+                continue
             if verdict.get("ambiguity"):
                 return (f"REJECTED (ambiguous): {verdict['reason']} Ask the user ONE question with "
                         f"ask_user to resolve it, then finish.")
             self._rejects += 1
             if self._rejects < self._max_rejects:
-                return f"REJECTED: {verdict['reason']} Fix it and finish again."
+                return f"REJECTED [{name}]: {verdict['reason']} Fix it and finish again."
             # Loop-breaker: a deadlocked judgement must not burn the step budget -- yield the best
             # answer with the reviewer's unresolved concern surfaced, honestly, for the user to weigh.
             answer = (answer + f"\n\n> ⚠︎ Reviewer note (unresolved after {self._rejects} revisions): "
                       f"{verdict['reason']}")
             verdict = {**verdict, "ok": True, "accepted_with_caveat": True}
+            break
         self.result = {"answer": answer, "result_ids": list(result_ids or []), "verdict": verdict}
         return "ACCEPTED"

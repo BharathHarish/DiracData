@@ -28,7 +28,7 @@ from diracdata.memory.results import ResultStore
 from diracdata.prompts import dialect_note, load_prompt
 from diracdata.agents.subagents import build_subagent_tool
 from diracdata.tools import build_control_tools, build_tools, build_transcript_tool
-from diracdata.agents.verify import FinishGate, make_verifier, estate_dialects_note
+from diracdata.agents.verify import FinishGate, make_sanity_gate, make_verifier, estate_dialects_note
 from diracdata.experiences import MemoryConsolidator, make_curator
 
 _SYSTEM_PROMPT = load_prompt("analyst") + "\n\n" + load_prompt("sql_rules")
@@ -151,7 +151,10 @@ class V4Agent:
         verifier = make_verifier(self._stage_model(Stage.VERIFY), sink=self.sink,
                                  workspace=self.workspace,
                                  dialect_note=estate_dialects_note(self.sources, dnote), config=self.config)
-        gate = FinishGate(memory=memory, verifier=verifier, config=self.config)
+        sanity = (make_sanity_gate(self._stage_model(Stage.VERIFY), sink=self.sink,
+                                   workspace=self.workspace, config=self.config)
+                  if self.config.sanity_gate_enabled else None)
+        gate = FinishGate(memory=memory, verifier=verifier, sanity_verifier=sanity, config=self.config)
         tools = data_tools + build_control_tools(memory=memory, gate=gate)
         sub_tokens: list[int] = []
         if self.subagents:

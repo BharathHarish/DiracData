@@ -26,7 +26,7 @@ from diracdata.agents.framing import frame_intent
 from diracdata.agents.loop import run_loop
 from diracdata.agents.subagents import build_subagent_tool
 from diracdata.agents.triage import make_triage
-from diracdata.agents.verify import FinishGate, make_verifier, estate_dialects_note
+from diracdata.agents.verify import FinishGate, make_sanity_gate, make_verifier, estate_dialects_note
 from diracdata.config import Stage
 from diracdata.memory.working_memory import WorkingMemory
 from diracdata.prompts import dialect_note, load_prompt
@@ -77,7 +77,10 @@ class V5Agent(V4Agent):
         verifier = make_verifier(self._stage_model(Stage.VERIFY), sink=self.sink,
                                  workspace=self.workspace,
                                  dialect_note=estate_dialects_note(self.sources, dnote), config=self.config)
-        gate = FinishGate(memory=memory, verifier=verifier, config=self.config)
+        sanity = (make_sanity_gate(self._stage_model(Stage.VERIFY), sink=self.sink,
+                                   workspace=self.workspace, config=self.config)
+                  if self.config.sanity_gate_enabled else None)
+        gate = FinishGate(memory=memory, verifier=verifier, sanity_verifier=sanity, config=self.config)
         tools = data_tools + build_control_tools(memory=memory, gate=gate)
         sub_tokens: list[int] = []
         if self.subagents:

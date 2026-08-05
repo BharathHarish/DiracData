@@ -74,5 +74,73 @@ class V5WiringTests(unittest.TestCase):
         self.assertNotIn("METRIC-RCA SKILL", _CORE)               # the skill is NOT in the core (progressive)
 
 
+class DQGateWiringTests(unittest.TestCase):
+    """TO-V5-06: data-sanity is its OWN focused agentic gate (sanity_gate.md), NOT overloaded into the
+    derivation reviewer -- so a small model gives each the full attention. verify.md is de-loaded and
+    defers sanity; the payload both gates judge carries the DQ ledger + cited queries. The LLM's actual
+    gating is shown live in scripts/e2e_v5.py (probabilistic)."""
+
+    def test_sanity_gate_is_separate_and_verify_is_deloaded(self):
+        from diracdata.prompts import load_prompt
+        sanity, verify = load_prompt("sanity_gate"), load_prompt("verify")
+        self.assertIn("DATA-SANITY reviewer", sanity)                 # the focused gate owns it now
+        self.assertIn("NEVER PROBED", sanity)                        # absence of a probe is a defect
+        self.assertNotIn("DATA-SANITY IS A GATE", verify)            # de-loaded: verify no longer carries it
+        self.assertIn("SEPARATE focused gate", verify)               # verify explicitly defers sanity
+
+    def test_payload_carries_dq_evidence_and_queries(self):
+        from diracdata.agents.verify import build_verify_payload
+        from diracdata.memory.working_memory import WorkingMemory
+        m = WorkingMemory(goal="why did online revenue fall?")
+        m.facts = "data_health(online_purchases): billing_household_profile_ref 8% NULL -> INNER join drops rows"
+        m.results["r1"] = {"sql": "SELECT ...", "row_count": 20}
+        p = build_verify_payload("It fell 4%.", m)
+        self.assertIn("data_health", p["authoring_notes"])           # DQ finding reaches the reviewer
+        self.assertEqual(p["queries"][0]["result_id"], "r1")         # cited queries reach the reviewer
+
+    def test_gate_chain_runs_sanity_first_and_fails_fast(self):
+        """The chain runs sanity BEFORE derivation, first reject wins, later gates are skipped."""
+        from diracdata.agents.verify import FinishGate
+        from diracdata.memory.working_memory import WorkingMemory
+        calls = []
+
+        def stub(name, ok, reason=""):
+            def v(_answer, _memory):
+                calls.append(name)
+                return ({"ok": ok, "reason": reason, "ambiguity": False}, 1)
+            return v
+
+        m = WorkingMemory(goal="q")
+        gate = FinishGate(memory=m, verifier=stub("derivation", True),
+                          sanity_verifier=stub("sanity", False, reason="probe online_purchases join"))
+        out = gate.submit("answer", [])
+        self.assertTrue(out.startswith("REJECTED [sanity]"))         # sanity gate names itself
+        self.assertEqual(calls, ["sanity"])                          # fail-fast: derivation never ran
+
+    def test_gate_chain_both_pass_runs_both_in_order(self):
+        from diracdata.agents.verify import FinishGate
+        from diracdata.memory.working_memory import WorkingMemory
+        calls = []
+
+        def stub(name):
+            def v(_a, _m):
+                calls.append(name)
+                return ({"ok": True, "reason": "", "ambiguity": False}, 1)
+            return v
+
+        m = WorkingMemory(goal="q")
+        gate = FinishGate(memory=m, verifier=stub("derivation"), sanity_verifier=stub("sanity"))
+        self.assertEqual(gate.submit("answer", []), "ACCEPTED")
+        self.assertEqual(calls, ["sanity", "derivation"])            # sanity precedes derivation
+
+
+class ExperiencesDefaultTests(unittest.TestCase):
+    """TO-V5-07: agentic memory (schema experiences.md) is ON by default; ENV can still disable it."""
+
+    def test_agentic_memory_on_by_default(self):
+        from diracdata.config import Config
+        self.assertTrue(Config().agentic_memory_enabled)
+
+
 if __name__ == "__main__":
     unittest.main()
