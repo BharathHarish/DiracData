@@ -29,6 +29,7 @@ class RouteSignals:
     exact_match: bool = False
     slot_match: bool = False
     intent: str = ""            # the framed intent, if available
+    task_type: str = ""         # triage's verdict: "rca" | "analytics" (so routing sees what triage saw)
 
 
 @dataclass(frozen=True)
@@ -95,6 +96,7 @@ def make_router(model: Any, config: Config, *, sink: Sink = null_sink) -> Route:
         payload = {
             "task": task,
             "intent": signals.intent,
+            "task_type": signals.task_type or "(unclassified)",
             "precedent_exists": bool(signals.exact_match or signals.slot_match),
             "previous_model_that_failed": failed_profile or "(none)",
         }

@@ -193,6 +193,28 @@ class ModelGardenTests(unittest.TestCase):
         self.assertIn("CONTINUE", src)
         self.assertIn("REUSE those result_ids", src)
 
+    def test_router_sees_triage_verdict(self):
+        # TO-V5-18: the router must SEE triage's verdict -- task_type AND a fast-lane precedent -- else it
+        # re-labels a precedented RCA "cold" and sends it to the top model (the bug the user caught).
+        import inspect
+        from diracdata.agent_v5 import V5Agent
+        from diracdata.routing.router import RouteSignals
+        self.assertIn("task_type", RouteSignals.__dataclass_fields__)   # signals carry triage's task_type
+        src = inspect.getsource(V5Agent.run)
+        self.assertIn('task_type=tri["task_type"]', src)               # V5 threads triage into the signals
+        self.assertIn('exact_match=base_signals.exact_match or tri["lane"] == "fast"', src)
+
+    def test_router_payload_carries_task_type_and_precedent(self):
+        from diracdata.routing.router import make_router, RouteSignals
+        from diracdata.config import Config
+        cap = _ScriptedModel('{"authoring_profile":"openai_gpt_5_4_mini","max_tokens":4000,'
+                             '"temperature":0.0,"max_steps":16,"allow_shortcut":true}')
+        route = make_router(cap, Config(router_enabled=True))
+        route("why did revenue fall", RouteSignals(exact_match=True, task_type="rca"))
+        payload = str(cap.last_messages[-1].content)
+        self.assertIn('"task_type": "rca"', payload)                   # router SEES triage's task_type
+        self.assertIn('"precedent_exists": true', payload)             # ...and that a precedent exists
+
 
 if __name__ == "__main__":
     unittest.main()

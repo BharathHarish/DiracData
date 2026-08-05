@@ -19,6 +19,7 @@ the estate/learned context, the record/learn writeback, and every free helper. N
 
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import Any
 
 from diracdata.agent import V4Agent, V4Answer
@@ -102,18 +103,28 @@ class V5Agent(V4Agent):
                                    recent_turns=recent, learned=learned,
                                    max_steps=self.config.framing_max_steps, observe=_observe("framing"))
 
-        # 3. RECALL SEED -- on the fast lane, hand the analyst the precedent to adapt + verify.
+        # 3. RECALL SEED -- on the fast lane, hand the analyst the precedent to adapt + verify. A learned
+        #    pattern often has NO clean SQL (it is descriptive), so seed off the precedent NAME too --
+        #    the pattern text is already in LEARNED KNOWLEDGE; the seed just says "adapt it, don't re-derive".
         task = None
         if tri["lane"] == "fast" and tri["precedent_sql"]:
             task = (f"Answer this question:\n{goal}\n\nA BLESSED PRECEDENT exists for this pattern -- ADAPT "
                     f"it (rebind the literals/period/values) and VERIFY it still holds; do not re-explore "
                     f"from scratch.\nQ: {tri['precedent_q'] or '(prior solved question)'}\nSQL: {tri['precedent_sql']}")
+        elif tri["lane"] == "fast" and tri["precedent_q"]:
+            task = (f"Answer this question:\n{goal}\n\nA LEARNED PATTERN matches this problem: "
+                    f"'{tri['precedent_q']}'. It is in your LEARNED KNOWLEDGE for this schema -- ADAPT that "
+                    f"KNOWN recipe (rebind the period/literals/segments, fill any {{placeholder}}) and VERIFY "
+                    f"it; do NOT re-derive the approach or re-explore the schema from scratch.")
 
         # 4. MODEL ROUTE -- the agentic router picks the garden tier (Haiku=complex / Mini=medium /
-        #    Nano=simple) from the catalog + signals; the finish gate stays the correctness authority, so
-        #    a tier that cannot converge is re-routed UPWARD (escalation). Triage already framed rca/lane,
-        #    so pass the precedent signal through. Reuses the exact V4 routing helpers -- no duplicate path.
-        signals = self._route_signals(goal, memory)
+        #    Nano=simple). CRITICAL: the router must SEE what triage saw -- its task_type AND that a
+        #    precedent exists (fast lane) -- so a precedented RCA short-circuits to a cheaper tier instead
+        #    of being re-labelled "cold" and sent to the top model. The finish gate stays the correctness
+        #    authority; a tier that cannot converge is re-routed UPWARD (escalation).
+        base_signals = self._route_signals(goal, memory)
+        signals = replace(base_signals, task_type=tri["task_type"],
+                          exact_match=base_signals.exact_match or tri["lane"] == "fast")
         plan, rtok = self._route(goal, signals)
         tokens += rtok
         if self.config.router_enabled:
