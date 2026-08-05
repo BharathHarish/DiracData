@@ -115,6 +115,50 @@ class LoopTests(unittest.TestCase):
         self.assertIn("Composed from working memory", out["text"]) # honest caveat
         self.assertEqual(out["result_ids"], ["r1"])
 
+    def test_m5_dedup_skips_a_repeated_readonly_lookup(self) -> None:
+        # M5 anti-churn: the same read-only lookup (define/data_health/...) with EXACT args is not
+        # re-executed -- it returns a "already done" note (the 24x data_health storm on the deep RCA).
+        calls = {"n": 0}
+        from langchain.tools import tool
+
+        @tool("define")
+        def define(name: str) -> str:
+            """Look up a term."""
+            calls["n"] += 1
+            return f"def:{name}"
+
+        model = _ScriptedModel([
+            {"tool_calls": [{"name": "define", "args": {"name": "revenue"}, "id": "c1"}]},
+            {"tool_calls": [{"name": "define", "args": {"name": "revenue"}, "id": "c2"}]},   # exact repeat
+            {"content": "done"},
+        ])
+        seen = []
+        run_loop(model=model, tools=[define], system_prompt="s", memory=WorkingMemory(goal="g"),
+                 max_steps=8, observe=lambda n, a, r: seen.append(r))
+        self.assertEqual(calls["n"], 1)                            # the tool ran ONCE, not twice
+        self.assertTrue(any("already done" in r.lower() for r in seen))   # repeat got the skip note
+
+    def test_m5_stall_nudge_fires_when_no_progress(self) -> None:
+        # after N steps with no new result/verified item, the loop injects a one-time STALL nudge to
+        # push the agent to finish instead of churning.
+        from diracdata.agents.verify import FinishGate
+        from langchain.tools import tool
+
+        @tool("get_columns")
+        def get_columns(table: str) -> str:
+            """List columns."""
+            return "cols: a,b,c"
+
+        from diracdata.config import Config
+        mem = WorkingMemory(goal="g")
+        gate = FinishGate(memory=mem, verifier=lambda a, m: ({"ok": True, "reason": "", "ambiguity": False}, 0))
+        # 6 no-progress turns (varying args so dedup doesn't short-circuit), then a bare-text finish
+        steps = [{"tool_calls": [{"name": "get_columns", "args": {"table": f"t{k}"}, "id": f"c{k}"}]} for k in range(6)]
+        steps.append({"content": "the answer"})
+        out = run_loop(model=_ScriptedModel(steps), tools=[get_columns], system_prompt="s", memory=mem,
+                       max_steps=12, finish_gate=gate, config=Config(no_progress_nudge_steps=3))
+        self.assertEqual(out["text"], "the answer")               # converged; the stall nudge did not break the loop
+
     def test_budget_exhaustion_with_no_results_is_still_blank(self) -> None:
         # nothing was computed -> there is nothing to synthesise; blank is correct (don't fabricate).
         from diracdata.agents.verify import FinishGate

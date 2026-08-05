@@ -24,6 +24,20 @@ from diracdata.streaming import collect
 _DEFAULTS = Config()
 _FINALIZE_PROMPT = load_prompt("finalize")
 
+# M5 anti-churn: read-only, idempotent lookups whose EXACT repeat within a turn is pure waste (the
+# schema/data does not change mid-turn). Repeating one is short-circuited with feedback instead of
+# re-executed. Everything else (run_sql, query_result, plan_update, finish, spawn_*, ask_user, remember,
+# combine_results, data_check) may legitimately repeat and is never deduped.
+_DEDUP_TOOLS = frozenset({"get_tables", "get_columns", "describe_columns", "profile_column",
+                          "join_path", "define", "metric_tree", "find_examples", "data_health"})
+
+
+def _progress_sig(memory: WorkingMemory) -> tuple:
+    """A cheap fingerprint of forward progress: how many results, facts, and VERIFIED plan items exist.
+    Unchanged across steps == the agent is churning (re-probing / re-verifying), not advancing."""
+    verified = sum(1 for it in getattr(memory.plan, "items", []) if getattr(it, "status", "") == "verified")
+    return (len(memory.results), len(memory.facts), verified)
+
 
 def run_loop(*, model: Any, tools: list[Any], system_prompt: str, memory: WorkingMemory,
              sink: Sink = null_sink, max_steps: int = _DEFAULTS.max_steps, stage: str = "analyst",
@@ -40,6 +54,8 @@ def run_loop(*, model: Any, tools: list[Any], system_prompt: str, memory: Workin
     by_name = {t.name: t for t in tools}
     conversation: list[Any] = [HumanMessage(content=task or f"Answer this question:\n{memory.goal}")]
     tokens = 0
+    seen_calls: set[str] = set()                 # M5: exact read-only calls already made this turn
+    prev_sig, last_progress_step, stalled = _progress_sig(memory), 0, False
 
     for i in range(max_steps):
         last = i == max_steps - 1
@@ -60,9 +76,15 @@ def run_loop(*, model: Any, tools: list[Any], system_prompt: str, memory: Workin
                 name, args = call.get("name", ""), call.get("args", {}) or {}
                 sink(stage, "tool_call", f"{name}({json.dumps(args, default=str)[:config.tool_call_display]})")
                 tool = by_name.get(name)
+                call_key = f"{name}:{json.dumps(args, default=str, sort_keys=True)}"
                 if tool is None:
                     obs = f"no such tool: {name}"
+                elif name in _DEDUP_TOOLS and call_key in seen_calls:
+                    obs = (f"SKIPPED (already done): you ran {name} with these EXACT args earlier this turn "
+                           f"-- the result is unchanged and already in your context / WORKING MEMORY. Do NOT "
+                           f"repeat read-only lookups; reuse the stored result or take a NEW action.")
                 else:
+                    seen_calls.add(call_key)
                     try:
                         obs = str(tool.invoke(args))
                     except Exception as exc:  # noqa: BLE001 -- a malformed tool call is feedback, not a crash
@@ -73,6 +95,18 @@ def run_loop(*, model: Any, tools: list[Any], system_prompt: str, memory: Workin
                 conversation.append(ToolMessage(content=obs[:config.obs_cap], tool_call_id=call.get("id", name)))
             if finish_gate is not None and finish_gate.result is not None:  # finish tool accepted
                 return _done(finish_gate, tokens, i + 1)
+            # M5 progress sentinel: if tool turns stop advancing (no new result/fact/verified item), the
+            # agent is churning (re-probing, re-verifying). Nudge it ONCE to stop and finish; the
+            # force-finalize backstop covers the terminal case.
+            sig = _progress_sig(memory)
+            if sig != prev_sig:
+                prev_sig, last_progress_step, stalled = sig, i, False
+            elif finish_gate is not None and not stalled and (i - last_progress_step) >= config.no_progress_nudge_steps:
+                conversation.append(HumanMessage(content=(
+                    "PROGRESS STALL: the last few steps produced no new result or verified plan item -- you are "
+                    "repeating work you have already done. Do NOT re-probe or re-verify finished items. Either "
+                    "call `finish` NOW with the answer you already have, or take ONE concretely different action.")))
+                stalled = True
             if not last:
                 continue
 
