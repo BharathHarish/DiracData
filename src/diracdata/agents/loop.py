@@ -18,9 +18,11 @@ from diracdata.utils.streaming import Sink, null_sink, to_ai_message
 
 from diracdata.config import Config
 from diracdata.memory.working_memory import WorkingMemory
+from diracdata.prompts import load_prompt
 from diracdata.streaming import collect
 
 _DEFAULTS = Config()
+_FINALIZE_PROMPT = load_prompt("finalize")
 
 
 def run_loop(*, model: Any, tools: list[Any], system_prompt: str, memory: WorkingMemory,
@@ -76,19 +78,53 @@ def run_loop(*, model: Any, tools: list[Any], system_prompt: str, memory: Workin
 
         # No actionable tool call, or the last turn: a final-answer attempt.
         text = out["text"]
-        if last or finish_gate is None:
-            return {"text": text, "tokens": tokens, "steps": i + 1,
-                    "verdict": (finish_gate.result or {}).get("verdict") if finish_gate else None}
-        msg = finish_gate.submit(text, [])                     # gate a bare-text finish
-        if finish_gate.result is not None:
-            return _done(finish_gate, tokens, i + 1)
-        conversation.append(HumanMessage(content=f"Your answer was NOT accepted. {msg}"))
+        if finish_gate is None:
+            if last or text.strip():
+                return {"text": text, "tokens": tokens, "steps": i + 1, "verdict": None}
+            continue
+        if last:
+            break                                              # budget spent -> synthesise from memory below
+        if text.strip():                                       # gate a bare-text final answer (non-last turn)
+            msg = finish_gate.submit(text, [])
+            if finish_gate.result is not None:
+                return _done(finish_gate, tokens, i + 1)
+            conversation.append(HumanMessage(content=f"Your answer was NOT accepted. {msg}"))
+        else:
+            conversation.append(HumanMessage(content="Continue: use a tool, or call finish with your answer."))
 
     # Budget exhausted. Never return blank if the analyst produced a good answer earlier that a gate
     # rejected (or that got lost in an empty-finish loop) -- surface the best one with a caveat.
     if finish_gate is not None and finish_gate.finalize_best("step budget exhausted mid-analysis"):
         return _done(finish_gate, tokens, max_steps)
+    # Nothing composed (e.g. the orchestrator fanned out, got sub-results, but ran out before synthesising
+    # a final answer). FORCE a best-effort synthesis from working memory so we never return blank and the
+    # accumulated results/sub-agent findings are not wasted.
+    if finish_gate is not None and memory.results:
+        text, ftok = _compose_from_memory(model, memory, system_prompt, stage, sink, config)
+        tokens += ftok
+        if text.strip():
+            finish_gate.result = {
+                "answer": text.strip() + "\n\n> ⚠︎ Composed from working memory after the step budget was "
+                          "exhausted -- best-effort synthesis; some requested cuts may be incomplete.",
+                "result_ids": list(memory.results.keys()),
+                "verdict": {"ok": True, "accepted_with_caveat": True}}
+            return _done(finish_gate, tokens, max_steps)
     return {"text": "", "tokens": tokens, "steps": max_steps, "verdict": None}
+
+
+def _compose_from_memory(model: Any, memory: WorkingMemory, system_prompt: str, stage: str,
+                         sink: Sink, config: Config) -> tuple[str, int]:
+    """One tool-free model call that writes the best-effort final answer from WORKING MEMORY alone --
+    the last-resort synthesiser when the loop exhausts its budget mid-analysis. Guarantees the user gets
+    the accumulated results (incl. merged sub-agent findings), never a blank."""
+    from langchain_core.messages import HumanMessage, SystemMessage
+    try:
+        out = collect(model=model, stage=stage, sink=sink, config=config, messages=[
+            SystemMessage(content=system_prompt + "\n\n" + _FINALIZE_PROMPT),
+            HumanMessage(content=f"ORIGINAL GOAL: {memory.goal}\n\n## WORKING MEMORY\n{memory.render()}")])
+        return out["text"], out["tokens"]
+    except Exception:  # noqa: BLE001 -- the fallback must never itself crash the turn
+        return "", 0
 
 
 def _done(gate: Any, tokens: int, steps: int) -> dict:

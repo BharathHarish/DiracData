@@ -97,6 +97,33 @@ class LoopTests(unittest.TestCase):
         self.assertEqual(out["text"], "52 customers (from r1)")
         self.assertTrue(out["verdict"]["ok"])
 
+    def test_budget_exhaustion_synthesizes_from_memory_not_blank(self) -> None:
+        # regression (deep-RCA): the orchestrator ran out of steps without a composed answer and returned
+        # BLANK, wasting the results it (and its sub-agents) had gathered. Now the loop force-composes a
+        # best-effort answer from working memory on exhaustion -- never blank when results exist.
+        from diracdata.agents.verify import FinishGate
+        mem = WorkingMemory(goal="why did online net revenue fall")
+        mem.results["r1"] = {"columns": ["decline"], "row_count": 1, "sql": "SELECT ...", "preview": [[-14600000]]}
+        gate = FinishGate(memory=mem, verifier=lambda a, m: ({"ok": True, "reason": "", "ambiguity": False}, 0))
+        model = _ScriptedModel([
+            {"content": ""},                                                    # last turn: no finish -> synthesise
+            {"content": "Online net revenue fell $14.6M. CHECKS: from r1."},    # the forced compose call
+        ])
+        out = run_loop(model=model, tools=[_echo_tool()], system_prompt="sys", memory=mem,
+                       max_steps=1, finish_gate=gate)
+        self.assertIn("$14.6M", out["text"])                       # the synthesis, not blank
+        self.assertIn("Composed from working memory", out["text"]) # honest caveat
+        self.assertEqual(out["result_ids"], ["r1"])
+
+    def test_budget_exhaustion_with_no_results_is_still_blank(self) -> None:
+        # nothing was computed -> there is nothing to synthesise; blank is correct (don't fabricate).
+        from diracdata.agents.verify import FinishGate
+        mem = WorkingMemory(goal="g")
+        gate = FinishGate(memory=mem, verifier=lambda a, m: ({"ok": True, "reason": "", "ambiguity": False}, 0))
+        out = run_loop(model=_ScriptedModel([{"content": ""}]), tools=[_echo_tool()], system_prompt="s",
+                       memory=mem, max_steps=1, finish_gate=gate)
+        self.assertEqual(out["text"], "")
+
 
 if __name__ == "__main__":
     unittest.main()
