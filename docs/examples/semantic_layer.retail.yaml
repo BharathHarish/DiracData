@@ -30,8 +30,7 @@ metrics:
   # L1 -- TOP
   online_net_revenue:
     description: Online revenue net of refunds -- gross online revenue minus refunded amounts, for the period.
-    formula: online_revenue - online_refund_amount
-    sql: "SUM(online_purchases.net_paid)  -- minus online_refund_amount (see drivers; refunds live in online_refunds)"
+    formula: online_revenue - online_refund_amount   # derived (cross-fact) -- evaluate its drivers, not directly
     decomposition: additive
     depends_on: [online_revenue, online_refund_amount]
 

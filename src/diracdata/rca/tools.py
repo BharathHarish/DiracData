@@ -28,9 +28,29 @@ def _layer(workspace: Any) -> dict:
     return getattr(workspace, "semantic_layer", None) or {}
 
 
+def _clean_expr(sql: str) -> str:
+    """Strip inline `-- comments` and collapse whitespace so a metric expression embeds safely into an
+    assembled query (a stray `--` would comment out the rest of the line)."""
+    no_comments = "\n".join(re.sub(r"--.*$", "", line) for line in (sql or "").splitlines())
+    return " ".join(no_comments.split())
+
+
 def _fact_of(metric_sql: str) -> str | None:
     m = _TABLE_REF.search(metric_sql or "")
     return m.group(1) if m else None
+
+
+def _resolve_dim(layer: dict, name: str) -> tuple[str, dict] | str:
+    """Resolve a dimension name tolerantly (product_category ~ category, billing_state ~ state). Returns
+    (canonical_name, def) or a helpful 'did you mean' string listing the valid names."""
+    dims = layer.get("dimensions") or {}
+    if name in dims:
+        return name, dims[name]
+    hits = [d for d in dims if name and (name in d or d.endswith("_" + name) or d.split("_")[-1] == name)]
+    if len(hits) == 1:
+        return hits[0], dims[hits[0]]
+    return (f"dimension '{name}' is not defined. Valid dimensions: {', '.join(sorted(dims))}."
+            + (f" Did you mean: {', '.join(hits)}?" if hits else ""))
 
 
 def _periods_sql(periods: list) -> str:
@@ -55,9 +75,11 @@ def build_rca_tools(*, workspace: Any, engine: Any, config: Config = _DEFAULTS) 
         for nm in names:
             body = metrics.get(nm)
             if not body or not body.get("sql"):
-                raise ValueError(f"metric '{nm}' has no predefined sql in the semantic layer")
-            exprs[nm] = body["sql"]
-            f = _fact_of(body["sql"])
+                raise ValueError(f"metric '{nm}' has no directly-evaluable sql (it is derived -- "
+                                 f"evaluate its depends_on drivers instead)")
+            expr = _clean_expr(body["sql"])
+            exprs[nm] = expr
+            f = _fact_of(expr)
             if f is None:
                 raise ValueError(f"could not determine the fact table for '{nm}' -- use run_sql for this one")
             fact = fact or f
@@ -84,9 +106,10 @@ def build_rca_tools(*, workspace: Any, engine: Any, config: Config = _DEFAULTS) 
             group = [pcol]
             joins = time["join"]
             if slice_by:
-                dim = (_layer(workspace).get("dimensions") or {}).get(slice_by)
-                if not dim or not dim.get("sql") or not dim.get("join"):
-                    return f"metric_series: dimension '{slice_by}' is not defined (with sql+join) in the layer."
+                resolved = _resolve_dim(_layer(workspace), slice_by)
+                if isinstance(resolved, str):
+                    return f"metric_series: {resolved}"       # 'did you mean' -- the agent retries
+                _, dim = resolved
                 select.append(f"{dim['sql']} AS slice")
                 group.append(dim["sql"])
                 joins += " " + dim["join"]

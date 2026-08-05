@@ -72,7 +72,12 @@ class RcaToolsTests(unittest.TestCase):
 
     def test_unknown_metric_is_clear_feedback_not_a_crash(self):
         out = self.tools["metric_series"].invoke({"metrics": ["nope"], "periods": [2001]})
-        self.assertIn("no predefined sql", out)
+        self.assertIn("no directly-evaluable sql", out)
+
+    def test_dimension_alias_resolves(self):
+        from diracdata.rca.tools import _resolve_dim
+        self.assertEqual(_resolve_dim(_LAYER, "category")[0], "product_category")   # tolerant match
+        self.assertIsInstance(_resolve_dim(_LAYER, "zzz"), str)                     # miss -> 'did you mean'
 
 
 if __name__ == "__main__":
