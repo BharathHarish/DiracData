@@ -30,13 +30,13 @@ metrics:
   # L1 -- TOP
   online_net_revenue:
     description: Online revenue net of refunds -- gross online revenue minus refunded amounts, for the period.
-    formula: online_gross_revenue - online_refund_amount
+    formula: online_revenue - online_refund_amount
     sql: "SUM(online_purchases.net_paid)  -- minus online_refund_amount (see drivers; refunds live in online_refunds)"
     decomposition: additive
-    depends_on: [online_gross_revenue, online_refund_amount]
+    depends_on: [online_revenue, online_refund_amount]
 
   # L2
-  online_gross_revenue:
+  online_revenue:
     description: Total online net paid (before refunds) in the period.
     sql: "SUM(online_purchases.net_paid)"
     decomposition: multiplicative
@@ -53,7 +53,7 @@ metrics:
     depends_on: [new_active_buyers, returning_active_buyers]
   revenue_per_buyer:
     description: Online gross revenue per active buyer.
-    formula: online_gross_revenue / online_active_buyers
+    formula: online_revenue / online_active_buyers
     sql: "SUM(online_purchases.net_paid)::DOUBLE / NULLIF(COUNT(DISTINCT online_purchases.billing_client_ref), 0)"
     decomposition: multiplicative
     depends_on: [orders_per_buyer, aov]
@@ -71,7 +71,7 @@ metrics:
     sql: "COUNT(DISTINCT online_purchases.order_number)::DOUBLE / NULLIF(COUNT(DISTINCT online_purchases.billing_client_ref), 0)"
   aov:
     description: Average online order value (gross revenue per distinct order).
-    formula: online_gross_revenue / online_orders
+    formula: online_revenue / online_orders
     sql: "SUM(online_purchases.net_paid)::DOUBLE / NULLIF(COUNT(DISTINCT online_purchases.order_number), 0)"
     decomposition: multiplicative
     depends_on: [units_per_order, avg_selling_price]
@@ -83,7 +83,7 @@ metrics:
     sql: "SUM(online_purchases.quantity)::DOUBLE / NULLIF(COUNT(DISTINCT online_purchases.order_number), 0)"
   avg_selling_price:
     description: Average realized selling price per unit (gross revenue per unit sold).
-    formula: online_gross_revenue / online_units
+    formula: online_revenue / online_units
     sql: "SUM(online_purchases.net_paid) / NULLIF(SUM(online_purchases.quantity), 0)"
     decomposition: multiplicative
     depends_on: [avg_list_price, price_realization]
@@ -95,7 +95,7 @@ metrics:
     sql: "SUM(online_purchases.extended_list_price) / NULLIF(SUM(online_purchases.quantity), 0)"
   price_realization:
     description: Fraction of list price actually realized as net revenue (net_paid / extended_list_price).
-    formula: online_gross_revenue / extended_list_amount
+    formula: online_revenue / extended_list_amount
     sql: "SUM(online_purchases.net_paid) / NULLIF(SUM(online_purchases.extended_list_price), 0)"
     decomposition: multiplicative
     depends_on: [markdown_ratio, coupon_realization]
