@@ -89,11 +89,15 @@ def main() -> int:
     ap.add_argument("--stream-mode", default=None, choices=["off", "messages", "updates", "all"],
                     help="What to stream live: off | messages | updates | all (default: config/messages).")
     ap.add_argument("--no-stream", action="store_true", help="Alias for --stream-mode off.")
+    ap.add_argument("--no-router", action="store_true",
+                    help="Pin --model-profile for every stage (turn OFF garden auto-routing). Use with "
+                         "--model-profile anthropic_haiku_45 to stay entirely on Anthropic (cached, no OpenAI TPM).")
     ap.add_argument("--quiet", action="store_true")
     args = ap.parse_args()
 
-    settings = replace(settings_from_env(args.env_file),
-                       agent_model_profile=args.model_profile, stream_tokens=True)
+    _base = settings_from_env(args.env_file)
+    settings = replace(_base, agent_model_profile=args.model_profile, stream_tokens=True,
+                       router_enabled=(False if args.no_router else _base.router_enabled))
     model = ChatModelFactory(settings=settings).create_chat_model(profile_id=args.model_profile)
     # Estate: --sources <yaml> OR DIRACDATA_SOURCES env -> a SourceRegistry (default = first source).
     # Single-source (default): one DuckDB engine over --schema, wrapped as a one-source registry.
