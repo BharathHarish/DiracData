@@ -86,14 +86,44 @@ class Collector:
                                usage=usage, events=events, message=gathered)
 
 
+_CACHE_SPLIT = "\n\n## WORKING MEMORY"   # everything before this in the system prompt is stable (cacheable)
+
+
+def _cache_anthropic_prefix(messages: list[Any]) -> list[Any]:
+    """Mark the STABLE system+tools prefix with Anthropic `cache_control` so it is cached across turns.
+    The system prompt has a mutating WORKING-MEMORY tail appended each turn, which would otherwise bust
+    the cache -- so we split there and cache only the stable head (identity/skill; tools sit before it in
+    the request and are cached with it). Returns a NEW list; never mutates the caller's messages."""
+    from langchain_core.messages import SystemMessage
+    out = list(messages)
+    for i, m in enumerate(out):
+        if isinstance(m, SystemMessage) and isinstance(m.content, str) and m.content.strip():
+            text = m.content
+            if _CACHE_SPLIT in text:
+                stable, rest = text.split(_CACHE_SPLIT, 1)
+                content = [{"type": "text", "text": stable, "cache_control": {"type": "ephemeral"}},
+                           {"type": "text", "text": _CACHE_SPLIT + rest}]
+            else:
+                content = [{"type": "text", "text": text, "cache_control": {"type": "ephemeral"}}]
+            out[i] = SystemMessage(content=content)
+            break
+    return out
+
+
 def collect(*, model: Any, messages: list[Any], stage: str = "analyst", sink: Sink = null_sink,
             config: Any = None, provider: str | None = None) -> dict:
     """Dispatch a model call and return the legacy `{text, tool_calls, tokens, message}` dict (drop-in
     for `stream_and_collect`), plus `reasoning`. Uses the event-envelope Collector when
     `config.stream_envelope_enabled` is on; otherwise the legacy path -- so this is a no-op by default.
     """
+    prov = provider or detect_provider(model)
+    if prov == "anthropic" and (config is None or getattr(config, "anthropic_prompt_cache", True)):
+        try:
+            messages = _cache_anthropic_prefix(messages)
+        except Exception:  # noqa: BLE001 -- caching is an optimization, never break the call
+            pass
     if config is not None and getattr(config, "stream_envelope_enabled", False):
-        r = Collector(config).run(model=model, messages=messages, stage=stage, sink=sink, provider=provider)
+        r = Collector(config).run(model=model, messages=messages, stage=stage, sink=sink, provider=prov)
         return {"text": r.answer, "tool_calls": r.tool_calls, "tokens": r.tokens,
                 "message": r.message, "reasoning": r.reasoning}
     return stream_and_collect(model=model, messages=messages, stage=stage, sink=sink)

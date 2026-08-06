@@ -180,6 +180,8 @@ class Config:
     router_max_escalations: int = 1
     router_min_steps: int = 8            # floor on the router's per-run step budget: a turn needs room to
                                          # plan AND finish (sanity + verify gates), so never starve below this
+    anthropic_prompt_cache: bool = True  # cache the stable system+tools prefix on Anthropic calls (the
+                                         # mutating working-memory tail stays uncached) -- big cost/latency win
 
     def resolve_stage(self, stage: Stage) -> ResolvedStage:
         """The effective model + sampling for a stage: the stage override if set, else the global
