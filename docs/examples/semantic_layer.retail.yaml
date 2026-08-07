@@ -107,6 +107,50 @@ metrics:
     description: Fraction of marked-down (sales) price kept after coupons/discounts (net_paid / extended_sales_price).
     sql: "SUM(online_purchases.net_paid) / NULLIF(SUM(online_purchases.extended_sales_price), 0)"
 
+  # ==============================================================================================
+  # WEB P&L / MARGIN TREE -- a SECOND, distinct 7-level tree rooted at PROFIT (not revenue). It reuses
+  # the revenue subtree above (online_revenue, DRY) on one arm and adds a NEW cost/margin arm the
+  # revenue tree never touches. NOTE on this dataset: wholesale COGS EXCEEDS net paid, so web margin is
+  # NEGATIVE -- a real "this line loses money on COGS; did the loss deepen, and why -- volume or margin?"
+  # scenario. Signs are baked into the SQL so every node reconciles with the exact attribution kernels:
+  #   web_gross_profit has its OWN sql (used directly), and web_cogs is stored NEGATIVE so the additive
+  #   arm profit = revenue + cogs reconciles. net_margin_rate is a RATIO node (profit / revenue).
+  #
+  #   web_net_profit = online_revenue x net_margin_rate                          [multiplicative]
+  #     online_revenue -> [revenue subtree above] ... -> markdown_ratio          (depth 7 on this arm)
+  #     net_margin_rate = web_gross_profit / online_revenue                      [ratio]
+  #       web_gross_profit = online_revenue + web_cogs                           [additive]
+  #         web_cogs  (stored NEGATIVE)
+  # ----------------------------------------------------------------------------------------------
+
+  # L1 -- TOP (profit)
+  web_net_profit:
+    description: Web net profit for the period -- online revenue scaled by the net margin rate (net paid minus wholesale COGS). Negative on this data, since COGS exceeds net paid.
+    formula: online_revenue * net_margin_rate
+    sql: "SUM(online_purchases.net_paid) - SUM(online_purchases.extended_wholesale_cost)"
+    decomposition: multiplicative
+    depends_on: [online_revenue, net_margin_rate]
+
+  # L2 (margin arm) -- the ratio node the revenue tree never had
+  net_margin_rate:
+    description: Net margin rate = web gross profit / online revenue (fraction of revenue kept after wholesale COGS). Negative here because COGS > net paid.
+    formula: web_gross_profit / online_revenue
+    sql: "(SUM(online_purchases.net_paid) - SUM(online_purchases.extended_wholesale_cost))::DOUBLE / NULLIF(SUM(online_purchases.net_paid), 0)"
+    decomposition: ratio
+    depends_on: [web_gross_profit, online_revenue]
+
+  # L3 (margin arm)
+  web_gross_profit:
+    description: Web gross profit = online revenue minus wholesale cost of goods sold, for the period (negative here).
+    sql: "SUM(online_purchases.net_paid) - SUM(online_purchases.extended_wholesale_cost)"
+    decomposition: additive
+    depends_on: [online_revenue, web_cogs]
+
+  # L4 (margin arm) -- leaf, stored NEGATIVE so profit = revenue + cogs reconciles under the additive kernel
+  web_cogs:
+    description: Web cost of goods sold (wholesale), entered as a NEGATIVE amount so that gross profit = revenue + cogs reconciles (a cost reduces profit).
+    sql: "-SUM(online_purchases.extended_wholesale_cost)"
+
 # ------------------------------------------------------------------------------------------------
 # TIME -- how to reach the period dimension per fact table, so a tool can assemble the period filter.
 # ------------------------------------------------------------------------------------------------
@@ -186,6 +230,10 @@ dimensions:
     description: Gender of the billing customer.
     sql: "client_profiles.gender"
     join: "JOIN client_profiles ON online_purchases.billing_client_profile_ref = client_profiles.client_profile_record"
+  age_band:
+    description: Age/generation cohort of the billing customer, bucketed by birth year (period-independent).
+    sql: "CASE WHEN clients.birth_year >= 1980 THEN 'GenY+ (1980+)' WHEN clients.birth_year >= 1965 THEN 'GenX (1965-79)' WHEN clients.birth_year >= 1946 THEN 'Boomer (1946-64)' ELSE 'Silent (<1946)' END"
+    join: "JOIN clients ON online_purchases.billing_client_ref = clients.client_record"
   marital_status:
     description: Marital status of the billing customer.
     sql: "client_profiles.marital_status"

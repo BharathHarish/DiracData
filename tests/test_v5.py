@@ -158,6 +158,21 @@ class ChannelFactsTests(unittest.TestCase):
         self.assertIn("order_id=order_number", idx)                  # online's real order id
         self.assertIn("address_ref=address_ref", idx)                # store has no billing_ prefix
 
+    def test_definitions_index_renders_attribution_dimensions(self):
+        """The defined dimensions (age_band, gender, income_band...) must be SURFACED so the agent binds a
+        user's 'age groups' to the blessed age_band dimension instead of guessing a raw column."""
+        from diracdata.context.workspace import Workspace
+        ws = Workspace.__new__(Workspace)
+        ws.semantic_layer = {"dimensions": {
+            "age_band": {"description": "Age/generation cohort of the billing customer.", "sql": "CASE ...",
+                         "join": "JOIN clients ..."},
+            "gender": {"description": "Gender of the billing customer.", "sql": "client_profiles.gender"}}}
+        idx = ws.definitions_index()
+        self.assertIn("ATTRIBUTION DIMENSIONS", idx)
+        self.assertIn("age_band", idx)                                # the newly-added dimension is visible
+        self.assertIn("gender", idx)
+        self.assertNotIn("CASE ...", idx)                            # index stays compact -- SQL only via define()
+
     def test_payload_carries_dq_evidence_and_queries(self):
         from diracdata.agents.verify import build_verify_payload
         from diracdata.memory.working_memory import WorkingMemory

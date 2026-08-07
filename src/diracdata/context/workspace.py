@@ -172,6 +172,14 @@ class Workspace:
                 deps = (body or {}).get("depends_on") or []
                 extra = f"  -> depends_on ({(body or {}).get('decomposition','')}): {', '.join(deps)}" if deps else ""
                 lines.append(f"  - {name}: {d}{extra}")
+        dims = sl.get("dimensions") or {}
+        if dims:
+            lines.append("ATTRIBUTION DIMENSIONS (the blessed slices to break a metric down by / attribute a "
+                         "change into -- pass these exact names to rank_movers or GROUP BY them; bind a "
+                         "user's phrasing to one of these rather than guessing a raw column; call `define` "
+                         "for the SQL + join):")
+            for name, body in dims.items():
+                lines.append(f"  - {name}: {_one_line((body or {}).get('description'))}")
         channels = sl.get("channels") or {}
         if channels:
             lines.append("SALES-CHANNEL FACT TABLES (key columns DIFFER per channel -- use THESE exact "
