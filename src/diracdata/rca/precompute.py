@@ -17,6 +17,7 @@ triage can't resolve it, pre-compute returns None and the harness falls back to 
 from __future__ import annotations
 
 import json
+from collections import deque
 from typing import Any
 
 from diracdata.config import Config
@@ -24,6 +25,30 @@ from diracdata.rca.tools import _layer, build_rca_tools
 from diracdata.utils.streaming import null_sink
 
 _DEFAULTS = Config()
+
+
+def _sliceable_metric(workspace: Any, root: str) -> str | None:
+    """The metric to slice dimensions on: `root` if it is directly-evaluable (has `sql`), else its
+    TOP sql-bearing driver (breadth-first over depends_on). A formula-only top (e.g. net_revenue =
+    revenue - refunds) can't be GROUP BY'd, so rank_movers must attribute its principal measured arm
+    (revenue) -- which carries the move. None if nothing in the tree has sql."""
+    metrics = _layer(workspace).get("metrics") or {}
+
+    def has_sql(n: str) -> bool:
+        return bool((metrics.get(n) or {}).get("sql"))
+
+    seen: set[str] = set()
+    q: deque[str] = deque([root])
+    while q:
+        n = q.popleft()
+        if n in seen:
+            continue
+        seen.add(n)
+        if has_sql(n):
+            return n
+        for d in (metrics.get(n) or {}).get("depends_on") or []:
+            q.append(d)
+    return None
 
 
 def _fmt(v: float) -> str:
@@ -86,10 +111,14 @@ def precompute_rca(*, target: dict, workspace: Any, engine: Any, result_store: A
         return None   # tool rejected (unusual metric SQL) -> agentic fallback
     decomp = json.loads(dj)
 
+    # Rank dimensions on a directly-evaluable metric: the target if it has sql, else its top measured
+    # arm (a formula-only top can't be grouped). So the demographic movers are ALWAYS computed, never
+    # left to the agent to pick (which is what regressed to a bogus education_status "age proxy").
+    slice_metric = _sliceable_metric(workspace, metric) or metric
     dims = list((_layer(workspace).get("dimensions") or {}).keys())
     movers: dict[str, list] = {}
     for d in dims:
-        rj = tools["rank_movers"].func(metric, d, pa, pb, config.rca_precompute_top_k)
+        rj = tools["rank_movers"].func(slice_metric, d, pa, pb, config.rca_precompute_top_k)
         if isinstance(rj, str) and rj.startswith("{"):
             movers[d] = json.loads(rj).get("movers", [])
 
@@ -102,7 +131,8 @@ def precompute_rca(*, target: dict, workspace: Any, engine: Any, result_store: A
              "EXACT DRIVER DECOMPOSITION (each node's contribution to its parent's move; residuals ~0):"]
     _render_tree(root, lines)
     if movers:
-        lines += ["", "WHERE IT CONCENTRATED (top slices per DEFINED dimension, by surprise x impact):"]
+        on = f" (attributed on `{slice_metric}`, its principal measured arm)" if slice_metric != metric else ""
+        lines += ["", f"WHERE IT CONCENTRATED{on} (top slices per DEFINED dimension, by surprise x impact):"]
         for d, ms in movers.items():
             if not ms:
                 continue

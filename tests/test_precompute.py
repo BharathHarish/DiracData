@@ -19,7 +19,7 @@ if str(ROOT / "src") not in sys.path:
 
 from diracdata.config import Config  # noqa: E402
 from diracdata.rca.kernels import adtributor  # noqa: E402
-from diracdata.rca.precompute import _fmt, _render_tree, precompute_rca  # noqa: E402
+from diracdata.rca.precompute import _fmt, _render_tree, _sliceable_metric, precompute_rca  # noqa: E402
 from diracdata.agents.triage import _parse  # noqa: E402
 
 _HAS_RETAIL = (ROOT / "data" / "retail_analytics").exists()
@@ -60,6 +60,22 @@ class TriageRcaTargetParseTests(unittest.TestCase):
         v = _parse(json.dumps({"task_type": "analytics", "lane": "cold", "rca_metric": "x",
                                "period_a": "2001", "period_b": "2002"}))
         self.assertIsNone(v["rca_target"])
+
+
+class SliceableMetricTests(unittest.TestCase):
+    """A formula-only top (net_revenue = revenue - refunds) can't be GROUP BY'd -> rank_movers must
+    attribute its top measured arm, so demographic movers are ALWAYS computed (not left to the agent)."""
+
+    _WS = SimpleNamespace(semantic_layer={"metrics": {
+        "net_revenue": {"formula": "revenue - refunds", "depends_on": ["revenue", "refunds"]},
+        "revenue": {"sql": "SUM(t.paid)"},
+        "refunds": {"sql": "SUM(r.amt)"}}})
+
+    def test_formula_only_metric_falls_through_to_measured_arm(self):
+        self.assertEqual(_sliceable_metric(self._WS, "net_revenue"), "revenue")  # top sql-bearing driver
+
+    def test_sql_bearing_metric_is_its_own_slice(self):
+        self.assertEqual(_sliceable_metric(self._WS, "revenue"), "revenue")
 
 
 class BriefRenderTests(unittest.TestCase):
