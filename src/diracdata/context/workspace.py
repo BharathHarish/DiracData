@@ -175,11 +175,14 @@ class Workspace:
         dims = sl.get("dimensions") or {}
         if dims:
             lines.append("ATTRIBUTION DIMENSIONS (the blessed slices to break a metric down by / attribute a "
-                         "change into -- pass these exact names to rank_movers or GROUP BY them; bind a "
-                         "user's phrasing to one of these rather than guessing a raw column; call `define` "
-                         "for the SQL + join):")
+                         "change into -- bind a user's phrasing to one of THESE names rather than guessing a "
+                         "raw column, then pass them to `attribute`; [primary] = attributed by default, "
+                         "group = a family you can request as a set):")
             for name, body in dims.items():
-                lines.append(f"  - {name}: {_one_line((body or {}).get('description'))}")
+                b = body or {}
+                tags = " ".join(t for t in ("[primary]" if b.get("primary") else "",
+                                            f"group={b.get('group')}" if b.get("group") else "") if t)
+                lines.append(f"  - {name}: {_one_line(b.get('description'))}" + (f"  ({tags})" if tags else ""))
         channels = sl.get("channels") or {}
         if channels:
             lines.append("SALES-CHANNEL FACT TABLES (key columns DIFFER per channel -- use THESE exact "

@@ -211,32 +211,48 @@ channels:
 # ------------------------------------------------------------------------------------------------
 # DIMENSIONS -- attribution slices: a GROUP-BY expression (sql) + the full JOIN fragment to reach it.
 # ------------------------------------------------------------------------------------------------
+# Each dimension carries metadata the attribution engine + agent reason over:
+#   primary: true    -> attributed by default when the user says "break it down" (no explicit dims)
+#   group: <name>    -> a family the agent can request as a set ("by customer demographics" -> the group)
+#   cardinality: high-> many slices; the engine caps to top_k deliberately (not an accidental truncation)
 dimensions:
   product_category:
     description: Top-level merchandise category of the purchased item.
+    group: product
     sql: "merchandise.category"
     join: "JOIN merchandise ON online_purchases.merchandise_ref = merchandise.merchandise_record"
   brand:
     description: Brand of the purchased item.
+    group: product
+    cardinality: high
     sql: "merchandise.brand"
     join: "JOIN merchandise ON online_purchases.merchandise_ref = merchandise.merchandise_record"
   income_band:
     description: Household income bracket of the billing household.
+    group: demographics
+    primary: true
     sql: "income_ranges.lower_bound || '-' || income_ranges.upper_bound"
     join: "JOIN household_profiles ON online_purchases.billing_household_profile_ref = household_profiles.household_profile_record JOIN income_ranges ON household_profiles.income_range_ref = income_ranges.income_range_record"
   billing_state:
     description: US state of the billing address.
+    group: geography
+    cardinality: high
     sql: "addresses.state"
     join: "JOIN addresses ON online_purchases.billing_address_ref = addresses.address_record"
   gender:
     description: Gender of the billing customer.
+    group: demographics
+    primary: true
     sql: "client_profiles.gender"
     join: "JOIN client_profiles ON online_purchases.billing_client_profile_ref = client_profiles.client_profile_record"
   age_band:
     description: Age/generation cohort of the billing customer, bucketed by birth year (period-independent).
+    group: demographics
+    primary: true
     sql: "CASE WHEN clients.birth_year >= 1980 THEN 'GenY+ (1980+)' WHEN clients.birth_year >= 1965 THEN 'GenX (1965-79)' WHEN clients.birth_year >= 1946 THEN 'Boomer (1946-64)' ELSE 'Silent (<1946)' END"
     join: "JOIN clients ON online_purchases.billing_client_ref = clients.client_record"
   marital_status:
     description: Marital status of the billing customer.
+    group: demographics
     sql: "client_profiles.marital_status"
     join: "JOIN client_profiles ON online_purchases.billing_client_profile_ref = client_profiles.client_profile_record"

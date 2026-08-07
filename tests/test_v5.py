@@ -112,6 +112,31 @@ class V5WiringTests(unittest.TestCase):
         self.assertLess(len(_CORE), 1200)                              # ...and stays LEAN (was ~8k w/ sql_rules)
         self.assertNotIn("GOLDEN RULES", _CORE)                        # golden-SQL checklist lives on the verifier now
 
+    def test_triage_binds_rca_target_with_dimensions(self):
+        import json as _j
+        from diracdata.agents.triage import _parse
+        v = _parse(_j.dumps({"task_type": "rca", "lane": "cold", "rca_metric": "web_net_profit",
+                             "period_a": "2001", "period_b": 2002,
+                             "dimensions": ["age_band", "gender", "income_band"]}))
+        self.assertEqual(v["rca_target"]["metric"], "web_net_profit")
+        self.assertEqual(v["rca_target"]["period_a"], 2001)
+        self.assertEqual(v["rca_target"]["dimensions"], ["age_band", "gender", "income_band"])  # bound set
+        # no dimensions -> empty list -> engine uses PRIMARY dims by default
+        v2 = _parse(_j.dumps({"task_type": "rca", "lane": "cold", "rca_metric": "m",
+                              "period_a": "2001", "period_b": "2002"}))
+        self.assertEqual(v2["rca_target"]["dimensions"], [])
+
+    def test_catalog_renders_primary_and_group_metadata(self):
+        from diracdata.context.workspace import Workspace
+        ws = Workspace.__new__(Workspace)
+        ws.semantic_layer = {"dimensions": {
+            "age_band": {"description": "age cohort", "group": "demographics", "primary": True},
+            "brand": {"description": "brand", "group": "product", "cardinality": "high"}}}
+        idx = ws.definitions_index()
+        self.assertIn("[primary]", idx)                          # so triage/agent know the defaults
+        self.assertIn("group=demographics", idx)                 # so a "by demographics" request binds to the set
+        self.assertIn("group=product", idx)
+
     def test_attribution_is_the_one_rca_primitive(self):
         # RCA is a single tool + a seeded brief now -- no "how-to" skill prompt to follow (was skill_rca +
         # spawn_metric_rca delegate + precompute, all superseded by rca/attribution.py).

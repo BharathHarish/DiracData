@@ -37,8 +37,13 @@ just because it is short; the prior turn supplies the metric, period, and segmen
    - period_a, period_b: the base and compared periods as they appear in the data (e.g. 2001 and 2002 for
      a year-over-year "2002 vs 2001"). Resolve them from the QUESTION (and RECENT_CONVERSATION for a
      follow-up). Empty if the question names no clear pair.
-   Leave all three empty if you cannot resolve them confidently -- the harness will fall back to an
+   - dimensions: the DEFINED dimensions (from DEFINED_TERMS -- the ATTRIBUTION DIMENSIONS list) the user
+     wants the change broken down by. BIND their phrasing to defined names: "age groups"->age_band,
+     "by gender"->gender, "household income"->income_band, "by customer/demographics"->the whole
+     `group=demographics` set. Use the EXACT defined names, never a raw column. Empty [] if the user asks
+     for no particular breakdown -- the engine then attributes the PRIMARY dimensions by default.
+   Leave metric + periods empty if you cannot resolve them confidently -- the harness falls back to an
    agentic decomposition; do NOT guess a metric that isn't defined or invent periods.
 
 Reply with ONE JSON object, nothing else:
-{"task_type":"rca|analytics","lane":"fast|cold","precedent_question":"<verbatim or empty>","precedent_sql":"<verbatim or empty>","rca_metric":"<defined metric or empty>","period_a":"<base period or empty>","period_b":"<compared period or empty>","reasoning":"<one line>"}
+{"task_type":"rca|analytics","lane":"fast|cold","precedent_question":"<verbatim or empty>","precedent_sql":"<verbatim or empty>","rca_metric":"<defined metric or empty>","period_a":"<base period or empty>","period_b":"<compared period or empty>","dimensions":["<defined dim name>", ...],"reasoning":"<one line>"}

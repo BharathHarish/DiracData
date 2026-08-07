@@ -80,9 +80,17 @@ def _parse(text: str) -> dict:
         m = (v.get("rca_metric") or "").strip()
         pa, pb = _period(v.get("period_a")), _period(v.get("period_b"))
         if m and pa is not None and pb is not None:
-            rca = {"metric": m, "period_a": pa, "period_b": pb}
+            rca = {"metric": m, "period_a": pa, "period_b": pb, "dimensions": _dims(v.get("dimensions"))}
     return {"task_type": task, "lane": lane, "precedent_sql": sql, "precedent_q": q,
             "rca_target": rca, "reasoning": str(v.get("reasoning") or "")[:200]}
+
+
+def _dims(raw: Any) -> list[str]:
+    """The dimensions the agent BOUND from the catalog (e.g. 'age groups'->age_band). A list of defined
+    names; empty -> the attribution engine uses the PRIMARY dimensions. Accepts a list or a comma string."""
+    if isinstance(raw, str):
+        raw = [p for p in raw.split(",")]
+    return [str(d).strip() for d in (raw or []) if str(d).strip()]
 
 
 def _period(p: Any) -> Any:
