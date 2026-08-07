@@ -60,10 +60,12 @@ metrics:
   # L4
   new_active_buyers:
     description: Active online buyers making their FIRST-EVER online purchase in the period (new_online_buyer).
-    sql: "COUNT(DISTINCT CASE WHEN op.billing_client_ref IN (SELECT billing_client_ref FROM online_purchases o2 JOIN calendar_days c2 ON o2.sale_calendar_day_ref=c2.calendar_day_record GROUP BY billing_client_ref HAVING MIN(c2.year) = :period_year) THEN op.billing_client_ref END)"
+    # Correlated to the OUTER grouped period (calendar_days.year) -- no bound-parameter needed, so it
+    # evaluates correctly inside the batched two-period query (new + returning == active in every period).
+    sql: "COUNT(DISTINCT CASE WHEN online_purchases.billing_client_ref IN (SELECT billing_client_ref FROM online_purchases o2 JOIN calendar_days c2 ON o2.sale_calendar_day_ref=c2.calendar_day_record GROUP BY billing_client_ref HAVING MIN(c2.year) = calendar_days.year) THEN online_purchases.billing_client_ref END)"
   returning_active_buyers:
     description: Active online buyers who had already purchased online in an earlier year (returning_online_buyer).
-    sql: "COUNT(DISTINCT CASE WHEN op.billing_client_ref IN (SELECT billing_client_ref FROM online_purchases o2 JOIN calendar_days c2 ON o2.sale_calendar_day_ref=c2.calendar_day_record GROUP BY billing_client_ref HAVING MIN(c2.year) < :period_year) THEN op.billing_client_ref END)"
+    sql: "COUNT(DISTINCT CASE WHEN online_purchases.billing_client_ref IN (SELECT billing_client_ref FROM online_purchases o2 JOIN calendar_days c2 ON o2.sale_calendar_day_ref=c2.calendar_day_record GROUP BY billing_client_ref HAVING MIN(c2.year) < calendar_days.year) THEN online_purchases.billing_client_ref END)"
   orders_per_buyer:
     description: Online orders per active buyer (purchase frequency).
     formula: online_orders / online_active_buyers

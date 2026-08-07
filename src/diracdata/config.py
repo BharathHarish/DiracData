@@ -153,6 +153,12 @@ class Config:
     # --- v5 triage (recall + classify before framing) ---
     triage_precedents: int = 3            # candidate precedents the triage step reasons over
 
+    # --- metric-RCA pre-compute (deterministic: SQL + exact attribution kernels, no agent coin-flip) ---
+    rca_precompute_enabled: bool = True   # on task=rca, pre-run decompose_metric + rank_movers over ALL
+                                          # defined dimensions and inject the reconciled, cited attribution
+                                          # for the analyst to NARRATE (DIRACDATA_RCA_PRECOMPUTE=false to skip)
+    rca_precompute_top_k: int = 6         # movers kept per dimension in the injected attribution
+
     # --- finish gate ---
     verify_max_rejects: int = 4          # after this many verifier rejections, accept the best answer
                                          # with the reviewer's unresolved concern surfaced (no dead loop)
@@ -291,6 +297,8 @@ class Config:
             metric_tree_max_depth=_int("DIRACDATA_METRIC_TREE_MAX_DEPTH", d.metric_tree_max_depth),
             no_progress_nudge_steps=_int("DIRACDATA_NO_PROGRESS_NUDGE_STEPS", d.no_progress_nudge_steps),
             triage_precedents=_int("DIRACDATA_TRIAGE_PRECEDENTS", d.triage_precedents),
+            rca_precompute_enabled=_bool("DIRACDATA_RCA_PRECOMPUTE", d.rca_precompute_enabled),
+            rca_precompute_top_k=_int("DIRACDATA_RCA_PRECOMPUTE_TOP_K", d.rca_precompute_top_k),
             verify_max_rejects=_int("DIRACDATA_VERIFY_MAX_REJECTS", d.verify_max_rejects),
             verify_evidence_values=_int("DIRACDATA_VERIFY_EVIDENCE_VALUES", d.verify_evidence_values),
             sanity_gate_enabled=_bool("DIRACDATA_SANITY_GATE_ENABLED", d.sanity_gate_enabled),

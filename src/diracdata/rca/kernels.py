@@ -98,17 +98,19 @@ def adtributor(slices: list[tuple[str, float, float]], top_k: int = 5) -> list[d
       surprise           = q * ln(q / p)             (KL term on the share shift; p=base share, q=now share)
       explanatory_power  = slice_delta / |total_delta|
       impact             = |surprise| * |explanatory_power|
-    Returns the top_k slices by impact, each with its delta and impact. Shares are computed from the raw
-    values, so pass values already normalised to a comparable window (e.g. daily averages) if periods
-    differ in length."""
-    base_total = sum(max(v0, 0.0) for _, v0, _ in slices) or 1.0
-    now_total = sum(max(v1, 0.0) for _, _, v1 in slices) or 1.0
+    Returns the top_k slices by impact, each with its delta and impact. Shares are computed on the
+    MAGNITUDE of each value (abs), so a metric that is NEGATIVE in every slice (e.g. a loss-making
+    margin/profit) still ranks by share shift -- for a non-negative metric abs() is the identity, so
+    ranking is unchanged. Pass values already normalised to a comparable window (e.g. daily averages)
+    if periods differ in length."""
+    base_total = sum(abs(v0) for _, v0, _ in slices) or 1.0
+    now_total = sum(abs(v1) for _, _, v1 in slices) or 1.0
     total_delta = sum(v1 - v0 for _, v0, v1 in slices)
     denom = abs(total_delta) or 1.0
     scored: list[dict] = []
     for name, v0, v1 in slices:
-        p = max(v0, 0.0) / base_total
-        q = max(v1, 0.0) / now_total
+        p = abs(v0) / base_total
+        q = abs(v1) / now_total
         surprise = q * math.log(q / p) if p > 0 and q > 0 else 0.0
         explan = (v1 - v0) / denom
         scored.append({"slice": name, "v0": v0, "v1": v1, "delta": v1 - v0,

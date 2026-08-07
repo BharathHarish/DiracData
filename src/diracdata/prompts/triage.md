@@ -29,5 +29,16 @@ just because it is short; the prior turn supplies the metric, period, and segmen
      pattern that matches the QUESTION'S SHAPE (same tables/joins/decomposition) IS a strong match even
      when the literals differ -- prefer fast in that case rather than re-deriving from scratch.
 
+3. RCA TARGET (only when task_type = "rca"): name the ONE defined metric the question is about and the
+   TWO periods to compare, so the harness can pre-compute the whole attribution deterministically.
+   - rca_metric: the DEFINED metric name (from DEFINED_TERMS) whose change is being explained. Prefer the
+     TOP/most-complete metric mentioned -- its driver tree already contains the sub-drivers (e.g. a
+     profit/margin metric covers revenue too). Empty if no defined metric fits.
+   - period_a, period_b: the base and compared periods as they appear in the data (e.g. 2001 and 2002 for
+     a year-over-year "2002 vs 2001"). Resolve them from the QUESTION (and RECENT_CONVERSATION for a
+     follow-up). Empty if the question names no clear pair.
+   Leave all three empty if you cannot resolve them confidently -- the harness will fall back to an
+   agentic decomposition; do NOT guess a metric that isn't defined or invent periods.
+
 Reply with ONE JSON object, nothing else:
-{"task_type":"rca|analytics","lane":"fast|cold","precedent_question":"<verbatim or empty>","precedent_sql":"<verbatim or empty>","reasoning":"<one line>"}
+{"task_type":"rca|analytics","lane":"fast|cold","precedent_question":"<verbatim or empty>","precedent_sql":"<verbatim or empty>","rca_metric":"<defined metric or empty>","period_a":"<base period or empty>","period_b":"<compared period or empty>","reasoning":"<one line>"}

@@ -61,12 +61,19 @@ def _periods_sql(periods: list) -> str:
     return ", ".join(vals)
 
 
-def build_rca_tools(*, workspace: Any, engine: Any, config: Config = _DEFAULTS) -> list[Any]:
+def build_rca_tools(*, workspace: Any, engine: Any, config: Config = _DEFAULTS,
+                    runner: Any = None) -> list[Any]:
+    """The RCA tools. `runner`, if given, replaces the default engine execution -- a
+    (sql) -> {"columns", "rows"} callable. The pre-compute path passes a runner that routes every
+    assembled query through the RESULT STORE (so each becomes a citable result_id) while the tools'
+    assembly + attribution math stay identical. Default = run directly on the engine (unstored)."""
     from langchain.tools import tool
 
-    def _run(sql: str) -> dict:
+    def _default_run(sql: str) -> dict:
         res = engine.query(sql, max_rows=config.query_max_rows)
         return {"columns": list(res.columns), "rows": [list(r) for r in res.rows]}
+
+    _run = runner or _default_run
 
     def _resolve_metrics(names: list[str]) -> tuple[dict, str, dict]:
         """(name->sql, fact table, time binding) for a set of metrics that MUST share a fact table."""

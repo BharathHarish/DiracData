@@ -72,5 +72,24 @@ def _parse(text: str) -> dict:
     q = (v.get("precedent_question") or "").strip() or None
     if lane == "fast" and not sql:            # a fast lane with no precedent SQL is meaningless
         lane = "cold"
+    # RCA target -- the single interpretation step for the deterministic pre-compute: which DEFINED
+    # metric, and the two periods to compare. Only meaningful for task=rca; a missing piece -> no
+    # pre-compute (the harness falls back to the agentic RCA path), so keep it strictly optional.
+    rca = None
+    if task == "rca":
+        m = (v.get("rca_metric") or "").strip()
+        pa, pb = _period(v.get("period_a")), _period(v.get("period_b"))
+        if m and pa is not None and pb is not None:
+            rca = {"metric": m, "period_a": pa, "period_b": pb}
     return {"task_type": task, "lane": lane, "precedent_sql": sql, "precedent_q": q,
-            "reasoning": str(v.get("reasoning") or "")[:200]}
+            "rca_target": rca, "reasoning": str(v.get("reasoning") or "")[:200]}
+
+
+def _period(p: Any) -> Any:
+    """Normalize a period literal: int if it is one (year 2001), else a non-empty string, else None."""
+    if p is None:
+        return None
+    s = str(p).strip()
+    if not s or s.lower() in ("null", "none", "unknown"):
+        return None
+    return int(s) if s.lstrip("-").isdigit() else s

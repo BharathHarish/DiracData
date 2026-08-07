@@ -31,6 +31,7 @@ from diracdata.config import Stage
 from diracdata.memory.working_memory import WorkingMemory
 from diracdata.prompts import dialect_note, load_prompt
 from diracdata.rca.delegate import build_rca_delegate
+from diracdata.rca.precompute import precompute_rca
 from diracdata.tools import build_control_tools, build_tools, build_transcript_tool
 
 # Lean core: identity + task + the few environment invariants. The golden-SQL checklist (sql_rules)
@@ -97,14 +98,23 @@ class V5Agent(V4Agent):
                 system_prompt=system_prompt, sink=self.sink, asker=self.asker, max_steps=self.max_steps,
                 depth=0, max_depth=self.max_subagent_depth, on_tokens=sub_tokens.append,
                 dialect_note=dnote, config=self.config, sources=self.sources))
-        # Metric-RCA: hand the main agent a spawn_metric_rca delegation to the RCA specialist (which has
-        # the deterministic attribution tools). The main agent delegates the decomposition + verifies.
-        if tri["task_type"] == "rca" and self.subagents and (self.workspace and self.workspace.semantic_layer):
-            tools.extend(build_rca_delegate(
-                model=self._stage_model(Stage.AUTHORING), workspace=self.workspace, engine=self.engine,
-                result_store=self.result_store, value_cache=self.value_cache, parent_memory=memory,
-                sink=self.sink, asker=self.asker, max_steps=self.max_steps, dialect_note=dnote,
-                config=self.config, sources=self.sources, on_tokens=sub_tokens.append))
+        # Metric-RCA: DETERMINISTIC pre-compute FIRST (no coin-flip). When triage resolved the metric +
+        # periods, run the whole attribution up-front -- decompose the driver tree + rank every DEFINED
+        # dimension -- routing the SQL through the result store (citable result_ids), and inject the
+        # reconciled brief for the analyst to NARRATE. Only if that can't run (no target / undefined /
+        # tool reject) do we fall back to the AGENTIC spawn_metric_rca delegation.
+        rca_brief: dict | None = None
+        if tri["task_type"] == "rca" and (self.workspace and self.workspace.semantic_layer):
+            if self.config.rca_precompute_enabled and tri.get("rca_target"):
+                rca_brief = precompute_rca(
+                    target=tri["rca_target"], workspace=self.workspace, engine=self.engine,
+                    result_store=self.result_store, memory=memory, config=self.config, sink=self.sink)
+            if rca_brief is None and self.subagents:
+                tools.extend(build_rca_delegate(
+                    model=self._stage_model(Stage.AUTHORING), workspace=self.workspace, engine=self.engine,
+                    result_store=self.result_store, value_cache=self.value_cache, parent_memory=memory,
+                    sink=self.sink, asker=self.asker, max_steps=self.max_steps, dialect_note=dnote,
+                    config=self.config, sources=self.sources, on_tokens=sub_tokens.append))
 
         tokens = tri.get("tokens", 0)   # `recent` (conversation summary) already computed for triage above
         if self.frame:
@@ -121,7 +131,12 @@ class V5Agent(V4Agent):
         #    pattern often has NO clean SQL (it is descriptive), so seed off the precedent NAME too --
         #    the pattern text is already in LEARNED KNOWLEDGE; the seed just says "adapt it, don't re-derive".
         task = None
-        if tri["lane"] == "fast" and tri["precedent_sql"]:
+        if rca_brief:
+            # The attribution is DONE and stored -- steer the analyst to narrate + sanity-check it, not
+            # re-derive. This is what collapses the reject-loop (numbers arrive pre-cited) and guarantees
+            # the age/gender/income slices ran (they are defined, not left to the agent to remember).
+            task = f"Answer this question:\n{goal}\n\n{rca_brief['brief']}"
+        elif tri["lane"] == "fast" and tri["precedent_sql"]:
             task = (f"Answer this question:\n{goal}\n\nA BLESSED PRECEDENT exists for this pattern -- ADAPT "
                     f"it (rebind the literals/period/values) and VERIFY it still holds; do not re-explore "
                     f"from scratch.\nQ: {tri['precedent_q'] or '(prior solved question)'}\nSQL: {tri['precedent_sql']}")
