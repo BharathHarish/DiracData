@@ -259,15 +259,28 @@ class ModelGardenTests(unittest.TestCase):
     so V5 auto-routes Haiku=complex / Mini=medium / Nano=simple. Routing behaviour itself is covered by
     test_router / test_router_wiring; V5.run reuses those same helpers (_route/_run_analyst)."""
 
-    def test_garden_is_four_tiers_with_sonnet_frontier(self):
+    def test_garden_has_the_four_core_tiers(self):
         from diracdata.utils.model_factory import BUILT_IN_MODEL_PROFILES as P
-        self.assertEqual(set(P), {"anthropic_sonnet_5", "anthropic_haiku_45",
-                                  "openai_gpt_5_4_mini", "openai_gpt_5_4_nano"})
         self.assertEqual(P["anthropic_sonnet_5"].capability, "frontier")   # hardest cold/novel + escalation
         self.assertEqual(P["anthropic_haiku_45"].capability, "strong")     # complex workhorse
         self.assertEqual(P["openai_gpt_5_4_mini"].capability, "standard")  # medium
         self.assertEqual(P["openai_gpt_5_4_nano"].capability, "basic")     # simple
         self.assertTrue(all(p.supports_tools for p in P.values()))         # all can drive the tool loop
+
+    def test_fireworks_is_openai_compatible_via_the_factory(self):
+        # Provider-agnostic factory: an OpenAI-compatible provider (Fireworks) is built with the OpenAI
+        # transport + its own base_url + key -- no per-provider client, so any such service drops in.
+        from dataclasses import replace
+        from diracdata.config import Config
+        from diracdata.utils.model_factory import build_model_init, ModelProvider, BUILT_IN_MODEL_PROFILES
+        self.assertEqual(BUILT_IN_MODEL_PROFILES["fireworks_glm_5p2"].provider, ModelProvider.FIREWORKS)
+        s = replace(Config(), fireworks_api_key="fw_test", fireworks_base_url="https://fw.example/v1")
+        prov, key, region, kw = build_model_init(settings=s, profile_id="fireworks_glm_5p2")
+        self.assertEqual(prov, ModelProvider.FIREWORKS)
+        self.assertEqual(kw["model_provider"], "openai")                   # OpenAI transport under the hood
+        self.assertEqual(kw["base_url"], "https://fw.example/v1")          # its own endpoint
+        self.assertEqual(kw["api_key"], "fw_test")                         # its own key (not settings.openai)
+        self.assertEqual(kw["model"], "accounts/fireworks/models/glm-5p2")
 
     def test_router_on_by_default(self):
         from diracdata.config import Config

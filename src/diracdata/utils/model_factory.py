@@ -20,6 +20,12 @@ class ModelProvider(StrEnum):
     ANTHROPIC = "anthropic"
     BEDROCK_CONVERSE = "bedrock_converse"
     OPENAI = "openai"
+    FIREWORKS = "fireworks"           # OpenAI-COMPATIBLE -- driven through the OpenAI transport + base_url
+
+
+# Providers that speak the OpenAI wire protocol -> built with model_provider="openai" + a base_url.
+# Add any other OpenAI-compatible service here (Together, Groq, ...) and it drops in with just a key.
+_OPENAI_COMPATIBLE = {ModelProvider.FIREWORKS}
 
 
 @dataclass(frozen=True)
@@ -84,6 +90,36 @@ BUILT_IN_MODEL_PROFILES: dict[str, ChatModelProfile] = {
         note="cheapest -- use for SIMPLE single-fact lookups / single-metric counts / strongly "
              "precedented queries; escalate if it cannot converge",
     ),
+    "fireworks_glm_5p2": ChatModelProfile(
+        "fireworks_glm_5p2",
+        ModelProvider.FIREWORKS,
+        "accounts/fireworks/models/glm-5p2",
+        "GLM-5.2 (Fireworks)",
+        cost_tier="low", capability="standard", supports_tools=True, supports_reasoning=True,
+        note="OpenAI-compatible via Fireworks; general analytics all-rounder (open-weight)",
+    ),
+    # Fireworks open-weight bench candidates (all OpenAI-compatible; not yet tiered into the router).
+    "fireworks_gpt_oss_120b": ChatModelProfile(
+        "fireworks_gpt_oss_120b", ModelProvider.FIREWORKS, "accounts/fireworks/models/gpt-oss-120b",
+        "GPT-OSS 120B (Fireworks)", cost_tier="low", capability="standard",
+        supports_tools=True, supports_reasoning=True, note="OpenAI OSS 120B via Fireworks",
+    ),
+    "fireworks_deepseek_v4_flash": ChatModelProfile(
+        "fireworks_deepseek_v4_flash", ModelProvider.FIREWORKS,
+        "accounts/fireworks/models/deepseek-v4-flash-0731",
+        "DeepSeek V4 Flash (Fireworks)", cost_tier="low", capability="standard",
+        supports_tools=True, supports_reasoning=True, note="DeepSeek V4 Flash via Fireworks",
+    ),
+    "fireworks_minimax_m3": ChatModelProfile(
+        "fireworks_minimax_m3", ModelProvider.FIREWORKS, "accounts/fireworks/models/minimax-m3",
+        "MiniMax M3 (Fireworks)", cost_tier="low", capability="standard",
+        supports_tools=True, supports_reasoning=True, note="MiniMax M3 via Fireworks",
+    ),
+    "fireworks_qwen3p7_plus": ChatModelProfile(
+        "fireworks_qwen3p7_plus", ModelProvider.FIREWORKS, "accounts/fireworks/models/qwen3p7-plus",
+        "Qwen3.7 Plus (Fireworks)", cost_tier="low", capability="standard",
+        supports_tools=True, supports_reasoning=True, note="Qwen3.7 Plus via Fireworks",
+    ),
 }
 
 
@@ -143,6 +179,11 @@ def build_model_init(
         api_key = settings.openai_api_key
         if profile and profile.base_url:
             kwargs["base_url"] = profile.base_url
+    elif provider == ModelProvider.FIREWORKS:
+        # OpenAI-compatible: the OpenAI transport (below) + the Fireworks key + endpoint.
+        api_key = settings.fireworks_api_key
+        kwargs["base_url"] = (profile.base_url if profile and profile.base_url
+                              else settings.fireworks_base_url)
     elif provider == ModelProvider.BEDROCK_CONVERSE:
         api_key = settings.bedrock_api_key
         if region_name:
@@ -169,9 +210,12 @@ def build_model_init(
     temperature = 0.0 if settings.deterministic_sampling else settings.agent_llm_temperature
     if settings.agent_llm_seed is not None and provider == ModelProvider.OPENAI:
         kwargs["seed"] = settings.agent_llm_seed
+    # OpenAI-compatible providers (Fireworks, ...) are built with the OpenAI transport + a base_url,
+    # so LangChain uses ChatOpenAI against their endpoint -- no per-provider client needed.
+    transport = "openai" if provider in _OPENAI_COMPATIBLE else provider.value
     init_kwargs = dict(
         model=model,
-        model_provider=provider.value,
+        model_provider=transport,
         max_tokens=max_tokens,
         temperature=temperature,
         **kwargs,
@@ -188,7 +232,7 @@ def init_chat_model(**kwargs: Any) -> object:
 
 
 def _validate(*, provider: ModelProvider, api_key: str | None, region_name: str | None) -> None:
-    if provider in {ModelProvider.ANTHROPIC, ModelProvider.OPENAI} and not api_key:
+    if provider in {ModelProvider.ANTHROPIC, ModelProvider.OPENAI, ModelProvider.FIREWORKS} and not api_key:
         raise ValueError(f"{provider.value} API key is required")
     if provider == ModelProvider.BEDROCK_CONVERSE and not region_name:
         raise ValueError("Bedrock region is required")
@@ -220,6 +264,9 @@ def _provider_environment(
         restore["ANTHROPIC_API_KEY"] = os.environ.get("ANTHROPIC_API_KEY")
         os.environ["ANTHROPIC_API_KEY"] = api_key
     if provider == ModelProvider.OPENAI and api_key:
+        restore["OPENAI_API_KEY"] = os.environ.get("OPENAI_API_KEY")
+        os.environ["OPENAI_API_KEY"] = api_key
+    if provider in _OPENAI_COMPATIBLE and api_key:      # OpenAI transport reads OPENAI_API_KEY as fallback
         restore["OPENAI_API_KEY"] = os.environ.get("OPENAI_API_KEY")
         os.environ["OPENAI_API_KEY"] = api_key
     if provider == ModelProvider.BEDROCK_CONVERSE and api_key:

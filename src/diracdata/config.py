@@ -72,6 +72,10 @@ class Config:
     bedrock_api_key: str | None = None
     bedrock_region: str | None = None
     aws_region: str = "us-east-1"
+    # Fireworks AI -- an OpenAI-compatible provider (any OpenAI-compatible service plugs in the same
+    # way: a key + a base_url, driven through the OpenAI transport by the model factory).
+    fireworks_api_key: str | None = None
+    fireworks_base_url: str = "https://api.fireworks.ai/inference/v1"
 
     # --- object store (utils/object_store) ---
     object_store: str = "local"
@@ -239,6 +243,8 @@ class Config:
             bedrock_api_key=g("DIRACDATA_BEDROCK_API_KEY") or g("AWS_BEARER_TOKEN_BEDROCK") or d.bedrock_api_key,
             bedrock_region=g("DIRACDATA_BEDROCK_REGION") or g("AWS_REGION") or d.bedrock_region,
             aws_region=g("DIRACDATA_AWS_REGION") or g("AWS_REGION") or d.aws_region,
+            fireworks_api_key=g("DIRACDATA_FIREWORKS_API_KEY") or g("FIREWORKS_API_KEY") or d.fireworks_api_key,
+            fireworks_base_url=_str("DIRACDATA_FIREWORKS_BASE_URL", d.fireworks_base_url),
             object_store=_str("DIRACDATA_OBJECT_STORE", d.object_store),
             artifact_bucket=_str("DIRACDATA_ARTIFACT_BUCKET", d.artifact_bucket),
             s3_endpoint_url=g("DIRACDATA_S3_ENDPOINT_URL") or d.s3_endpoint_url,
