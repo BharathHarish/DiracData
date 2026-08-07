@@ -106,15 +106,18 @@ class TriageCallTests(unittest.TestCase):
 class V5WiringTests(unittest.TestCase):
     def test_v5_is_v4_subclass_and_prompts_load(self):
         from diracdata.agent import V4Agent
-        from diracdata.agent_v5 import V5Agent, _CORE, _RCA_SKILL
+        from diracdata.agent_v5 import V5Agent, _CORE
         self.assertTrue(issubclass(V5Agent, V4Agent))            # reuses all of v4, overrides run()
         self.assertIn("NUMBERS come only from query results", _CORE)   # lean core carries the invariants
         self.assertLess(len(_CORE), 1200)                              # ...and stays LEAN (was ~8k w/ sql_rules)
         self.assertNotIn("GOLDEN RULES", _CORE)                        # golden-SQL checklist lives on the verifier now
-        self.assertIn("spawn_metric_rca", _RCA_SKILL)             # main skill delegates to the specialist
-        self.assertIn("VERIFY, not redo", _RCA_SKILL)             # ...and the main agent's job is to verify
-        self.assertLess(len(_RCA_SKILL), 900)                     # ...and it is TINY (the tool owns the procedure)
-        self.assertNotIn("METRIC-RCA SKILL", _CORE)               # the skill is NOT in the core (progressive)
+
+    def test_attribution_is_the_one_rca_primitive(self):
+        # RCA is a single tool + a seeded brief now -- no "how-to" skill prompt to follow (was skill_rca +
+        # spawn_metric_rca delegate + precompute, all superseded by rca/attribution.py).
+        import diracdata.agent_v5 as av5
+        self.assertTrue(hasattr(av5, "build_attribution_tool") and hasattr(av5, "seed_attribution"))
+        self.assertFalse(hasattr(av5, "_RCA_SKILL"))              # the playbook prompt is gone
 
 
 class DQGateWiringTests(unittest.TestCase):

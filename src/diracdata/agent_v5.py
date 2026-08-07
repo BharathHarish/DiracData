@@ -30,15 +30,13 @@ from diracdata.agents.verify import FinishGate, make_sanity_gate, make_verifier,
 from diracdata.config import Stage
 from diracdata.memory.working_memory import WorkingMemory
 from diracdata.prompts import dialect_note, load_prompt
-from diracdata.rca.delegate import build_rca_delegate
-from diracdata.rca.precompute import precompute_rca
+from diracdata.rca.attribution import build_attribution_tool, seed_attribution
 from diracdata.tools import build_control_tools, build_tools, build_transcript_tool
 
 # Lean core: identity + task + the few environment invariants. The golden-SQL checklist (sql_rules)
 # lives on the VERIFIER that ENFORCES it, not stacked onto a competent SQL writer (was ~8k chars of
 # mostly capability-teaching + tool narration -> the clash/overload behind the deep-RCA over-exploration).
 _CORE = load_prompt("analyst_core")
-_RCA_SKILL = load_prompt("skill_rca")
 
 
 class V5Agent(V4Agent):
@@ -72,25 +70,23 @@ class V5Agent(V4Agent):
         tri = triage(goal, self.workspace, learned=learned, recent=recent)   # recall over gold + experiences + prior turn
         self.sink("triage", "info", f"task={tri['task_type']} lane={tri['lane']} :: {tri['reasoning']}")
 
-        # METRIC-RCA PRE-COMPUTE (deterministic, before everything downstream). When triage resolved the
-        # metric + periods, run the WHOLE attribution up-front -- decompose the driver tree + rank every
-        # DEFINED dimension -- routing the SQL through the result store (citable result_ids), and inject
-        # the reconciled brief into working memory for the analyst to NARRATE. This is what kills the
-        # coin-flip: the age/gender/income slices always run (defined, not "remembered"), the numbers
-        # arrive pre-cited (the derivation gate passes first time), and there is nothing left to re-derive.
-        rca_brief: dict | None = None
+        # METRIC ATTRIBUTION SEED (deterministic, before everything downstream). When triage resolved the
+        # metric + periods + the dimensions the user asked about, run the ONE `attribute` primitive up
+        # front: it walks the driver tree AND attributes every REQUESTED dimension completely (retry +
+        # explicit `unavailable`, never a silent drop), routing SQL through the result store (citable
+        # result_ids). Its brief is injected for the analyst to NARRATE. This kills the coin-flip: the
+        # requested slices always run (bound, not "remembered"), numbers arrive pre-cited, and there is
+        # nothing left to re-derive. The `attribute` tool below lets the analyst refine on the fly.
+        rca_seed = None
         if (tri["task_type"] == "rca" and self.config.rca_precompute_enabled and tri.get("rca_target")
                 and self.workspace and self.workspace.semantic_layer):
-            rca_brief = precompute_rca(
+            rca_seed = seed_attribution(
                 target=tri["rca_target"], workspace=self.workspace, engine=self.engine,
                 result_store=self.result_store, memory=memory, config=self.config, sink=self.sink)
 
-        # 2. PROGRESSIVE PROMPT -- lean core always; the RCA skill (how to DELEGATE/decompose) only for a
-        #    metric-RCA that was NOT already pre-computed (else it would nudge the analyst to re-derive
-        #    what is already done + cited).
+        # 2. PROGRESSIVE PROMPT -- the lean core is the whole analyst prompt (no RCA "how-to" skill: the
+        #    attribution is a tool + a seeded brief, not a playbook the model has to follow).
         system_prompt = _CORE + "\n\n" + dnote
-        if tri["task_type"] == "rca" and rca_brief is None:
-            system_prompt += "\n\n" + _RCA_SKILL
         if estate:
             system_prompt += "\n\n## " + estate
         if learned:
@@ -113,23 +109,20 @@ class V5Agent(V4Agent):
                 system_prompt=system_prompt, sink=self.sink, asker=self.asker, max_steps=self.max_steps,
                 depth=0, max_depth=self.max_subagent_depth, on_tokens=sub_tokens.append,
                 dialect_note=dnote, config=self.config, sources=self.sources))
-        # Metric-RCA AGENTIC FALLBACK: only when the deterministic pre-compute could NOT run (triage
-        # didn't resolve a target, or an undefined/unusual metric) do we hand the analyst the
-        # spawn_metric_rca delegation to the specialist. A pre-computed run needs neither.
-        if (tri["task_type"] == "rca" and rca_brief is None and self.subagents
-                and self.workspace and self.workspace.semantic_layer):
-            tools.extend(build_rca_delegate(
-                model=self._stage_model(Stage.AUTHORING), workspace=self.workspace, engine=self.engine,
-                result_store=self.result_store, value_cache=self.value_cache, parent_memory=memory,
-                sink=self.sink, asker=self.asker, max_steps=self.max_steps, dialect_note=dnote,
-                config=self.config, sources=self.sources, on_tokens=sub_tokens.append))
+        # The `attribute` primitive as a TOOL: for a metric-RCA the analyst can root-cause a defined
+        # metric across the dimensions it binds, on the fly ("now by state") -- same complete, cited
+        # decomposition as the seed. Present whenever there is a semantic layer to attribute over.
+        if tri["task_type"] == "rca" and (self.workspace and self.workspace.semantic_layer):
+            tools.extend(build_attribution_tool(
+                workspace=self.workspace, engine=self.engine, result_store=self.result_store,
+                memory=memory, config=self.config, sink=self.sink))
 
         tokens = tri.get("tokens", 0)   # `recent` (conversation summary) already computed for triage above
         # A pre-computed RCA already HAS the intent (metric + periods + every defined dimension) and the
         # reconciled, cited answer in working memory -- so SKIP framing's open exploration. Framing was
         # re-deriving a (often wrong) direction here: it would bind "age groups" to a raw column and set
         # an education_status trajectory the analyst then followed, ignoring the injected age_band movers.
-        if rca_brief:
+        if rca_seed:
             memory.confirmed_intent = {"intent": goal, "concepts": []}
         elif self.frame:
             self.sink("framing", "info", "framing intent")
@@ -145,11 +138,11 @@ class V5Agent(V4Agent):
         #    pattern often has NO clean SQL (it is descriptive), so seed off the precedent NAME too --
         #    the pattern text is already in LEARNED KNOWLEDGE; the seed just says "adapt it, don't re-derive".
         task = None
-        if rca_brief:
+        if rca_seed:
             # The attribution is DONE and stored -- steer the analyst to narrate + sanity-check it, not
-            # re-derive. This is what collapses the reject-loop (numbers arrive pre-cited) and guarantees
-            # the age/gender/income slices ran (they are defined, not left to the agent to remember).
-            task = f"Answer this question:\n{goal}\n\n{rca_brief['brief']}"
+            # re-derive. This collapses the reject-loop (numbers arrive pre-cited) and guarantees the
+            # requested slices ran (they are bound + attributed, not left to the agent to remember).
+            task = f"Answer this question:\n{goal}\n\n{rca_seed.to_brief()}"
         elif tri["lane"] == "fast" and tri["precedent_sql"]:
             task = (f"Answer this question:\n{goal}\n\nA BLESSED PRECEDENT exists for this pattern -- ADAPT "
                     f"it (rebind the literals/period/values) and VERIFY it still holds; do not re-explore "

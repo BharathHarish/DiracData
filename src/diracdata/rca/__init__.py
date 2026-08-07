@@ -1,7 +1,14 @@
-"""Metric root-cause: exact attribution kernels (pure math) + engine-backed tools a specialist
-sub-agent composes. The kernels split a metric's change into its drivers deterministically; the agent
-orchestrates the walk and verifies -- determinism only where it is just-correct arithmetic."""
+"""Metric root-cause. `attribution` is the ONE primitive -- a complete, reconciled, cited decomposition
+of a metric's change (driver-tree graph walk + per-dimension attribution), consumed by the agent for
+judgment (hypothesis, verification, narration). `kernels` is the pure attribution math it splits with."""
 
+from diracdata.rca.attribution import (
+    AttributionResult,
+    attribute as attribute_metric,
+    build_attribution_tool,
+    default_dimensions,
+    seed_attribution,
+)
 from diracdata.rca.kernels import (
     Contribution,
     adtributor,
@@ -12,6 +19,11 @@ from diracdata.rca.kernels import (
 )
 
 __all__ = [
+    "AttributionResult",
+    "attribute_metric",
+    "build_attribution_tool",
+    "default_dimensions",
+    "seed_attribution",
     "Contribution",
     "adtributor",
     "attribute",
