@@ -63,9 +63,12 @@ class V5Agent(V4Agent):
         learned = self._learned_context()
         estate = self._estate_context()
 
-        # 1. TRIAGE -- recall + classify, before framing.
+        # 1. TRIAGE -- recall + classify, before framing. Feed it the CONVERSATION SUMMARY first so a
+        #    follow-up ("why is store preferred there?") resolves its pronouns and is classified WITH
+        #    context, instead of going cold on a bare, context-free question.
+        recent = conversation.summary() if conversation is not None else ""
         triage = make_triage(self._stage_model(Stage.FRAMING), sink=self.sink, config=self.config)
-        tri = triage(goal, self.workspace, learned=learned)   # recall over gold precedents AND experiences
+        tri = triage(goal, self.workspace, learned=learned, recent=recent)   # recall over gold + experiences + prior turn
         self.sink("triage", "info", f"task={tri['task_type']} lane={tri['lane']} :: {tri['reasoning']}")
 
         # 2. PROGRESSIVE PROMPT -- lean core always; the RCA skill body only for a metric-RCA.
@@ -103,8 +106,7 @@ class V5Agent(V4Agent):
                 sink=self.sink, asker=self.asker, max_steps=self.max_steps, dialect_note=dnote,
                 config=self.config, sources=self.sources, on_tokens=sub_tokens.append))
 
-        recent = conversation.summary() if conversation is not None else ""
-        tokens = tri.get("tokens", 0)
+        tokens = tri.get("tokens", 0)   # `recent` (conversation summary) already computed for triage above
         if self.frame:
             self.sink("framing", "info", "framing intent")
             definitions = self.workspace.definitions_index() if self.workspace else ""

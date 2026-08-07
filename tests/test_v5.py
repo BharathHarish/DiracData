@@ -64,6 +64,27 @@ class TriageCallTests(unittest.TestCase):
         self.assertEqual(tri["task_type"], "rca")
         self.assertIn("tokens", tri)
 
+    def test_triage_sees_recent_conversation(self):
+        # TO-FIX-01: a follow-up's context (the running summary) reaches triage BEFORE it classifies, so
+        # "why is store preferred there?" resolves instead of being mis-routed as vague/cold.
+        class _WS:
+            def definitions_index(self): return ""
+            def find_examples(self, q, limit=3): return []
+        model = _ScriptedModel('{"task_type":"analytics","lane":"cold","reasoning":"resolved follow-up"}')
+        make_triage(model)("why is store preferred there?", _WS(),
+                           recent="Turn 1: lower-income Arizona households prefer Store for Music/Children.")
+        payload = str(model.last_messages[-1].content)
+        self.assertIn("recent_conversation", payload)
+        self.assertIn("prefer Store for Music", payload)          # the prior turn reaches triage
+
+    def test_v5_computes_summary_before_triage(self):
+        import inspect
+        from diracdata.agent_v5 import V5Agent
+        src = inspect.getsource(V5Agent.run)
+        before = src.split("triage(goal")[0]
+        self.assertIn("recent = conversation.summary()", before)  # summary computed BEFORE the triage call
+        self.assertIn("recent=recent", src)                       # ...and passed in
+
     def test_recall_includes_learned_experience(self):
         # TO-V5-15: the experience book (learned SQL PATTERNS) is a FIRST-CLASS recall source in triage,
         # so a learned pattern -- not just gold -- can drive the fast lane. Prior bug: it was invisible.
@@ -109,6 +130,33 @@ class DQGateWiringTests(unittest.TestCase):
         self.assertIn("NEVER PROBED", sanity)                        # absence of a probe is a defect
         self.assertNotIn("DATA-SANITY IS A GATE", verify)            # de-loaded: verify no longer carries it
         self.assertIn("SEPARATE focused gate", verify)               # verify explicitly defers sanity
+
+    def test_verify_accepts_correlational_why(self):
+        # TO-FIX-02: a 'why' over observational data is soundly answered by correlated factors + a causal
+        # caveat -- the verifier must not loop rejecting it as 'descriptive / not proven causal'.
+        from diracdata.prompts import load_prompt
+        verify = load_prompt("verify")
+        self.assertIn("WHY", verify)
+        self.assertIn("CORRELATION", verify)
+        self.assertIn("ACCEPT such an answer", verify)               # explicit: don't reject the correlational answer
+
+
+class ChannelFactsTests(unittest.TestCase):
+    """TO-FIX-03: the channel fact tables' DIFFERING key columns are declared + rendered, so the agent
+    uses the right names (store: ticket_number/client_ref/address_ref) instead of guessing online's."""
+
+    def test_definitions_index_renders_channel_columns(self):
+        from types import SimpleNamespace
+        from diracdata.context.workspace import Workspace
+        ws = Workspace.__new__(Workspace)
+        ws.semantic_layer = {"channels": {
+            "online": {"fact": "online_purchases", "order_id": "order_number", "address_ref": "billing_address_ref"},
+            "store": {"fact": "store_purchases", "order_id": "ticket_number", "address_ref": "address_ref"}}}
+        idx = ws.definitions_index()
+        self.assertIn("SALES-CHANNEL", idx)
+        self.assertIn("order_id=ticket_number", idx)                 # store's real order id
+        self.assertIn("order_id=order_number", idx)                  # online's real order id
+        self.assertIn("address_ref=address_ref", idx)                # store has no billing_ prefix
 
     def test_payload_carries_dq_evidence_and_queries(self):
         from diracdata.agents.verify import build_verify_payload

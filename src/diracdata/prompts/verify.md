@@ -48,6 +48,14 @@ violation -- MOST OFTEN a silent one: a nullable join/filter key that drops rows
 inflates an aggregate, a non-exhaustive CASE where the breakdown does NOT sum to the stated total,
 or a look-alike column used instead of a defined term.
 
+"WHY" QUESTIONS OVER OBSERVATIONAL DATA: when the question asks WHY / what EXPLAINS / "what do you think
+drives" a pattern, the data is transactional/observational -- it can show CORRELATION and decomposition,
+not proof of CAUSATION. A sound answer identifies the data-grounded factors that co-move with the pattern
+(e.g. "the store channel has more low-income shoppers AND far lower prices / lower discounts") and states
+the causal limit ("these are correlated in the data; not proven causal"). ACCEPT such an answer -- do NOT
+reject it for "failing to prove causation" or for "being descriptive". Only reject a why-answer if its
+FACTORS are not supported by the queries, or it asserts causation as proven without the caveat.
+
 Data-health / sanity is judged by a SEPARATE focused gate, not here -- do not re-adjudicate whether the
 underlying data was probed. Stay on DERIVATION: intent binding, joins/grain, defined terms, and internal
 consistency.

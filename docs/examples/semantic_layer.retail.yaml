@@ -117,6 +117,50 @@ time:
   online_refunds:
     join: "JOIN calendar_days ON online_refunds.return_calendar_day_ref = calendar_days.calendar_day_record"
     period_column: "calendar_days.year"
+  store_purchases:
+    join: "JOIN calendar_days ON store_purchases.sale_calendar_day_ref = calendar_days.calendar_day_record"
+    period_column: "calendar_days.year"
+  mail_order_purchases:
+    join: "JOIN calendar_days ON mail_order_purchases.sale_calendar_day_ref = calendar_days.calendar_day_record"
+    period_column: "calendar_days.year"
+
+# ------------------------------------------------------------------------------------------------
+# CHANNELS -- the three sales-channel fact tables. Their key columns DIFFER (store has no "billing_"
+# prefix and uses ticket_number as the order id) -- use THESE names, do not assume one channel's names
+# for another. All join to the same dimensions (calendar_days, merchandise, addresses, household_profiles
+# -> income_ranges, client_profiles) via the keys below.
+# ------------------------------------------------------------------------------------------------
+channels:
+  online:
+    fact: online_purchases
+    order_id: order_number
+    client_ref: billing_client_ref
+    client_profile_ref: billing_client_profile_ref
+    household_ref: billing_household_profile_ref
+    address_ref: billing_address_ref
+    date_ref: sale_calendar_day_ref
+    merchandise_ref: merchandise_ref
+    revenue: net_paid
+  store:
+    fact: store_purchases
+    order_id: ticket_number
+    client_ref: client_ref
+    client_profile_ref: client_profile_ref
+    household_ref: household_profile_ref
+    address_ref: address_ref
+    date_ref: sale_calendar_day_ref
+    merchandise_ref: merchandise_ref
+    revenue: net_paid
+  mail:
+    fact: mail_order_purchases
+    order_id: order_number
+    client_ref: billing_client_ref
+    client_profile_ref: billing_client_profile_ref
+    household_ref: billing_household_profile_ref
+    address_ref: billing_address_ref
+    date_ref: sale_calendar_day_ref
+    merchandise_ref: merchandise_ref
+    revenue: net_paid
 
 # ------------------------------------------------------------------------------------------------
 # DIMENSIONS -- attribution slices: a GROUP-BY expression (sql) + the full JOIN fragment to reach it.

@@ -172,6 +172,13 @@ class Workspace:
                 deps = (body or {}).get("depends_on") or []
                 extra = f"  -> depends_on ({(body or {}).get('decomposition','')}): {', '.join(deps)}" if deps else ""
                 lines.append(f"  - {name}: {d}{extra}")
+        channels = sl.get("channels") or {}
+        if channels:
+            lines.append("SALES-CHANNEL FACT TABLES (key columns DIFFER per channel -- use THESE exact "
+                         "names, do not assume one channel's columns for another):")
+            for name, body in channels.items():
+                cols = ", ".join(f"{role}={col}" for role, col in (body or {}).items() if role != "fact")
+                lines.append(f"  - {name} ({(body or {}).get('fact')}): {cols}")
         return "\n".join(lines)
 
     def define(self, name: str) -> str:

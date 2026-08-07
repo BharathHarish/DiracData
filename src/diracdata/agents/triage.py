@@ -30,7 +30,7 @@ def make_triage(model: Any, sink: Any = null_sink, config: Config = _DEFAULTS):
     precedents; the workspace supplies both (definitions_index + find_examples)."""
     from langchain_core.messages import HumanMessage, SystemMessage
 
-    def triage(goal: str, workspace: Any, learned: str = "") -> dict:
+    def triage(goal: str, workspace: Any, learned: str = "", recent: str = "") -> dict:
         metrics = ""
         candidates: list[dict] = []
         if workspace is not None:
@@ -43,7 +43,12 @@ def make_triage(model: Any, sink: Any = null_sink, config: Config = _DEFAULTS):
                     candidates.append({"question": ex.question, "sql": ex.sql})
             except Exception:  # noqa: BLE001
                 candidates = []
-        payload = {"question": goal, "defined_terms": metrics or "(none)",
+        payload = {"question": goal,
+                   # The running summary of the CONVERSATION SO FAR -- resolve a follow-up's pronouns
+                   # ("there", "the same", "those") against it BEFORE classifying, else a follow-up looks
+                   # vague/context-free and gets mis-routed as cold.
+                   "recent_conversation": (recent or "").strip() or "(none -- first turn)",
+                   "defined_terms": metrics or "(none)",
                    "candidate_precedents": candidates or "(none)",
                    # Learned experience (SQL PATTERNS / GOTCHAS / BINDINGS curated from prior runs) is a
                    # FIRST-CLASS recall source: a matching learned pattern justifies lane=fast + a seed.
