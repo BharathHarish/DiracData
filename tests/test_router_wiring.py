@@ -12,7 +12,7 @@ if str(ROOT / "src") not in sys.path:
 
 from langchain_core.messages import AIMessage, AIMessageChunk  # noqa: E402
 
-from diracdata.agent import V4Agent  # noqa: E402
+from diracdata.agent import Agent  # noqa: E402
 from diracdata.config import Config  # noqa: E402
 from diracdata.memory.working_memory import WorkingMemory  # noqa: E402
 from diracdata.models import ModelRegistry  # noqa: E402
@@ -64,7 +64,7 @@ class RouterWiringTests(unittest.TestCase):
         cfg = Config(router_enabled=True, agent_model_profile="global")
         built = []
         reg = ModelRegistry(cfg, builder=lambda c, p, mt, t, r: built.append((p, mt)) or _AuthoringModel())
-        agent = V4Agent(model=_RouterMainModel(ROUTE_JSON), workspace=_FakeWorkspace(), engine=None,
+        agent = Agent(model=_RouterMainModel(ROUTE_JSON), workspace=_FakeWorkspace(), engine=None,
                         result_store=None, config=cfg, model_registry=reg, subagents=False, frame=False)
         signals = agent._route_signals("count clients", WorkingMemory(goal="q"))
         self.assertTrue(signals.exact_match)
@@ -79,7 +79,7 @@ class RouterWiringTests(unittest.TestCase):
         cfg = Config(router_enabled=False)
         built = []
         reg = ModelRegistry(cfg, builder=lambda c, p, mt, t, r: built.append(p) or _AuthoringModel())
-        agent = V4Agent(model=_AuthoringModel(), workspace=_FakeWorkspace(), engine=None,
+        agent = Agent(model=_AuthoringModel(), workspace=_FakeWorkspace(), engine=None,
                         result_store=None, config=cfg, model_registry=reg, subagents=False, frame=False)
         plan, tok = agent._route("q", agent._route_signals("q", WorkingMemory(goal="q")))
         self.assertEqual(plan.authoring_profile, "")   # standard: global model

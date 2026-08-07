@@ -30,8 +30,7 @@ from diracdata.experiences import ExperienceBook  # noqa: E402
 from diracdata.context.valuecache import ColumnValueCache  # noqa: E402
 from diracdata.context.workspace import Workspace  # noqa: E402
 
-from diracdata.agent import V4Agent  # noqa: E402
-from diracdata.agent_v5 import V5Agent  # noqa: E402
+from diracdata.agent import Agent  # noqa: E402
 from diracdata.memory.conversation import Conversation  # noqa: E402
 from diracdata.memory.results import ResultStore  # noqa: E402
 from diracdata.execution import make_executor  # noqa: E402
@@ -78,9 +77,6 @@ def main() -> int:
     ap.add_argument("--model-profile", default="openai_gpt_5_4_mini",
                     help="Base/bootstrap model. With the router ON (default) the garden auto-routes per "
                          "query: Haiku=complex, Mini=medium, Nano=simple.")
-    ap.add_argument("--agent", default="v5", choices=["v4", "v5"],
-                    help="v5 (default): triage + progressive skill + recall seed + model-garden routing "
-                         "+ sanity gate. v4: the flat core loop.")
     ap.add_argument("--env-file", default=str(ROOT / ".env"))
     ap.add_argument("--data-root", default=str(ROOT / "data"))
     ap.add_argument("--max-steps", type=int, default=None, help="Override the loop budget (else config).")
@@ -138,8 +134,7 @@ def main() -> int:
 
     experience_book = ExperienceBook(schema, obj_store)  # schema-scoped agentic memory (async curator)
     bindings = fabric.get("estate", "bindings.json", None)   # cross-source map (learn.py --estate)
-    AgentClass = V5Agent if args.agent == "v5" else V4Agent
-    agent = AgentClass(model=model, workspace=workspace, engine=engine, result_store=result_store,
+    agent = Agent(model=model, workspace=workspace, engine=engine, result_store=result_store,
                        sink=sink, config=settings, max_steps=args.max_steps, value_cache=value_cache,
                        asker=asker, experience_book=experience_book, sources=registry, bindings=bindings)
 
@@ -165,7 +160,7 @@ def main() -> int:
         ask(args.question)
         agent.flush_memory()   # finish async curation before exit
         return 0
-    print(f"{args.agent} analyst REPL -- Ctrl-C to exit.", file=sys.stderr)
+    print("analyst REPL -- Ctrl-C to exit.", file=sys.stderr)
     try:
         while True:
             q = input("\nQ> ").strip()

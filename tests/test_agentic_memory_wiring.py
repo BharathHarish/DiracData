@@ -14,7 +14,7 @@ if str(ROOT / "src") not in sys.path:
 
 from langchain_core.messages import AIMessage  # noqa: E402
 
-from diracdata.agent import V4Agent  # noqa: E402
+from diracdata.agent import Agent  # noqa: E402
 from diracdata.config import Config  # noqa: E402
 from diracdata.experiences.book import ExperienceBook  # noqa: E402
 from diracdata.memory.conversation import Conversation  # noqa: E402
@@ -41,7 +41,7 @@ class _SpyConsolidator:
 
 
 def _agent(enabled, book):
-    return V4Agent(model=_SummaryModel(), workspace=None, engine=None, result_store=None,
+    return Agent(model=_SummaryModel(), workspace=None, engine=None, result_store=None,
                    config=Config(agentic_memory_enabled=enabled), experience_book=book,
                    subagents=False, frame=False)
 

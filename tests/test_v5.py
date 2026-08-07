@@ -1,6 +1,6 @@
-"""V5: triage (recall + one-bit classify) parsing + validation, and V5Agent wiring (subclass of v4,
-progressive prompt = lean core, RCA skill body only for a metric-RCA). The live v4-vs-v5 A/B is
-scripts/ab_v4_v5.py (UAT TO-V5-05)."""
+"""Triage (recall + classify) parsing + validation, and the single Agent's wiring: progressive prompt
+(lean core), triage-bound RCA target + dimensions, the attribution primitive, and the catalog metadata.
+(The old v4/v5 split is gone -- one merged Agent in diracdata.agent.)"""
 
 import sys
 import unittest
@@ -79,8 +79,8 @@ class TriageCallTests(unittest.TestCase):
 
     def test_v5_computes_summary_before_triage(self):
         import inspect
-        from diracdata.agent_v5 import V5Agent
-        src = inspect.getsource(V5Agent.run)
+        from diracdata.agent import Agent
+        src = inspect.getsource(Agent.run)
         before = src.split("triage(goal")[0]
         self.assertIn("recent = conversation.summary()", before)  # summary computed BEFORE the triage call
         self.assertIn("recent=recent", src)                       # ...and passed in
@@ -105,9 +105,8 @@ class TriageCallTests(unittest.TestCase):
 
 class V5WiringTests(unittest.TestCase):
     def test_v5_is_v4_subclass_and_prompts_load(self):
-        from diracdata.agent import V4Agent
-        from diracdata.agent_v5 import V5Agent, _CORE
-        self.assertTrue(issubclass(V5Agent, V4Agent))            # reuses all of v4, overrides run()
+        from diracdata.agent import Agent, _CORE
+        self.assertTrue(callable(Agent.run))                     # single merged agent (v4/v5 unified)
         self.assertIn("NUMBERS come only from query results", _CORE)   # lean core carries the invariants
         self.assertLess(len(_CORE), 1200)                              # ...and stays LEAN (was ~8k w/ sql_rules)
         self.assertNotIn("GOLDEN RULES", _CORE)                        # golden-SQL checklist lives on the verifier now
@@ -140,7 +139,7 @@ class V5WiringTests(unittest.TestCase):
     def test_attribution_is_the_one_rca_primitive(self):
         # RCA is a single tool + a seeded brief now -- no "how-to" skill prompt to follow (was skill_rca +
         # spawn_metric_rca delegate + precompute, all superseded by rca/attribution.py).
-        import diracdata.agent_v5 as av5
+        import diracdata.agent as av5
         self.assertTrue(hasattr(av5, "build_attribution_tool") and hasattr(av5, "seed_attribution"))
         self.assertFalse(hasattr(av5, "_RCA_SKILL"))              # the playbook prompt is gone
 
@@ -276,8 +275,8 @@ class ModelGardenTests(unittest.TestCase):
 
     def test_v5_run_uses_the_router(self):
         import inspect
-        from diracdata.agent_v5 import V5Agent
-        src = inspect.getsource(V5Agent.run)
+        from diracdata.agent import Agent
+        src = inspect.getsource(Agent.run)
         self.assertIn("self._route(", src)          # V5 routes the model
         self.assertIn("escalations", src)           # ...and escalates on non-convergence
 
@@ -285,8 +284,8 @@ class ModelGardenTests(unittest.TestCase):
         # TO-V5-16: on escalation the stronger model is told to BUILD ON prior results (reuse result_ids),
         # not re-explore from scratch -- the re-derivation that burned ~half the tokens on the RCA run.
         import inspect
-        from diracdata.agent_v5 import V5Agent
-        src = inspect.getsource(V5Agent.run)
+        from diracdata.agent import Agent
+        src = inspect.getsource(Agent.run)
         self.assertIn("CONTINUE", src)
         self.assertIn("REUSE those result_ids", src)
 
@@ -294,10 +293,10 @@ class ModelGardenTests(unittest.TestCase):
         # TO-V5-18: the router must SEE triage's verdict -- task_type AND a fast-lane precedent -- else it
         # re-labels a precedented RCA "cold" and sends it to the top model (the bug the user caught).
         import inspect
-        from diracdata.agent_v5 import V5Agent
+        from diracdata.agent import Agent
         from diracdata.routing.router import RouteSignals
         self.assertIn("task_type", RouteSignals.__dataclass_fields__)   # signals carry triage's task_type
-        src = inspect.getsource(V5Agent.run)
+        src = inspect.getsource(Agent.run)
         self.assertIn('task_type=tri["task_type"]', src)               # V5 threads triage into the signals
         self.assertIn('exact_match=base_signals.exact_match or tri["lane"] == "fast"', src)
 

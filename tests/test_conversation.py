@@ -145,11 +145,11 @@ class AgentRecordTests(unittest.TestCase):
     """The Agent's post-turn step: append the trace to transcript.md AND regenerate summary.md."""
 
     def test_record_writes_both_files_from_one_turn(self) -> None:
-        from diracdata.agent import V4Agent
+        from diracdata.agent import Agent
 
         with tempfile.TemporaryDirectory() as tmp:
             conv = Conversation("c1", root=Path(tmp))
-            agent = V4Agent(model=_ScriptedModel("running: 2001 online revenue = $49.71M [r1]"),
+            agent = Agent(model=_ScriptedModel("running: 2001 online revenue = $49.71M [r1]"),
                             workspace=None, engine=None, result_store=None, frame=False, subagents=False)
             agent._record(conv, "2001 online revenue?", _events(), "$49.71M")
             self.assertIn("## Turn 1", conv.read_transcript())   # lossless trace

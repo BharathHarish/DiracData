@@ -1,9 +1,13 @@
-"""V4Agent -- THE entry point. Assembles the single-loop analyst and runs one turn:
+"""Agent -- THE entry point. Assembles the single-loop analyst and runs one turn:
 
-  frame intent (tooled, resolving follow-ups from conversation memory)
-    -> analyst loop over tools (navigate / run_sql / plan / subagents), gated finish
-       (plan-verified + faithful + independent verify + golden SQL rules)
-    -> remember (agentic write-back)  -> append the full trace to transcript.md
+  triage (recall + classify: rca vs analytics, fast vs cold)
+    -> metric-attribution SEED for an RCA (deterministic: the `attribute` primitive walks the driver
+       tree + attributes every requested dimension, reconciled + cited, and injects the brief)
+    -> frame intent (skipped when the RCA is already seeded; else tooled, resolving follow-ups)
+    -> agentic model route (the garden: nano/mini/haiku/sonnet-5), escalating if a tier can't converge
+    -> analyst loop over tools (navigate / run_sql / plan / attribute / subagents), gated finish
+       (data-sanity + independent derivation review)
+    -> remember (agentic write-back) -> append the full trace to transcript.md
     -> regenerate the running summary.md (agentic).
 
 Every runtime constant comes from `Config`; every prompt from `prompts/`. Durable conversation
@@ -12,7 +16,7 @@ memory (transcript.md + summary.md) is optional -- pass a `Conversation` to `run
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any
 
 from diracdata.utils.streaming import Sink, null_sink
@@ -20,22 +24,26 @@ from diracdata.utils.streaming import Sink, null_sink
 from diracdata.agents.framing import frame_intent
 from diracdata.agents.loop import run_loop
 from diracdata.agents.summarizer import make_summarizer
+from diracdata.agents.triage import make_triage
 from diracdata.config import Config, Stage
 from diracdata.models import ModelRegistry
 from diracdata.routing import RouteSignals, make_router
 from diracdata.memory.working_memory import WorkingMemory
 from diracdata.memory.results import ResultStore
 from diracdata.prompts import dialect_note, load_prompt
+from diracdata.rca.attribution import build_attribution_tool, seed_attribution
 from diracdata.agents.subagents import build_subagent_tool
 from diracdata.tools import build_control_tools, build_tools, build_transcript_tool
 from diracdata.agents.verify import FinishGate, make_sanity_gate, make_verifier, estate_dialects_note
 from diracdata.experiences import MemoryConsolidator, make_curator
 
-_SYSTEM_PROMPT = load_prompt("analyst") + "\n\n" + load_prompt("sql_rules")
+# The whole analyst prompt: identity + task + the few environment invariants. The golden-SQL checklist
+# (sql_rules) lives on the VERIFIER that ENFORCES it, not stacked onto a competent SQL writer.
+_CORE = load_prompt("analyst_core")
 
 
 @dataclass
-class V4Answer:
+class Answer:
     question: str
     answer: str
     memory: WorkingMemory
@@ -44,7 +52,10 @@ class V4Answer:
     verdict: dict | None = None
 
 
-class V4Agent:
+class Agent:
+    """The recall-first, single-loop analyst: triage -> (attribution seed) -> frame -> route -> loop ->
+    gated finish -> remember + summarize. One turn per `run`."""
+
     def __init__(self, *, model: Any, workspace: Any, engine: Any, result_store: ResultStore,
                  sink: Sink = null_sink, config: Config | None = None, max_steps: int | None = None,
                  value_cache: Any = None, asker: Any = None, frame: bool = True, subagents: bool = True,
@@ -90,9 +101,9 @@ class V4Agent:
     def _run_analyst(self, plan: Any, tools: list, system_prompt: str, memory: WorkingMemory,
                      gate: Any, observe: Any, task: str | None = None) -> dict:
         """Run the analyst loop under a RunPlan. Router off -> the per-stage authoring model at the
-        normal budget (today's path). Router on -> the plan's model + budget, with a shortcut hint
-        when a strong precedent exists. An explicit `task` (e.g. V5's recall seed) wins over the
-        router's generic shortcut note."""
+        normal budget. Router on -> the plan's model + budget, with a shortcut hint when a strong
+        precedent exists. An explicit `task` (the RCA brief or a recall seed) wins over the router's
+        generic shortcut note."""
         if self.config.router_enabled and plan.authoring_profile:
             model = self._registry.get(plan.authoring_profile, max_tokens=plan.max_tokens,
                                        temperature=plan.temperature).model
@@ -116,12 +127,11 @@ class V4Agent:
             return self.model
         return self._registry.for_stage(stage).model
 
-    def run(self, goal: str, conversation: Any = None) -> V4Answer:
+    def run(self, goal: str, conversation: Any = None) -> Answer:
         """Answer one question. Pass a `Conversation` to enable durable memory: the running summary
-        is fed into framing (so follow-ups + entities resolve), and after the turn the full trace is
-        appended to transcript.md and the summary regenerated."""
+        is fed into triage/framing (so follow-ups + entities resolve), and after the turn the full
+        trace is appended to transcript.md and the summary regenerated."""
         memory = WorkingMemory(goal=goal)
-        # The turn's transcript: every tool call across framing + analyst, tagged by phase.
         events: list[dict] = []
 
         def _observe(phase: str):
@@ -138,15 +148,40 @@ class V4Agent:
         dnote = dialect_note(getattr(self.engine, "dialect", ""))
         learned = self._learned_context()
         estate = self._estate_context()
-        system_prompt = _SYSTEM_PROMPT + "\n\n" + dnote
+
+        # 1. TRIAGE -- recall + classify, before framing. Feed it the CONVERSATION SUMMARY first so a
+        #    follow-up ("why is store preferred there?") resolves its pronouns and is classified WITH
+        #    context, instead of going cold on a bare, context-free question.
+        recent = conversation.summary() if conversation is not None else ""
+        triage = make_triage(self._stage_model(Stage.FRAMING), sink=self.sink, config=self.config)
+        tri = triage(goal, self.workspace, learned=learned, recent=recent)
+        self.sink("triage", "info", f"task={tri['task_type']} lane={tri['lane']} :: {tri['reasoning']}")
+
+        # METRIC ATTRIBUTION SEED (deterministic). When triage resolved the metric + periods + the
+        # dimensions the user asked about, run the ONE `attribute` primitive up front: it walks the
+        # driver tree AND attributes every REQUESTED dimension completely (retry + explicit
+        # `unavailable`, never a silent drop), routing SQL through the result store (citable
+        # result_ids). Its brief is injected for the analyst to NARRATE -- the requested slices always
+        # run (bound, not "remembered"), numbers arrive pre-cited, and there is nothing left to re-derive.
+        rca_seed = None
+        if (tri["task_type"] == "rca" and self.config.rca_precompute_enabled and tri.get("rca_target")
+                and self.workspace and self.workspace.semantic_layer):
+            rca_seed = seed_attribution(
+                target=tri["rca_target"], workspace=self.workspace, engine=self.engine,
+                result_store=self.result_store, memory=memory, config=self.config, sink=self.sink)
+
+        # 2. PROMPT -- the lean core is the whole analyst prompt (no RCA "how-to" skill: the attribution
+        #    is a tool + a seeded brief, not a playbook the model has to follow).
+        system_prompt = _CORE + "\n\n" + dnote
         if estate:
             system_prompt += "\n\n## " + estate
         if learned:
             system_prompt += ("\n\n## LEARNED KNOWLEDGE FOR THIS SCHEMA (reuse these patterns; honor the "
                               "gotchas/bindings; use RCA leads when investigating a metric)\n" + learned)
+
         # The verifier also needs the per-source dialects: in a multi-engine estate each query runs in
         # its source's dialect and combine_results runs on the reconciler -- else it flags valid
-        # cross-source SQL as "won't execute / fabricated". (The analyst already gets this via the estate map.)
+        # cross-source SQL as "won't execute / fabricated".
         verifier = make_verifier(self._stage_model(Stage.VERIFY), sink=self.sink,
                                  workspace=self.workspace,
                                  dialect_note=estate_dialects_note(self.sources, dnote), config=self.config)
@@ -163,30 +198,59 @@ class V4Agent:
                 system_prompt=system_prompt, sink=self.sink, asker=self.asker, max_steps=self.max_steps,
                 depth=0, max_depth=self.max_subagent_depth, on_tokens=sub_tokens.append,
                 dialect_note=dnote, config=self.config, sources=self.sources))
-        # Conversation memory (the running summary) resolves follow-ups into a standalone intent.
-        recent = conversation.summary() if conversation is not None else ""
-        tokens = 0
-        if self.frame:
+        # The `attribute` primitive as a TOOL: for a metric-RCA the analyst can root-cause a defined
+        # metric across the dimensions it binds, on the fly ("now by state") -- same complete, cited
+        # decomposition as the seed. Present whenever there is a semantic layer to attribute over.
+        if tri["task_type"] == "rca" and (self.workspace and self.workspace.semantic_layer):
+            tools.extend(build_attribution_tool(
+                workspace=self.workspace, engine=self.engine, result_store=self.result_store,
+                memory=memory, config=self.config, sink=self.sink))
+
+        tokens = tri.get("tokens", 0)
+        # A seeded RCA already HAS the intent (metric + periods + every requested dimension) and the
+        # reconciled, cited answer in working memory -- so SKIP framing's open exploration (which would
+        # re-derive a often-wrong direction, e.g. binding "age groups" to a raw column).
+        if rca_seed:
+            memory.confirmed_intent = {"intent": goal, "concepts": []}
+        elif self.frame:
             self.sink("framing", "info", "framing intent")
             definitions = self.workspace.definitions_index() if self.workspace else ""
             if estate:
                 definitions = (estate + "\n\n" + definitions) if definitions else estate
             tokens += frame_intent(model=self._stage_model(Stage.FRAMING), tools=data_tools,
-                                   memory=memory, sink=self.sink,
-                                   definitions=definitions, recent_turns=recent, learned=learned,
+                                   memory=memory, sink=self.sink, definitions=definitions,
+                                   recent_turns=recent, learned=learned,
                                    max_steps=self.config.framing_max_steps, observe=_observe("framing"))
-        # The main model AGENTICALLY chooses the analyst's model + budget from the catalog. The finish
-        # gate stays the correctness authority; if the chosen model can't converge, re-route upward
-        # (asking for a stronger model than the one that failed).
-        signals = self._route_signals(goal, memory)
+
+        # 3. RECALL SEED -- the RCA brief wins; else on the fast lane hand the analyst the precedent to
+        #    adapt + verify (a learned pattern often has NO clean SQL, so seed off the precedent NAME too).
+        task = None
+        if rca_seed:
+            task = f"Answer this question:\n{goal}\n\n{rca_seed.to_brief()}"
+        elif tri["lane"] == "fast" and tri["precedent_sql"]:
+            task = (f"Answer this question:\n{goal}\n\nA BLESSED PRECEDENT exists for this pattern -- ADAPT "
+                    f"it (rebind the literals/period/values) and VERIFY it still holds; do not re-explore "
+                    f"from scratch.\nQ: {tri['precedent_q'] or '(prior solved question)'}\nSQL: {tri['precedent_sql']}")
+        elif tri["lane"] == "fast" and tri["precedent_q"]:
+            task = (f"Answer this question:\n{goal}\n\nA LEARNED PATTERN matches this problem: "
+                    f"'{tri['precedent_q']}'. It is in your LEARNED KNOWLEDGE for this schema -- ADAPT that "
+                    f"KNOWN recipe (rebind the period/literals/segments, fill any {{placeholder}}) and VERIFY "
+                    f"it; do NOT re-derive the approach or re-explore the schema from scratch.")
+
+        # 4. MODEL ROUTE -- the agentic router picks the garden tier. It must SEE what triage saw (its
+        #    task_type AND that a precedent exists) so a precedented RCA short-circuits to a cheaper tier
+        #    instead of the top model. The finish gate stays the correctness authority; a tier that
+        #    cannot converge is re-routed UPWARD (escalation).
+        base_signals = self._route_signals(goal, memory)
+        signals = replace(base_signals, task_type=tri["task_type"],
+                          exact_match=base_signals.exact_match or tri["lane"] == "fast")
         plan, rtok = self._route(goal, signals)
         tokens += rtok
         if self.config.router_enabled:
             self.sink("router", "info", f"model={plan.authoring_profile or '(global)'} "
-                                        f"max_steps={plan.max_steps} tokens={plan.max_tokens} "
-                                        f"shortcut={plan.allow_shortcut} :: {plan.reasoning}")
+                                        f"max_steps={plan.max_steps} tokens={plan.max_tokens} :: {plan.reasoning}")
         analyst = _observe("analyst")
-        out = self._run_analyst(plan, tools, system_prompt, memory, gate, analyst)
+        out = self._run_analyst(plan, tools, system_prompt, memory, gate, analyst, task=task)
         tokens += out["tokens"]
         escalations = 0
         while (gate.result is None and self.config.router_enabled
@@ -194,16 +258,21 @@ class V4Agent:
             escalations += 1
             plan, rtok = self._route(goal, signals, failed_profile=plan.authoring_profile)
             tokens += rtok
-            self.sink("router", "info", f"escalating -> {plan.authoring_profile or '(global)'} "
-                                        f":: {plan.reasoning}")
-            out = self._run_analyst(plan, tools, system_prompt, memory, gate, analyst)
+            self.sink("router", "info", f"escalating -> {plan.authoring_profile or '(global)'} :: {plan.reasoning}")
+            # Continue, don't restart: the prior pass already populated WORKING MEMORY (plan + stored
+            # results). Re-exploring is what burned tokens; tell the stronger model to build on it.
+            cont = (f"CONTINUE a partially-completed analysis of:\n{goal}\n\nWORKING MEMORY already holds your "
+                    f"prior plan, verified facts, and stored results (r1..). Do NOT re-run exploration, "
+                    f"data_health, or queries you have already done -- REUSE those result_ids. Address the "
+                    f"reviewer's last rejection reason, then finish.")
+            out = self._run_analyst(plan, tools, system_prompt, memory, gate, analyst, task=cont)
             tokens += out["tokens"]
         tokens += gate.tokens + sum(sub_tokens)
         answer = out["text"].strip()
         if conversation is not None:
             tokens += self._record(conversation, goal, events, answer)
-        return V4Answer(question=goal, answer=answer, memory=memory,
-                        tokens=tokens, steps=out["steps"], verdict=out.get("verdict"))
+        return Answer(question=goal, answer=answer, memory=memory,
+                      tokens=tokens, steps=out["steps"], verdict=out.get("verdict"))
 
     def _learned_context(self) -> str:
         """The curated schema memory (experiences.md) to inject into this turn -- reused patterns,

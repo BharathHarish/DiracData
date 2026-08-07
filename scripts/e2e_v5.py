@@ -24,7 +24,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from diracdata.agent_v5 import V5Agent  # noqa: E402
+from diracdata.agent import Agent  # noqa: E402
 from diracdata.config import settings_from_env  # noqa: E402
 from diracdata.context.fabric import fabric_store_from_settings  # noqa: E402
 from diracdata.context.valuecache import ColumnValueCache  # noqa: E402
@@ -99,7 +99,7 @@ def main() -> int:
                          reconciler_memory_limit=settings.reconciler_memory_limit,
                          reconciler_temp_dir=settings.reconciler_temp_dir,
                          reconciler_threads=settings.reconciler_threads, executor=make_executor(settings))
-        return V5Agent(model=model, workspace=workspace, engine=engine, result_store=rs, sink=sink,
+        return Agent(model=model, workspace=workspace, engine=engine, result_store=rs, sink=sink,
                        config=settings, value_cache=value_cache, asker=lambda q: "", sources=registry,
                        experience_book=book)
 

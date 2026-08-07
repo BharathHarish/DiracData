@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT / "src") not in sys.path:
     sys.path.insert(0, str(ROOT / "src"))
 
-from diracdata.agent import V4Agent  # noqa: E402
+from diracdata.agent import Agent  # noqa: E402
 from diracdata.config import Config, Stage, StageConfig  # noqa: E402
 from diracdata.models import ModelRegistry  # noqa: E402
 
@@ -26,7 +26,7 @@ class _Built:
 
 
 def _agent(config, registry=None):
-    return V4Agent(model=_Injected(), workspace=None, engine=None, result_store=None,
+    return Agent(model=_Injected(), workspace=None, engine=None, result_store=None,
                    config=config, model_registry=registry, subagents=False, frame=False)
 
 

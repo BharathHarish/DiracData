@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT / "src") not in sys.path:
     sys.path.insert(0, str(ROOT / "src"))
 
-from diracdata.agent import V4Agent  # noqa: E402
+from diracdata.agent import Agent  # noqa: E402
 from diracdata.config import Config  # noqa: E402
 from diracdata.experiences.book import ExperienceBook  # noqa: E402
 from diracdata.utils.object_store import LocalObjectStore  # noqa: E402
@@ -24,7 +24,7 @@ class _M:
 
 
 def _agent(enabled, book):
-    return V4Agent(model=_M(), workspace=None, engine=None, result_store=None,
+    return Agent(model=_M(), workspace=None, engine=None, result_store=None,
                    config=Config(agentic_memory_enabled=enabled), experience_book=book,
                    subagents=False, frame=False)
 
