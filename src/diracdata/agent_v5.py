@@ -72,9 +72,24 @@ class V5Agent(V4Agent):
         tri = triage(goal, self.workspace, learned=learned, recent=recent)   # recall over gold + experiences + prior turn
         self.sink("triage", "info", f"task={tri['task_type']} lane={tri['lane']} :: {tri['reasoning']}")
 
-        # 2. PROGRESSIVE PROMPT -- lean core always; the RCA skill body only for a metric-RCA.
+        # METRIC-RCA PRE-COMPUTE (deterministic, before everything downstream). When triage resolved the
+        # metric + periods, run the WHOLE attribution up-front -- decompose the driver tree + rank every
+        # DEFINED dimension -- routing the SQL through the result store (citable result_ids), and inject
+        # the reconciled brief into working memory for the analyst to NARRATE. This is what kills the
+        # coin-flip: the age/gender/income slices always run (defined, not "remembered"), the numbers
+        # arrive pre-cited (the derivation gate passes first time), and there is nothing left to re-derive.
+        rca_brief: dict | None = None
+        if (tri["task_type"] == "rca" and self.config.rca_precompute_enabled and tri.get("rca_target")
+                and self.workspace and self.workspace.semantic_layer):
+            rca_brief = precompute_rca(
+                target=tri["rca_target"], workspace=self.workspace, engine=self.engine,
+                result_store=self.result_store, memory=memory, config=self.config, sink=self.sink)
+
+        # 2. PROGRESSIVE PROMPT -- lean core always; the RCA skill (how to DELEGATE/decompose) only for a
+        #    metric-RCA that was NOT already pre-computed (else it would nudge the analyst to re-derive
+        #    what is already done + cited).
         system_prompt = _CORE + "\n\n" + dnote
-        if tri["task_type"] == "rca":
+        if tri["task_type"] == "rca" and rca_brief is None:
             system_prompt += "\n\n" + _RCA_SKILL
         if estate:
             system_prompt += "\n\n## " + estate
@@ -98,26 +113,25 @@ class V5Agent(V4Agent):
                 system_prompt=system_prompt, sink=self.sink, asker=self.asker, max_steps=self.max_steps,
                 depth=0, max_depth=self.max_subagent_depth, on_tokens=sub_tokens.append,
                 dialect_note=dnote, config=self.config, sources=self.sources))
-        # Metric-RCA: DETERMINISTIC pre-compute FIRST (no coin-flip). When triage resolved the metric +
-        # periods, run the whole attribution up-front -- decompose the driver tree + rank every DEFINED
-        # dimension -- routing the SQL through the result store (citable result_ids), and inject the
-        # reconciled brief for the analyst to NARRATE. Only if that can't run (no target / undefined /
-        # tool reject) do we fall back to the AGENTIC spawn_metric_rca delegation.
-        rca_brief: dict | None = None
-        if tri["task_type"] == "rca" and (self.workspace and self.workspace.semantic_layer):
-            if self.config.rca_precompute_enabled and tri.get("rca_target"):
-                rca_brief = precompute_rca(
-                    target=tri["rca_target"], workspace=self.workspace, engine=self.engine,
-                    result_store=self.result_store, memory=memory, config=self.config, sink=self.sink)
-            if rca_brief is None and self.subagents:
-                tools.extend(build_rca_delegate(
-                    model=self._stage_model(Stage.AUTHORING), workspace=self.workspace, engine=self.engine,
-                    result_store=self.result_store, value_cache=self.value_cache, parent_memory=memory,
-                    sink=self.sink, asker=self.asker, max_steps=self.max_steps, dialect_note=dnote,
-                    config=self.config, sources=self.sources, on_tokens=sub_tokens.append))
+        # Metric-RCA AGENTIC FALLBACK: only when the deterministic pre-compute could NOT run (triage
+        # didn't resolve a target, or an undefined/unusual metric) do we hand the analyst the
+        # spawn_metric_rca delegation to the specialist. A pre-computed run needs neither.
+        if (tri["task_type"] == "rca" and rca_brief is None and self.subagents
+                and self.workspace and self.workspace.semantic_layer):
+            tools.extend(build_rca_delegate(
+                model=self._stage_model(Stage.AUTHORING), workspace=self.workspace, engine=self.engine,
+                result_store=self.result_store, value_cache=self.value_cache, parent_memory=memory,
+                sink=self.sink, asker=self.asker, max_steps=self.max_steps, dialect_note=dnote,
+                config=self.config, sources=self.sources, on_tokens=sub_tokens.append))
 
         tokens = tri.get("tokens", 0)   # `recent` (conversation summary) already computed for triage above
-        if self.frame:
+        # A pre-computed RCA already HAS the intent (metric + periods + every defined dimension) and the
+        # reconciled, cited answer in working memory -- so SKIP framing's open exploration. Framing was
+        # re-deriving a (often wrong) direction here: it would bind "age groups" to a raw column and set
+        # an education_status trajectory the analyst then followed, ignoring the injected age_band movers.
+        if rca_brief:
+            memory.confirmed_intent = {"intent": goal, "concepts": []}
+        elif self.frame:
             self.sink("framing", "info", "framing intent")
             definitions = self.workspace.definitions_index() if self.workspace else ""
             if estate:
