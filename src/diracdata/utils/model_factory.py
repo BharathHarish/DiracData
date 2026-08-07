@@ -42,18 +42,27 @@ class ChatModelProfile:
     note: str = ""                     # one-line hint for the router
 
 
-# The MODEL GARDEN -- exactly three tiers the router chooses among (cheapest-correct + escalation).
-# Within THIS garden Haiku is the top tier (strong), Mini the mid all-rounder (standard), Nano the
-# cheapest for simple work (basic). The router reads cost_tier + capability + note to pick per query.
+# The MODEL GARDEN -- four tiers the router chooses among (cheapest-correct + escalation). Nano (basic)
+# < Mini (standard) < Haiku (strong) < Sonnet 5 (frontier). The router reads cost_tier + capability +
+# note to pick per query; frontier is reserved for the hardest cold/novel work where correctness rules.
 BUILT_IN_MODEL_PROFILES: dict[str, ChatModelProfile] = {
+    "anthropic_sonnet_5": ChatModelProfile(
+        "anthropic_sonnet_5",
+        ModelProvider.ANTHROPIC,
+        "claude-sonnet-5",
+        "Claude Sonnet 5",
+        cost_tier="high", capability="frontier", supports_tools=True, supports_reasoning=True,
+        note="TOP tier -- reserve for the HARDEST cold/novel root-cause + multi-metric decomposition, "
+             "or to ESCALATE when a strong model could not converge; correctness dominates cost here",
+    ),
     "anthropic_haiku_45": ChatModelProfile(
         "anthropic_haiku_45",
         ModelProvider.ANTHROPIC,
         "claude-haiku-4-5-20251001",
         "Claude Haiku 4.5",
         cost_tier="mid", capability="strong", supports_tools=True, supports_reasoning=False,
-        note="MOST CAPABLE in this garden -- use for COMPLEX / cold / root-cause (RCA) / multi-step "
-             "decomposition where correctness matters most",
+        note="STRONG all-rounder -- use for COMPLEX / cold / root-cause (RCA) / multi-step decomposition "
+             "where correctness matters; escalate to the frontier tier only if it cannot converge",
     ),
     "openai_gpt_5_4_mini": ChatModelProfile(
         "openai_gpt_5_4_mini",

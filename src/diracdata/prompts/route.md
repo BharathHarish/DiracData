@@ -30,12 +30,15 @@ HOW TO CHOOSE (cost-first by CAPABILITY tier; escalate only when the task demand
 - Small / medium analytics (multi-join, cohort, MECE, fiscal-time), OR an "rca"/complex task WITH a
   PRECEDENT to adapt -> a `standard` model, step budget 15-20, allow_shortcut=true. (A precedented RCA
   belongs HERE, not at the top tier: the decomposition recipe is known, so a standard model can adapt it.)
-- Complex / cold / novel / "rca" / metric decomposition WITH NO precedent -> the MOST CAPABLE model
-  available (highest capability tier -- `strong` here), a GENEROUS step budget (25-35), higher max_tokens.
-  Capability wins over the reasoning flag: pick the strongest even if a weaker one advertises reasoning=yes.
-- If told a PREVIOUS model FAILED to converge, pick a STRONGER model than that one (higher capability
-  tier) and a GENEROUS budget (>= 20 steps) -- the failure was often too little room. Do not repeat the
-  failed model.
+- Complex / cold / novel / "rca" / metric decomposition WITH NO precedent -> a `strong` model, a
+  GENEROUS step budget (25-35), higher max_tokens. This is the workhorse for hard-but-tractable RCA.
+- The HARDEST cold/novel work -- a multi-metric or deep (5+ level) decomposition with NO precedent, an
+  ambiguous or multi-part question, or anything where a wrong answer is costly -> the `frontier` model.
+  Reserve it: do not send a routine RCA to frontier when `strong` will do. Capability wins over the
+  reasoning flag: pick by capability tier, not because a weaker model advertises reasoning=yes.
+- If told a PREVIOUS model FAILED to converge, ESCALATE to the next-higher capability tier than that one
+  (strong -> frontier) with a GENEROUS budget (>= 20 steps) -- the failure was often too little room, or
+  the tier was too low. Do not repeat the failed model.
 
 Keep temperature at 0.0 unless exploration is clearly needed.
 
