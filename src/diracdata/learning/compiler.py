@@ -56,6 +56,22 @@ class SemanticModel:
                 f"  joins recorded: {cov['joins']} ; tables with no join: {cov['tables_with_no_join'] or 'none'}\n"
                 f"  metrics: {cov['metrics']} ; dimensions: {cov['dimensions']}")
 
+    @classmethod
+    def from_doc(cls, doc: dict) -> "SemanticModel":
+        """Rebuild a model from a to_yaml() doc (so the metadata/value-domain converters can run over a
+        stored semantic_model.yaml, not just a freshly-compiled in-memory one)."""
+        sm = cls(schema=(doc or {}).get("schema", ""))
+        sm.joins = list((doc or {}).get("relationships") or [])
+        sm.metrics = dict((doc or {}).get("metrics") or {})
+        sm.dimensions = dict((doc or {}).get("dimensions") or {})
+        for t, md in ((doc or {}).get("models") or {}).items():
+            md = md or {}
+            sm.tables[t] = {k: md.get(k) for k in ("short", "long", "grain", "kind") if md.get(k)}
+            sm.columns[t] = dict(md.get("columns") or {})
+            if md.get("measures"):
+                sm.measures[t] = list(md["measures"])
+        return sm
+
     def to_yaml(self) -> str:
         doc = {"version": 3, "schema": self.schema, "models": {}, "relationships": self.joins,
                "metrics": self.metrics, "dimensions": self.dimensions}
@@ -64,6 +80,44 @@ class SemanticModel:
                                 "columns": self.columns.get(t, {}),
                                 **({"measures": self.measures[t]} if self.measures.get(t) else {})}
         return yaml.safe_dump(doc, sort_keys=False, width=120)
+
+    # ---- retarget: emit the artifacts the BASE agent already consumes on-demand -------------------
+    # The winning channel is describe_columns -> workspace.column_detail(metadata_descriptions.json)
+    # and find_examples/value_domains -- NOT a separate semantic_model the agent won't read. So we
+    # fold the model's per-column intelligence (esp. the COMPLEX access recipe) into the long
+    # description the agent already pulls, and the value domains into value_domains.json.
+    def to_metadata_descriptions(self) -> dict:
+        """{tables:{t:{short/long}}, columns:{t:{c:{short_description,long_description}}}} -- the exact
+        shape workspace loads. A complex column's ACCESS RECIPE is embedded verbatim in long_description
+        so a plain describe_columns(table,[col]) hands the analyst the nested-access syntax."""
+        tables = {t: {"short_description": (td.get("short") or "").strip(),
+                      "long_description": " ".join(filter(None, [
+                          (td.get("long") or td.get("short") or "").strip(),
+                          f"Grain: {td['grain']}." if td.get("grain") else "",
+                          f"Kind: {td['kind']}." if td.get("kind") else ""]))}
+                  for t, td in self.tables.items()}
+        columns: dict = {}
+        for t, cmap in self.columns.items():
+            columns[t] = {}
+            for c, cd in cmap.items():
+                long_ = (cd.get("long") or cd.get("short") or "").strip()
+                recipe = (cd.get("access_recipe") or "").strip()
+                if recipe:  # push the nested-access syntax into the channel the agent already reads
+                    long_ = (long_ + " " if long_ else "") + f"NESTED/COMPLEX — access path(s): {recipe}"
+                columns[t][c] = {"short_description": (cd.get("short") or "").strip(),
+                                 "long_description": long_}
+        return {"tables": tables, "columns": columns}
+
+    def to_value_domains(self) -> dict:
+        """{t:{c:<domain>}} from any value_domain the model recorded -- the [values] line describe_columns
+        shows. Skipped columns simply have no entry (the agent falls back to live profile_column)."""
+        out: dict = {}
+        for t, cmap in self.columns.items():
+            for c, cd in cmap.items():
+                dom = cd.get("value_domain")
+                if isinstance(dom, dict) and dom:
+                    out.setdefault(t, {})[c] = dom
+        return out
 
 
 def build_model_tools(*, model: SemanticModel) -> list[Any]:

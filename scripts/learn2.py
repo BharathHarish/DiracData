@@ -79,6 +79,10 @@ def main() -> int:
     ap.add_argument("--data-root", default=str(ROOT / "data"))
     ap.add_argument("--max-steps", type=int, default=None)
     ap.add_argument("--stream-mode", default="updates", choices=["off", "messages", "updates", "all"])
+    ap.add_argument("--subagents", dest="subagents", action="store_true", default=True,
+                    help="fan out per-table describe sub-agents (scale; default on)")
+    ap.add_argument("--no-subagents", dest="subagents", action="store_false",
+                    help="single-agent compile (small schemas / debugging)")
     ap.add_argument("--quiet", action="store_true")
     args = ap.parse_args()
 
@@ -92,16 +96,35 @@ def main() -> int:
     print(f"[learn2] compiling semantic model for {args.schema} | {len(engine.list_tables())} tables "
           f"| model={args.model_profile}", file=sys.stderr)
     compiler = LearningCompiler(engine=engine, model=model, sink=sink, config=settings,
-                                max_steps=args.max_steps, subagents=False)  # P1: single agent
+                                max_steps=args.max_steps, subagents=args.subagents)
     context = _context(fab, args.schema)
     sm, out = compiler.compile(args.schema, context=context)
 
     cov = sm.coverage({t: engine.list_columns(t) for t in engine.list_tables()})
+    # PRIMARY output: the artifacts the base agent consumes ON-DEMAND (metadata_descriptions.json ->
+    # describe_columns, value_domains.json). Complex-column ACCESS RECIPES are folded into the long
+    # descriptions so the analyst gets nested-access syntax through a channel it already uses. The
+    # semantic_model.yaml is kept as the source-of-record (governance), but is not the delivery vehicle.
+    meta = sm.to_metadata_descriptions()
+    cur_meta = fab.get(args.schema, "metadata_descriptions.json") or {}
+    for t, cols in meta["columns"].items():
+        cur_meta.setdefault("columns", {}).setdefault(t, {}).update(cols)
+    cur_meta.setdefault("tables", {}).update(meta["tables"])
+    fab.put(args.schema, "metadata_descriptions.json", cur_meta)
+    domains = sm.to_value_domains()
+    if domains:
+        cur_dom = fab.get(args.schema, "value_domains.json") or {}
+        for t, cols in domains.items():
+            cur_dom.setdefault(t, {}).update(cols)
+        fab.put(args.schema, "value_domains.json", cur_dom)
     fab._store.write_text(fab._fabric_key(args.schema, "semantic_model.yaml"), sm.to_yaml(),
                           content_type="text/yaml")
     fab.put(args.schema, "coverage_report.json", cov)
+    n_recipes = sum(1 for cols in meta["columns"].values() for d in cols.values()
+                    if "NESTED/COMPLEX" in (d.get("long_description") or ""))
     print("\n" + "═" * 64)
-    print(f"COMPILED semantic_model.yaml for {args.schema}")
+    print(f"COMPILED {args.schema}: metadata_descriptions.json ({sum(len(c) for c in meta['columns'].values())} "
+          f"cols, {n_recipes} complex recipes) + value_domains.json + semantic_model.yaml (record)")
     print(f"COVERAGE: {json.dumps(cov, default=str)}")
     print(f"PERFORMANCE: steps={out.get('steps')} | tokens={out.get('tokens')}")
     print("═" * 64)

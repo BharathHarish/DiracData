@@ -8,7 +8,6 @@ from __future__ import annotations
 from typing import Any
 
 from diracdata.agents.loop import run_loop
-from diracdata.agents.subagents import build_subagent_tool
 from diracdata.config import Config
 from diracdata.learning.compiler import SemanticModel, build_model_tools
 from diracdata.learning.tools import build_learning_tools
@@ -143,11 +142,11 @@ class LearningCompiler:
                  + build_control_tools(memory=memory, gate=gate))
         sub_tokens: list[int] = []
         if self.subagents:
-            tools.extend(build_subagent_tool(
-                model=self.model, workspace=None, engine=self.engine, result_store=None,
-                value_cache=None, parent_memory=memory, system_prompt=system_prompt, sink=self.sink,
-                asker=None, max_steps=self.max_steps, depth=0, max_depth=self.config.subagent_max_depth,
-                on_tokens=sub_tokens.append, config=self.config))
+            from diracdata.learning.subagent import build_learning_subagent_tool
+            tools.extend(build_learning_subagent_tool(
+                model=sm, engine=self.engine, model_llm=self.model, sink=self.sink,
+                config=self.config, max_steps=self.config.learn_max_steps,
+                on_tokens=sub_tokens.append))
 
         task = (f"Compile the semantic model for schema '{schema}'. Work a plan (plan_update): describe "
                 f"EVERY table (with a verified grain) and EVERY column (complex columns need an access "

@@ -103,6 +103,7 @@ class Config:
     preview_rows: int = 100          # ResultStore stored-result preview
     preview_all_max: int = 200       # ResultStore full-return threshold
     find_examples_limit: int = 5
+    examples_enabled: bool = True    # find_examples over gold/history; off = cold-start (no example bank)
 
     # --- multi-engine: reconciler (combines result parquets, spills instead of OOM) + execution ---
     reconciler_memory_limit: str = "2GB"    # DuckDB reconciler memory cap; spills to temp beyond it
@@ -267,6 +268,7 @@ class Config:
             preview_rows=_int("DIRACDATA_PREVIEW_ROWS", d.preview_rows),
             preview_all_max=_int("DIRACDATA_PREVIEW_ALL_MAX", d.preview_all_max),
             find_examples_limit=_int("DIRACDATA_FIND_EXAMPLES_LIMIT", d.find_examples_limit),
+            examples_enabled=_bool("DIRACDATA_EXAMPLES_ENABLED", d.examples_enabled),
             reconciler_memory_limit=_str("DIRACDATA_RECONCILER_MEMORY_LIMIT", d.reconciler_memory_limit),
             reconciler_temp_dir=_str_or_none("DIRACDATA_RECONCILER_TEMP_DIR") or d.reconciler_temp_dir,
             reconciler_threads=_opt_int("DIRACDATA_RECONCILER_THREADS", default=d.reconciler_threads),

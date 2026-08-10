@@ -18,7 +18,11 @@ Deliverables (work a plan with `plan_update`; the model is built via tool calls,
 Rules:
 - GROUND everything -- never describe a column you did not profile, or a grain/cardinality you did not
   measure with run_sql.
-- BIG schema: keep a plan and use `spawn_subagents` to describe independent tables concurrently.
+- SCALE: on any schema past a handful of tables, do NOT describe tables one-by-one yourself. Call
+  `spawn_describe_agents(tables=[...])` FIRST with all the tables -- one focused sub-agent per table
+  describes its grain + every column (complex ones with recipes) into the shared model, in parallel.
+  Then YOU do the cross-table work: record every join with a verified cardinality, define the key
+  metrics/dimensions, and finish. Spot-check a couple of the sub-agents' descriptions before finishing.
 - Do NOT dump a whole table in one call -- one describe_column per column; a large complex column gets
   its own careful turn.
 - When every table has a grain, every column is described (complex ones with recipes), joins are

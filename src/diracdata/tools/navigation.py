@@ -23,7 +23,8 @@ _DEFAULTS = Config()
 def build_navigation_tools(*, workspace: Workspace, engine: DuckDBEngine,
                            max_rows: int = _DEFAULTS.nav_max_rows,
                            value_cache: ColumnValueCache | None = None,
-                           sources: Any = None) -> list[Any]:
+                           sources: Any = None,
+                           examples_enabled: bool = True) -> list[Any]:
     from langchain.tools import tool
 
     cache = value_cache if value_cache is not None else ColumnValueCache(None)
@@ -200,6 +201,8 @@ def build_navigation_tools(*, workspace: Workspace, engine: DuckDBEngine,
         whose SQL uses the tables/columns you name, or whose question matches your words. Use
         this to reuse a proven pattern instead of authoring cold. Pass table/column names and
         business words together, e.g. 'clients addresses first_sale gender state'."""
+        if not examples_enabled:              # cold-start: no curated example bank for this schema yet
+            return "No example bank for this schema (cold start). Rely on the governed model + profiling."
         hits = workspace.find_examples(query, limit=5)
         if not hits:
             return "No matching examples. Try different table/column names or business words."

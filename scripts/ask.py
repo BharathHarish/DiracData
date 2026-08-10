@@ -93,6 +93,7 @@ def main() -> int:
     ap.add_argument("--no-router", action="store_true",
                     help="Pin --model-profile for every stage (turn OFF garden auto-routing). Use with "
                          "--model-profile anthropic_haiku_45 to stay entirely on Anthropic (cached, no OpenAI TPM).")
+    ap.add_argument("--cold", action="store_true", help="cold start: no example bank (find_examples off)")
     ap.add_argument("--quiet", action="store_true")
     args = ap.parse_args()
 
@@ -100,7 +101,8 @@ def main() -> int:
     garden = tuple(p.strip() for p in args.garden.split(",") if p.strip()) if args.garden else _base.router_garden
     settings = replace(_base, agent_model_profile=args.model_profile, stream_tokens=True,
                        router_enabled=(False if args.no_router else _base.router_enabled),
-                       router_garden=garden)
+                       router_garden=garden,
+                       examples_enabled=(False if args.cold else _base.examples_enabled))
     model = ChatModelFactory(settings=settings).create_chat_model(profile_id=args.model_profile)
     # Estate: --sources <yaml> OR DIRACDATA_SOURCES env -> a SourceRegistry (default = first source).
     # Single-source (default): one DuckDB engine over --schema, wrapped as a one-source registry.

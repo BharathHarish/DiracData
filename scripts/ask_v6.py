@@ -48,13 +48,15 @@ def main() -> int:
     ap.add_argument("--conversation-id", default=None)
     ap.add_argument("--stream-mode", default="updates", choices=["off", "messages", "updates", "all"])
     ap.add_argument("--no-router", action="store_true")
+    ap.add_argument("--cold", action="store_true", help="cold start: no example bank (find_examples off)")
     ap.add_argument("--max-steps", type=int, default=None)
     ap.add_argument("--quiet", action="store_true")
     args = ap.parse_args()
 
     _base = settings_from_env(args.env_file)
     settings = replace(_base, agent_model_profile=args.model_profile, stream_tokens=True,
-                       router_enabled=(False if args.no_router else _base.router_enabled))
+                       router_enabled=(False if args.no_router else _base.router_enabled),
+                       examples_enabled=(False if args.cold else _base.examples_enabled))
     model = ChatModelFactory(settings=settings).create_chat_model(profile_id=args.model_profile)
     engine = DuckDBEngine(data_root=Path(args.data_root), schema_name=args.schema)
     registry = SourceRegistry.of(engine)

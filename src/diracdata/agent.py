@@ -193,6 +193,7 @@ class Agent:
                   if self.config.sanity_gate_enabled else None)
         gate = FinishGate(memory=memory, verifier=verifier, sanity_verifier=sanity, config=self.config)
         tools = data_tools + build_control_tools(memory=memory, gate=gate)
+        tools.extend(self._extra_tools(memory))   # base returns [] (no-op); AgentV6 adds model_* lookups
         sub_tokens: list[int] = []
         if self.subagents:
             tools.extend(build_subagent_tool(
@@ -278,9 +279,14 @@ class Agent:
                       tokens=tokens, steps=out["steps"], verdict=out.get("verdict"))
 
     def _extra_context(self) -> str:
-        """Hook for a subclass to inject extra system context (AgentV6 renders the governed semantic
-        model). Base returns "" -> zero change to the current agent."""
+        """Hook for a subclass to inject extra system context (AgentV6 injects a tiny pointer to the
+        governed model, retrieved on demand via _extra_tools). Base returns "" -> zero change."""
         return ""
+
+    def _extra_tools(self, memory: Any) -> list:
+        """Hook for a subclass to register extra tools (AgentV6 adds the model_* lookup tools over the
+        governed semantic model). Base returns [] -> zero change to the current agent."""
+        return []
 
     def _learned_context(self) -> str:
         """The curated schema memory (experiences.md) to inject into this turn -- reused patterns,
