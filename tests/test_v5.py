@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT / "src") not in sys.path:
     sys.path.insert(0, str(ROOT / "src"))
 
-from diracdata.agents.triage import _parse, make_triage  # noqa: E402
+from diracdata.harness.triage import _parse, make_triage  # noqa: E402
 
 
 class TriageParseTests(unittest.TestCase):
@@ -113,7 +113,7 @@ class V5WiringTests(unittest.TestCase):
 
     def test_triage_binds_rca_target_with_dimensions(self):
         import json as _j
-        from diracdata.agents.triage import _parse
+        from diracdata.harness.triage import _parse
         v = _parse(_j.dumps({"task_type": "rca", "lane": "cold", "rca_metric": "web_net_profit",
                              "period_a": "2001", "period_b": 2002,
                              "dimensions": ["age_band", "gender", "income_band"]}))
@@ -201,7 +201,7 @@ class ChannelFactsTests(unittest.TestCase):
         self.assertNotIn("CASE ...", idx)                            # index stays compact -- SQL only via define()
 
     def test_payload_carries_dq_evidence_and_queries(self):
-        from diracdata.agents.verify import build_verify_payload
+        from diracdata.harness.verify import build_verify_payload
         from diracdata.runtime.working_memory import WorkingMemory
         m = WorkingMemory(goal="why did online revenue fall?")
         m.facts = "data_health(online_purchases): billing_household_profile_ref 8% NULL -> INNER join drops rows"
@@ -212,7 +212,7 @@ class ChannelFactsTests(unittest.TestCase):
 
     def test_gate_chain_runs_sanity_first_and_fails_fast(self):
         """The chain runs sanity BEFORE derivation, first reject wins, later gates are skipped."""
-        from diracdata.agents.verify import FinishGate
+        from diracdata.harness.verify import FinishGate
         from diracdata.runtime.working_memory import WorkingMemory
         calls = []
 
@@ -230,7 +230,7 @@ class ChannelFactsTests(unittest.TestCase):
         self.assertEqual(calls, ["sanity"])                          # fail-fast: derivation never ran
 
     def test_gate_chain_both_pass_runs_both_in_order(self):
-        from diracdata.agents.verify import FinishGate
+        from diracdata.harness.verify import FinishGate
         from diracdata.runtime.working_memory import WorkingMemory
         calls = []
 

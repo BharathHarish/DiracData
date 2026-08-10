@@ -52,7 +52,7 @@ class ReadbackTests(unittest.TestCase):
 
     def test_framing_task_carries_learned_knowledge(self) -> None:
         # frame_intent injects `learned` into the task shown to the framing model
-        from diracdata.agents.framing import frame_intent
+        from diracdata.harness.framing import frame_intent
         from diracdata.runtime.working_memory import WorkingMemory
 
         seen = []

@@ -14,7 +14,7 @@ if str(ROOT / "src") not in sys.path:
 
 import tempfile  # noqa: E402
 
-import diracdata.agents.subagents as subagents  # noqa: E402
+import diracdata.harness.subagents as subagents  # noqa: E402
 from _fabric import DATA_PRESENT, SCHEMA, engine  # noqa: E402
 from diracdata.runtime.working_memory import WorkingMemory  # noqa: E402
 
@@ -110,7 +110,7 @@ class SpawnMergeTests(unittest.TestCase):
 class ParallelPrimitiveTests(unittest.TestCase):
     def test_run_parallel_is_concurrent_and_bounded(self) -> None:
         import time
-        from diracdata.agents.subagents import _run_parallel
+        from diracdata.harness.subagents import _run_parallel
 
         def sleepy():
             time.sleep(0.2)

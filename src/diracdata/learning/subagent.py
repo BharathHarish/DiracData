@@ -8,7 +8,7 @@ from __future__ import annotations
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
-from diracdata.agents.loop import run_loop
+from diracdata.harness.loop import run_loop
 from diracdata.config import Config
 from diracdata.learning.compiler import SemanticModel, build_model_tools
 from diracdata.learning.tools import build_learning_tools

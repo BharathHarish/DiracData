@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from diracdata.agents.loop import run_loop
+from diracdata.harness.loop import run_loop
 from diracdata.config import Config
 from diracdata.runtime.working_memory import WorkingMemory
 from diracdata.prompts import load_prompt

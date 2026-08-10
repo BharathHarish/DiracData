@@ -11,7 +11,7 @@ if str(ROOT / "src") not in sys.path:
 
 from langchain_core.messages import AIMessageChunk  # noqa: E402
 
-from diracdata.agents.loop import run_loop  # noqa: E402
+from diracdata.harness.loop import run_loop  # noqa: E402
 from diracdata.config import Config  # noqa: E402
 from diracdata.runtime.working_memory import WorkingMemory  # noqa: E402
 

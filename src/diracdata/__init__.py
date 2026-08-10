@@ -13,7 +13,7 @@ from diracdata.checkpoints.conversation import Conversation
 from diracdata.runtime.working_memory import WorkingMemory
 from diracdata.runtime.plan import Plan, PlanItem
 from diracdata.runtime.results import ResultStore
-from diracdata.agents.subagents import build_subagent_tool, run_subagent
+from diracdata.harness.subagents import build_subagent_tool, run_subagent
 from diracdata.context.workspace import Workspace
 
 __all__ = ["Agent", "Answer", "Config", "Conversation", "Workspace", "WorkingMemory",

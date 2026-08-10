@@ -15,7 +15,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from diracdata.prebuilt import data_analyst          # the create_react_agent equivalent
+from diracdata.agents import data_analyst          # the create_react_agent equivalent
 from diracdata.model_providers import FireworksAI     # pick a model, api_key from ENV
 
 QUESTION = ("Which market has the weakest gross profit, and is it a revenue problem or a cost problem? "

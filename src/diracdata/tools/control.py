@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from diracdata.agents.verify import FinishGate
+from diracdata.harness.verify import FinishGate
 from diracdata.runtime.working_memory import WorkingMemory
 
 

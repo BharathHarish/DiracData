@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT / "src") not in sys.path:
     sys.path.insert(0, str(ROOT / "src"))
 
-from diracdata.agents.framing import frame_intent  # noqa: E402
+from diracdata.harness.framing import frame_intent  # noqa: E402
 from diracdata.runtime.working_memory import WorkingMemory  # noqa: E402
 from diracdata.tools import build_tools  # noqa: E402
 

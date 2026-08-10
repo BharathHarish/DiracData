@@ -22,11 +22,11 @@ import json
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
-from diracdata.agents.loop import run_loop
+from diracdata.harness.loop import run_loop
 from diracdata.config import Config
 from diracdata.runtime.working_memory import WorkingMemory
 from diracdata.tools import build_control_tools, build_tools
-from diracdata.agents.verify import FinishGate, make_verifier
+from diracdata.harness.verify import FinishGate, make_verifier
 
 _DEFAULTS = Config()
 

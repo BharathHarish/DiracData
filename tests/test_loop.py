@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT / "src") not in sys.path:
     sys.path.insert(0, str(ROOT / "src"))
 
-from diracdata.agents.loop import run_loop  # noqa: E402
+from diracdata.harness.loop import run_loop  # noqa: E402
 from diracdata.runtime.working_memory import WorkingMemory  # noqa: E402
 
 
@@ -80,7 +80,7 @@ class LoopTests(unittest.TestCase):
 
     def test_finish_gate_rejects_then_accepts(self) -> None:
         # a bare-text finish is gated: first rejected (feedback appended), then the model fixes it
-        from diracdata.agents.verify import FinishGate
+        from diracdata.harness.verify import FinishGate
         mem = WorkingMemory(goal="g")
         mem.seen_numbers = {52.0}
         calls = {"n": 0}
@@ -101,7 +101,7 @@ class LoopTests(unittest.TestCase):
         # regression (deep-RCA): the orchestrator ran out of steps without a composed answer and returned
         # BLANK, wasting the results it (and its sub-agents) had gathered. Now the loop force-composes a
         # best-effort answer from working memory on exhaustion -- never blank when results exist.
-        from diracdata.agents.verify import FinishGate
+        from diracdata.harness.verify import FinishGate
         mem = WorkingMemory(goal="why did online net revenue fall")
         mem.results["r1"] = {"columns": ["decline"], "row_count": 1, "sql": "SELECT ...", "preview": [[-14600000]]}
         gate = FinishGate(memory=mem, verifier=lambda a, m: ({"ok": True, "reason": "", "ambiguity": False}, 0))
@@ -141,7 +141,7 @@ class LoopTests(unittest.TestCase):
     def test_m5_stall_nudge_fires_when_no_progress(self) -> None:
         # after N steps with no new result/verified item, the loop injects a one-time STALL nudge to
         # push the agent to finish instead of churning.
-        from diracdata.agents.verify import FinishGate
+        from diracdata.harness.verify import FinishGate
         from langchain.tools import tool
 
         @tool("get_columns")
@@ -161,7 +161,7 @@ class LoopTests(unittest.TestCase):
 
     def test_budget_exhaustion_with_no_results_is_still_blank(self) -> None:
         # nothing was computed -> there is nothing to synthesise; blank is correct (don't fabricate).
-        from diracdata.agents.verify import FinishGate
+        from diracdata.harness.verify import FinishGate
         mem = WorkingMemory(goal="g")
         gate = FinishGate(memory=mem, verifier=lambda a, m: ({"ok": True, "reason": "", "ambiguity": False}, 0))
         out = run_loop(model=_ScriptedModel([{"content": ""}]), tools=[_echo_tool()], system_prompt="s",

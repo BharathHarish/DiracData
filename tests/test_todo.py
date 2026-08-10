@@ -13,8 +13,8 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT / "src") not in sys.path:
     sys.path.insert(0, str(ROOT / "src"))
 
-from diracdata.agents.loop import run_loop  # noqa: E402
-from diracdata.agents.verify import FinishGate  # noqa: E402
+from diracdata.harness.loop import run_loop  # noqa: E402
+from diracdata.harness.verify import FinishGate  # noqa: E402
 from diracdata.runtime.working_memory import WorkingMemory  # noqa: E402
 from diracdata.tools.control import build_control_tools  # noqa: E402
 

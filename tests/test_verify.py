@@ -13,7 +13,7 @@ if str(ROOT / "src") not in sys.path:
 
 from diracdata.config import Config  # noqa: E402
 from diracdata.runtime.working_memory import WorkingMemory  # noqa: E402
-from diracdata.agents.verify import FinishGate, build_verify_payload, estate_dialects_note  # noqa: E402
+from diracdata.harness.verify import FinishGate, build_verify_payload, estate_dialects_note  # noqa: E402
 from diracdata.tools import build_control_tools  # noqa: E402
 
 

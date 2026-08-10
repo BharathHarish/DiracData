@@ -21,10 +21,10 @@ from typing import Any
 
 from diracdata.utils.streaming import Sink, null_sink
 
-from diracdata.agents.framing import frame_intent
-from diracdata.agents.loop import run_loop
-from diracdata.agents.summarizer import make_summarizer
-from diracdata.agents.triage import make_triage
+from diracdata.harness.framing import frame_intent
+from diracdata.harness.loop import run_loop
+from diracdata.harness.summarizer import make_summarizer
+from diracdata.harness.triage import make_triage
 from diracdata.config import Config, Stage
 from diracdata.models import ModelRegistry
 from diracdata.routing import RouteSignals, make_router
@@ -32,9 +32,9 @@ from diracdata.runtime.working_memory import WorkingMemory
 from diracdata.runtime.results import ResultStore
 from diracdata.prompts import dialect_note, load_prompt
 from diracdata.rca.attribution import build_attribution_tool, seed_attribution
-from diracdata.agents.subagents import build_subagent_tool
+from diracdata.harness.subagents import build_subagent_tool
 from diracdata.tools import build_control_tools, build_tools, build_transcript_tool
-from diracdata.agents.verify import FinishGate, make_sanity_gate, make_verifier, estate_dialects_note
+from diracdata.harness.verify import FinishGate, make_sanity_gate, make_verifier, estate_dialects_note
 from diracdata.memory import MemoryConsolidator, make_curator
 
 # The whole analyst prompt: identity + task + the few environment invariants. The golden-SQL checklist
