@@ -13,7 +13,7 @@ if str(ROOT / "src") not in sys.path:
 
 from diracdata.agent import Agent  # noqa: E402
 from diracdata.config import Config  # noqa: E402
-from diracdata.experiences.book import ExperienceBook  # noqa: E402
+from diracdata.memory.book import ExperienceBook  # noqa: E402
 from diracdata.utils.object_store import LocalObjectStore  # noqa: E402
 
 
@@ -53,7 +53,7 @@ class ReadbackTests(unittest.TestCase):
     def test_framing_task_carries_learned_knowledge(self) -> None:
         # frame_intent injects `learned` into the task shown to the framing model
         from diracdata.agents.framing import frame_intent
-        from diracdata.memory.working_memory import WorkingMemory
+        from diracdata.runtime.working_memory import WorkingMemory
 
         seen = []
 

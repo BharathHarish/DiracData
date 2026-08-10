@@ -8,11 +8,11 @@ joins + gold/history + business definitions), durable conversation memory, and a
 
 from diracdata.agent import Agent, Answer
 from diracdata.config import Config
-from diracdata.experiences import ExperienceBook
-from diracdata.memory.conversation import Conversation
-from diracdata.memory.working_memory import WorkingMemory
-from diracdata.memory.plan import Plan, PlanItem
-from diracdata.memory.results import ResultStore
+from diracdata.memory import ExperienceBook
+from diracdata.checkpoints.conversation import Conversation
+from diracdata.runtime.working_memory import WorkingMemory
+from diracdata.runtime.plan import Plan, PlanItem
+from diracdata.runtime.results import ResultStore
 from diracdata.agents.subagents import build_subagent_tool, run_subagent
 from diracdata.context.workspace import Workspace
 

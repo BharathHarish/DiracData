@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT / "src") not in sys.path:
     sys.path.insert(0, str(ROOT / "src"))
 
-from diracdata.experiences.book import ExperienceBook  # noqa: E402
+from diracdata.memory.book import ExperienceBook  # noqa: E402
 from diracdata.utils.object_store import LocalObjectStore  # noqa: E402
 
 

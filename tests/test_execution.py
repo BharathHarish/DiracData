@@ -18,8 +18,8 @@ from _engine_fixture import make_duckdb_source  # noqa: E402
 from diracdata.config import Config  # noqa: E402
 from diracdata.engines.duckdb import Reconciler  # noqa: E402
 from diracdata.execution import InlineExecutor, make_executor  # noqa: E402
-from diracdata.memory.results import ResultStore  # noqa: E402
-from diracdata.memory.working_memory import WorkingMemory  # noqa: E402
+from diracdata.runtime.results import ResultStore  # noqa: E402
+from diracdata.runtime.working_memory import WorkingMemory  # noqa: E402
 from diracdata.tools.query import build_query_tools  # noqa: E402
 from diracdata.utils.object_store import LocalObjectStore  # noqa: E402
 

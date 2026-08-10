@@ -12,7 +12,7 @@ from diracdata.agents.loop import run_loop
 from diracdata.config import Config
 from diracdata.learning.compiler import SemanticModel, build_model_tools
 from diracdata.learning.tools import build_learning_tools
-from diracdata.memory.working_memory import WorkingMemory
+from diracdata.runtime.working_memory import WorkingMemory
 from diracdata.prompts import load_prompt
 from diracdata.utils.streaming import Sink, null_sink
 

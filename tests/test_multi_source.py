@@ -18,8 +18,8 @@ if str(ROOT / "src") not in sys.path:
 from _engine_fixture import make_duckdb_source  # noqa: E402
 from diracdata.context.estate import render_estate  # noqa: E402
 from diracdata.engines import EngineSpec, SourceRegistry  # noqa: E402
-from diracdata.memory.results import ResultStore  # noqa: E402
-from diracdata.memory.working_memory import WorkingMemory  # noqa: E402
+from diracdata.runtime.results import ResultStore  # noqa: E402
+from diracdata.runtime.working_memory import WorkingMemory  # noqa: E402
 from diracdata.tools.query import build_query_tools  # noqa: E402
 from diracdata.utils.object_store import LocalObjectStore  # noqa: E402
 

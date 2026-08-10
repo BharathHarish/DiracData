@@ -14,7 +14,7 @@ from langchain_core.messages import AIMessage, AIMessageChunk  # noqa: E402
 
 from diracdata.agent import Agent  # noqa: E402
 from diracdata.config import Config  # noqa: E402
-from diracdata.memory.working_memory import WorkingMemory  # noqa: E402
+from diracdata.runtime.working_memory import WorkingMemory  # noqa: E402
 from diracdata.models import ModelRegistry  # noqa: E402
 
 

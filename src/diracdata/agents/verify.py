@@ -28,7 +28,7 @@ from typing import Any
 from diracdata.utils.streaming import loads_json, null_sink
 
 from diracdata.config import Config
-from diracdata.memory.working_memory import WorkingMemory
+from diracdata.runtime.working_memory import WorkingMemory
 from diracdata.prompts import load_prompt
 from diracdata.streaming import collect
 

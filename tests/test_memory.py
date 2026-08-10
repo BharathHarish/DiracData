@@ -8,8 +8,8 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT / "src") not in sys.path:
     sys.path.insert(0, str(ROOT / "src"))
 
-from diracdata.memory.working_memory import WorkingMemory  # noqa: E402
-from diracdata.memory.plan import Plan  # noqa: E402
+from diracdata.runtime.working_memory import WorkingMemory  # noqa: E402
+from diracdata.runtime.plan import Plan  # noqa: E402
 
 
 class MemoryTests(unittest.TestCase):

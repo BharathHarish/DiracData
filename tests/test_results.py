@@ -15,7 +15,7 @@ if str(ROOT / "src") not in sys.path:
 
 from _fabric import DATA_PRESENT, HAS_RETAIL, SCHEMA, engine, retail_workspace  # noqa: E402
 from diracdata.utils.object_store import LocalObjectStore  # noqa: E402
-from diracdata.memory.results import ResultStore  # noqa: E402
+from diracdata.runtime.results import ResultStore  # noqa: E402
 
 
 @unittest.skipUnless(DATA_PRESENT, "retail parquet data not present")
@@ -61,7 +61,7 @@ class ResultStoreTests(unittest.TestCase):
 @unittest.skipUnless(HAS_RETAIL and DATA_PRESENT, "retail fabric/data not present")
 class ToolsWiringTests(unittest.TestCase):
     def setUp(self) -> None:
-        from diracdata.memory.working_memory import WorkingMemory
+        from diracdata.runtime.working_memory import WorkingMemory
         from diracdata.tools import build_tools
         self._tmp = tempfile.TemporaryDirectory()
         self.memory = WorkingMemory(goal="how many categories?")

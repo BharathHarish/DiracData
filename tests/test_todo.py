@@ -15,7 +15,7 @@ if str(ROOT / "src") not in sys.path:
 
 from diracdata.agents.loop import run_loop  # noqa: E402
 from diracdata.agents.verify import FinishGate  # noqa: E402
-from diracdata.memory.working_memory import WorkingMemory  # noqa: E402
+from diracdata.runtime.working_memory import WorkingMemory  # noqa: E402
 from diracdata.tools.control import build_control_tools  # noqa: E402
 
 

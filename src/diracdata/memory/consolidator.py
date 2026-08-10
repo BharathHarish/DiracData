@@ -15,7 +15,7 @@ import threading
 import uuid
 from typing import Callable
 
-from diracdata.experiences.book import ExperienceBook
+from diracdata.memory.book import ExperienceBook
 from diracdata.utils.streaming import Sink, null_sink
 
 # curate(book, candidate_md) -> None  (the agentic fold; injected so this stays testable without a model)

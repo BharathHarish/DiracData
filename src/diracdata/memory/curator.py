@@ -11,7 +11,7 @@ from __future__ import annotations
 from typing import Any, Callable
 
 from diracdata.config import Config
-from diracdata.experiences.book import ExperienceBook
+from diracdata.memory.book import ExperienceBook
 from diracdata.prompts import load_prompt
 from diracdata.streaming import collect
 from diracdata.utils.streaming import Sink, null_sink, to_ai_message

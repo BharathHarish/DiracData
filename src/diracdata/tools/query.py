@@ -9,8 +9,8 @@ import json
 from typing import Any
 
 from diracdata.config import Config
-from diracdata.memory.results import ResultStore
-from diracdata.memory.working_memory import WorkingMemory
+from diracdata.runtime.results import ResultStore
+from diracdata.runtime.working_memory import WorkingMemory
 from diracdata.utils.sql import validate_sql
 
 _DEFAULTS = Config()

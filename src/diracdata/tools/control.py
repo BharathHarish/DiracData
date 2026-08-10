@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import Any
 
 from diracdata.agents.verify import FinishGate
-from diracdata.memory.working_memory import WorkingMemory
+from diracdata.runtime.working_memory import WorkingMemory
 
 
 def build_control_tools(*, memory: WorkingMemory, gate: FinishGate) -> list[Any]:

@@ -14,7 +14,7 @@ if str(ROOT / "src") not in sys.path:
     sys.path.insert(0, str(ROOT / "src"))
 
 from diracdata.agents.framing import frame_intent  # noqa: E402
-from diracdata.memory.working_memory import WorkingMemory  # noqa: E402
+from diracdata.runtime.working_memory import WorkingMemory  # noqa: E402
 from diracdata.tools import build_tools  # noqa: E402
 
 

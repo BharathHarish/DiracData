@@ -16,7 +16,7 @@ import tempfile  # noqa: E402
 
 import diracdata.agents.subagents as subagents  # noqa: E402
 from _fabric import DATA_PRESENT, SCHEMA, engine  # noqa: E402
-from diracdata.memory.working_memory import WorkingMemory  # noqa: E402
+from diracdata.runtime.working_memory import WorkingMemory  # noqa: E402
 
 
 class SpawnMergeTests(unittest.TestCase):
@@ -129,7 +129,7 @@ class ParallelPrimitiveTests(unittest.TestCase):
         import tempfile
         import threading
         from _engine_fixture import make_duckdb_source
-        from diracdata.memory.results import ResultStore
+        from diracdata.runtime.results import ResultStore
         from diracdata.utils.object_store import LocalObjectStore
 
         tmp, eng = make_duckdb_source()
@@ -179,7 +179,7 @@ class RunSubagentEndToEndTests(unittest.TestCase):
 
     def test_subagent_runs_a_real_query_and_returns_result_id(self) -> None:
         from diracdata.utils.object_store import LocalObjectStore
-        from diracdata.memory.results import ResultStore
+        from diracdata.runtime.results import ResultStore
         with tempfile.TemporaryDirectory() as tmp:
             rs = ResultStore(engine=engine(), store=LocalObjectStore(tmp), schema=SCHEMA)
             model = _ScriptedModel([

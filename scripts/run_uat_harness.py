@@ -42,9 +42,9 @@ from diracdata.context.valuecache import ColumnValueCache  # noqa: E402
 from diracdata.context.workspace import Workspace  # noqa: E402
 from diracdata.engines import SourceRegistry  # noqa: E402
 from diracdata.execution import make_executor  # noqa: E402
-from diracdata.experiences import ExperienceBook  # noqa: E402
-from diracdata.memory.conversation import Conversation  # noqa: E402
-from diracdata.memory.results import ResultStore  # noqa: E402
+from diracdata.memory import ExperienceBook  # noqa: E402
+from diracdata.checkpoints.conversation import Conversation  # noqa: E402
+from diracdata.runtime.results import ResultStore  # noqa: E402
 from diracdata.utils.duckdb_engine import DuckDBEngine  # noqa: E402
 from diracdata.utils.model_factory import (  # noqa: E402
     FIREWORKS_COST_AWARE_GARDEN,

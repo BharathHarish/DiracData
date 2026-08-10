@@ -11,7 +11,7 @@ if str(ROOT / "src") not in sys.path:
     sys.path.insert(0, str(ROOT / "src"))
 
 from diracdata.agents.loop import run_loop  # noqa: E402
-from diracdata.memory.working_memory import WorkingMemory  # noqa: E402
+from diracdata.runtime.working_memory import WorkingMemory  # noqa: E402
 
 
 class _ScriptedModel:

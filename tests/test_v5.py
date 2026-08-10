@@ -202,7 +202,7 @@ class ChannelFactsTests(unittest.TestCase):
 
     def test_payload_carries_dq_evidence_and_queries(self):
         from diracdata.agents.verify import build_verify_payload
-        from diracdata.memory.working_memory import WorkingMemory
+        from diracdata.runtime.working_memory import WorkingMemory
         m = WorkingMemory(goal="why did online revenue fall?")
         m.facts = "data_health(online_purchases): billing_household_profile_ref 8% NULL -> INNER join drops rows"
         m.results["r1"] = {"sql": "SELECT ...", "row_count": 20}
@@ -213,7 +213,7 @@ class ChannelFactsTests(unittest.TestCase):
     def test_gate_chain_runs_sanity_first_and_fails_fast(self):
         """The chain runs sanity BEFORE derivation, first reject wins, later gates are skipped."""
         from diracdata.agents.verify import FinishGate
-        from diracdata.memory.working_memory import WorkingMemory
+        from diracdata.runtime.working_memory import WorkingMemory
         calls = []
 
         def stub(name, ok, reason=""):
@@ -231,7 +231,7 @@ class ChannelFactsTests(unittest.TestCase):
 
     def test_gate_chain_both_pass_runs_both_in_order(self):
         from diracdata.agents.verify import FinishGate
-        from diracdata.memory.working_memory import WorkingMemory
+        from diracdata.runtime.working_memory import WorkingMemory
         calls = []
 
         def stub(name):

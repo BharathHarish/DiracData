@@ -16,8 +16,8 @@ from langchain_core.messages import AIMessage  # noqa: E402
 
 from diracdata.agent import Agent  # noqa: E402
 from diracdata.config import Config  # noqa: E402
-from diracdata.experiences.book import ExperienceBook  # noqa: E402
-from diracdata.memory.conversation import Conversation  # noqa: E402
+from diracdata.memory.book import ExperienceBook  # noqa: E402
+from diracdata.checkpoints.conversation import Conversation  # noqa: E402
 from diracdata.utils.object_store import LocalObjectStore  # noqa: E402
 
 

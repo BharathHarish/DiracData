@@ -13,7 +13,7 @@ from langchain_core.messages import AIMessageChunk  # noqa: E402
 
 from diracdata.agents.loop import run_loop  # noqa: E402
 from diracdata.config import Config  # noqa: E402
-from diracdata.memory.working_memory import WorkingMemory  # noqa: E402
+from diracdata.runtime.working_memory import WorkingMemory  # noqa: E402
 
 
 class _ScriptedStreamModel:

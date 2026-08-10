@@ -143,7 +143,7 @@ class ToolTests(unittest.TestCase):
     def test_probe_numbers_are_registered_faithful(self):
         # a probe runs real SQL, so its measured numbers must be citable without the finish gate
         # flagging them (regression: DQ facts in an RCA answer were rejected as unfaithful).
-        from diracdata.memory.working_memory import WorkingMemory
+        from diracdata.runtime.working_memory import WorkingMemory
         mem = WorkingMemory(goal="dq")
         tools = {t.name: t for t in build_quality_tools(
             engine=self.eng, store=LocalObjectStore(tempfile.mkdtemp()), schema="s",
@@ -155,7 +155,7 @@ class ToolTests(unittest.TestCase):
     def test_data_health_writes_a_ledger_fact_for_the_sanity_gate(self):
         # regression: the SANITY gate re-demanded a probe that had already run because the check was
         # invisible to it. data_health must record a DQ-ledger fact so the gate SEES the table was probed.
-        from diracdata.memory.working_memory import WorkingMemory
+        from diracdata.runtime.working_memory import WorkingMemory
         mem = WorkingMemory(goal="dq")
         tools = {t.name: t for t in build_quality_tools(
             engine=self.eng, store=LocalObjectStore(tempfile.mkdtemp()), schema="s",

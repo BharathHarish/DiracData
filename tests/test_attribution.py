@@ -97,8 +97,8 @@ class BriefContractTests(unittest.TestCase):
 @unittest.skipUnless(_HAS_RETAIL, "retail parquet not present")
 class AttributeIntegrationTests(unittest.TestCase):
     def _run(self, metric, dims):
-        from diracdata.memory.working_memory import WorkingMemory
-        from diracdata.memory.results import ResultStore
+        from diracdata.runtime.working_memory import WorkingMemory
+        from diracdata.runtime.results import ResultStore
         from diracdata.utils.duckdb_engine import DuckDBEngine
         from diracdata.utils.object_store import LocalObjectStore
         eng = DuckDBEngine(data_root=ROOT / "data", schema_name="retail_analytics")

@@ -17,7 +17,7 @@ if str(ROOT / "src") not in sys.path:
     sys.path.insert(0, str(ROOT / "src"))
 
 from _engine_fixture import make_duckdb_source  # noqa: E402
-from diracdata.memory.results import ResultStore  # noqa: E402
+from diracdata.runtime.results import ResultStore  # noqa: E402
 from diracdata.utils.object_store import LocalObjectStore  # noqa: E402
 
 
@@ -85,7 +85,7 @@ class ReconcilerCombineTests(unittest.TestCase):
 
 class CombineToolFaithfulnessTests(unittest.TestCase):
     def setUp(self):
-        from diracdata.memory.working_memory import WorkingMemory
+        from diracdata.runtime.working_memory import WorkingMemory
         from diracdata.tools.query import build_query_tools
         self._tmp, self.engine = make_duckdb_source()
         self._sdir = tempfile.TemporaryDirectory()

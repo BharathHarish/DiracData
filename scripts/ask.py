@@ -26,13 +26,13 @@ from diracdata.config import settings_from_env  # noqa: E402
 from diracdata.utils.object_store import object_store_from_settings  # noqa: E402
 
 from diracdata.context.fabric import fabric_store_from_settings  # noqa: E402
-from diracdata.experiences import ExperienceBook  # noqa: E402
+from diracdata.memory import ExperienceBook  # noqa: E402
 from diracdata.context.valuecache import ColumnValueCache  # noqa: E402
 from diracdata.context.workspace import Workspace  # noqa: E402
 
 from diracdata.agent import Agent  # noqa: E402
-from diracdata.memory.conversation import Conversation  # noqa: E402
-from diracdata.memory.results import ResultStore  # noqa: E402
+from diracdata.checkpoints.conversation import Conversation  # noqa: E402
+from diracdata.runtime.results import ResultStore  # noqa: E402
 from diracdata.execution import make_executor  # noqa: E402
 from diracdata.streaming import mode_sink  # noqa: E402
 

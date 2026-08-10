@@ -14,8 +14,8 @@ if str(ROOT / "src") not in sys.path:
 from langchain_core.messages import AIMessageChunk  # noqa: E402
 
 from diracdata.config import Config  # noqa: E402
-from diracdata.experiences.book import ExperienceBook  # noqa: E402
-from diracdata.experiences.curator import make_curator  # noqa: E402
+from diracdata.memory.book import ExperienceBook  # noqa: E402
+from diracdata.memory.curator import make_curator  # noqa: E402
 from diracdata.utils.object_store import LocalObjectStore  # noqa: E402
 
 

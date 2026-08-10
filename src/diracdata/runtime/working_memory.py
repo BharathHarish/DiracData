@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from diracdata.config import Config
-from diracdata.memory.plan import Plan
+from diracdata.runtime.plan import Plan
 
 _DEFAULTS = Config()
 
