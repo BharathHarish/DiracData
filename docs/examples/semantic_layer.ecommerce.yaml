@@ -1,0 +1,145 @@
+# Ecommerce (TPC-H-derived) semantic layer -- a DEEP margin/P&L metric tree with attribution dimensions.
+# The schema deliberately hides its keys (FKs named by ROLE, not by the referenced key), so every metric
+# whose SQL crosses tables, and every dimension, depends on a join the analyst must have DISCOVERED:
+#   order_items.item_order   = orders.order_id
+#   orders.placed_by         = shoppers.shopper_id
+#   shoppers.home_country    = countries.country_id
+#   countries.in_market      = markets.market_id
+#   order_items.item_product = products.product_id
+#   (order_items.item_product, item_vendor) = (vendor_catalog.catalog_product, catalog_vendor)
+#
+# Grain: one row per order_items line. Ratios use ::DOUBLE + NULLIF to avoid integer/zero division.
+version: 2
+
+business_terms:
+  net_revenue:
+    description: Line revenue after discount, before tax -- the ecommerce "revenue".
+    definition: SUM(order_items.gross_price * (1 - order_items.discount)).
+  cost_of_goods:
+    description: What the sold units cost us, from the vendor catalog for that product+vendor.
+    definition: SUM(order_items.quantity * supply_cost), supply_cost looked up in vendor_catalog on (item_product, item_vendor).
+  returned_line:
+    description: An order line that was returned (return_flag = 'R').
+    definition: An order_items row whose return_flag = 'R'.
+  late_delivery:
+    description: A line delivered after it was promised (receipt after commit date).
+    definition: An order_items row where receipt_date > commit_date.
+
+# ------------------------------------------------------------------------------------------------
+# METRICS -- decomposition: additive (parent = sum of children, cost enters negative) or multiplicative
+# (parent = childA x childB). depends_on = the drivers to attribute a change into.
+# ------------------------------------------------------------------------------------------------
+metrics:
+
+  # L1 -- TOP: profitability
+  gross_profit:
+    description: Net revenue minus cost of goods sold, for the period.
+    formula: net_revenue - cost_of_goods            # cross-node -- evaluate drivers, not directly
+    decomposition: additive
+    depends_on: [net_revenue, cost_of_goods]
+  gross_margin_pct:
+    description: Gross profit as a share of net revenue.
+    formula: gross_profit / net_revenue
+    sql: "(SUM(order_items.gross_price * (1 - order_items.discount)) - SUM(order_items.quantity * (SELECT vc.supply_cost FROM vendor_catalog vc WHERE vc.catalog_product = order_items.item_product AND vc.catalog_vendor = order_items.item_vendor)))::DOUBLE / NULLIF(SUM(order_items.gross_price * (1 - order_items.discount)), 0)"
+    decomposition: multiplicative
+    depends_on: [gross_profit, net_revenue]
+
+  # L2
+  net_revenue:
+    description: Revenue after line discounts, before tax.
+    sql: "SUM(order_items.gross_price * (1 - order_items.discount))"
+    decomposition: additive
+    depends_on: [gross_revenue, discount_amount]
+  cost_of_goods:
+    description: Cost of the sold units, supply_cost joined from vendor_catalog on (item_product, item_vendor).
+    sql: "SUM(order_items.quantity * (SELECT vc.supply_cost FROM vendor_catalog vc WHERE vc.catalog_product = order_items.item_product AND vc.catalog_vendor = order_items.item_vendor))"
+    decomposition: multiplicative
+    depends_on: [units_sold, cost_per_unit]
+
+  # L3 -- revenue build-up
+  gross_revenue:
+    description: Line revenue before any discount (list x quantity as sold).
+    sql: "SUM(order_items.gross_price)"
+    decomposition: multiplicative
+    depends_on: [units_sold, price_per_unit]
+  discount_amount:
+    description: Total discount given on lines in the period.
+    sql: "SUM(order_items.gross_price * order_items.discount)"
+
+  # L4 -- volume x price
+  units_sold:
+    description: Total units sold across order lines.
+    sql: "SUM(order_items.quantity)"
+    decomposition: additive
+    depends_on: [order_lines, units_per_line]
+  price_per_unit:
+    description: Average gross price per unit sold.
+    formula: gross_revenue / units_sold
+    sql: "SUM(order_items.gross_price)::DOUBLE / NULLIF(SUM(order_items.quantity), 0)"
+  cost_per_unit:
+    description: Average supply cost per unit sold (from vendor_catalog).
+    sql: "SUM(order_items.quantity * (SELECT vc.supply_cost FROM vendor_catalog vc WHERE vc.catalog_product = order_items.item_product AND vc.catalog_vendor = order_items.item_vendor))::DOUBLE / NULLIF(SUM(order_items.quantity), 0)"
+
+  # L5 -- structure
+  order_lines:
+    description: Count of order lines (rows) in the period.
+    sql: "COUNT(*)"
+  units_per_line:
+    description: Average units per order line.
+    formula: units_sold / order_lines
+    sql: "SUM(order_items.quantity)::DOUBLE / NULLIF(COUNT(*), 0)"
+
+  # Quality / returns / fulfillment -- secondary trees
+  returned_units:
+    description: Units on returned lines (return_flag = 'R').
+    sql: "SUM(CASE WHEN order_items.return_flag = 'R' THEN order_items.quantity ELSE 0 END)"
+  return_rate:
+    description: Returned units as a share of all units sold.
+    formula: returned_units / units_sold
+    sql: "SUM(CASE WHEN order_items.return_flag = 'R' THEN order_items.quantity ELSE 0 END)::DOUBLE / NULLIF(SUM(order_items.quantity), 0)"
+  late_delivery_rate:
+    description: Share of order lines delivered after the promised (commit) date.
+    sql: "AVG(CASE WHEN order_items.receipt_date > order_items.commit_date THEN 1.0 ELSE 0.0 END)"
+
+# ------------------------------------------------------------------------------------------------
+# DIMENSIONS -- attribution slices. `via` is the DISCOVERED join path from order_items outward.
+# ------------------------------------------------------------------------------------------------
+dimensions:
+  market:
+    description: Geographic market of the shopper who placed the order (deepest path).
+    expr: markets.market_name
+    via:
+      - order_items.item_order = orders.order_id
+      - orders.placed_by = shoppers.shopper_id
+      - shoppers.home_country = countries.country_id
+      - countries.in_market = markets.market_id
+    group: geography
+  shopper_segment:
+    description: Market segment of the shopper.
+    expr: shoppers.segment
+    via:
+      - order_items.item_order = orders.order_id
+      - orders.placed_by = shoppers.shopper_id
+    group: customer
+  product_type:
+    description: Product type of the item sold.
+    expr: products.product_type
+    via:
+      - order_items.item_product = products.product_id
+    group: product
+  brand:
+    description: Brand of the item sold.
+    expr: products.brand
+    via:
+      - order_items.item_product = products.product_id
+    group: product
+  ship_mode:
+    description: How the line was shipped.
+    expr: order_items.ship_mode
+    group: fulfillment
+  order_year:
+    description: Calendar year the order was placed.
+    expr: "EXTRACT(year FROM orders.order_date)"
+    via:
+      - order_items.item_order = orders.order_id
+    group: time
