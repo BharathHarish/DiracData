@@ -24,21 +24,29 @@ the approach is already KNOWN (a gold SQL or a learned pattern to adapt), so the
 rebind + verify, not invent. Drop ONE tier from what the task's raw complexity would need, set
 allow_shortcut=true, and give a smaller step budget. A known recipe does NOT need the top model.
 
-HOW TO CHOOSE (cost-first by CAPABILITY tier; escalate only when the task demands it):
+HOW TO CHOOSE (cheap-first; escalate only on failure). When catalog notes include $/M output prices,
+HONOR them. Prefer the cheapest capable model -- including for cold RCA -- and only move up when a
+cheaper model already failed to converge (see previous_model_that_failed) or the catalog explicitly
+marks a stronger model as the in-garden escalate.
 - Simple lookup / single metric or count, OR ANY task with a STRONG precedent that is a near-exact match
-  -> the cheapest `basic` model, step budget 8-12, allow_shortcut=true.
+  -> the cheapest `basic` model (DeepSeek Flash / GPT-OSS when present), step budget 8-12,
+  allow_shortcut=true.
 - Small / medium analytics (multi-join, cohort, MECE, fiscal-time), OR an "rca"/complex task WITH a
-  PRECEDENT to adapt -> a `standard` model, step budget 15-20, allow_shortcut=true. (A precedented RCA
-  belongs HERE, not at the top tier: the decomposition recipe is known, so a standard model can adapt it.)
-- Complex / cold / novel / "rca" / metric decomposition WITH NO precedent -> a `strong` model, a
-  GENEROUS step budget (25-35), higher max_tokens. This is the workhorse for hard-but-tractable RCA.
+  PRECEDENT to adapt -> still prefer a cheap `basic` model with a slightly larger step budget (12-20)
+  and allow_shortcut=true; only pick a `standard` mid-cost model if the catalog says Flash is too weak
+  for that pattern.
+- Complex / cold / novel / "rca" / metric decomposition WITH NO precedent -> STILL start on the cheapest
+  capable model that supports tools (typically DeepSeek Flash) with a GENEROUS step budget (25-35) and
+  higher max_tokens. Do NOT jump to a mid/strong model just because the task is RCA.
+- Escalate to a mid (`standard`) or strong in-garden model ONLY when told a PREVIOUS model FAILED to
+  converge, or for the absolute hardest multi-metric cases when the catalog's strongest in-garden
+  option (e.g. Nemotron) is the documented escalate. Never spend a ~$4+/M model on a first attempt.
 - The HARDEST cold/novel work -- a multi-metric or deep (5+ level) decomposition with NO precedent, an
-  ambiguous or multi-part question, or anything where a wrong answer is costly -> the `frontier` model.
-  Reserve it: do not send a routine RCA to frontier when `strong` will do. Capability wins over the
-  reasoning flag: pick by capability tier, not because a weaker model advertises reasoning=yes.
-- If told a PREVIOUS model FAILED to converge, ESCALATE to the next-higher capability tier than that one
-  (strong -> frontier) with a GENEROUS budget (>= 20 steps) -- the failure was often too little room, or
-  the tier was too low. Do not repeat the failed model.
+  ambiguous or multi-part question, or anything where a wrong answer is costly -> the strongest
+  in-catalog escalate (often `strong`), still preferring in-garden mid/strong over out-of-garden
+  high-cost models. Capability wins over the reasoning flag.
+- If told a PREVIOUS model FAILED to converge, ESCALATE to the next-higher capability/cost tier than
+  that one with a GENEROUS budget (>= 20 steps). Do not repeat the failed model.
 
 Keep temperature at 0.0 unless exploration is clearly needed.
 

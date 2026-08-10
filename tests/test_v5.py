@@ -282,6 +282,41 @@ class ModelGardenTests(unittest.TestCase):
         self.assertEqual(kw["api_key"], "fw_test")                         # its own key (not settings.openai)
         self.assertEqual(kw["model"], "accounts/fireworks/models/glm-5p2")
 
+    def test_fireworks_cost_aware_garden_tiers(self):
+        from diracdata.utils.model_factory import (
+            BUILT_IN_MODEL_PROFILES as P, FIREWORKS_COST_AWARE_GARDEN, garden_profiles, render_catalog,
+        )
+        self.assertEqual(P["fireworks_deepseek_v4_flash"].capability, "basic")
+        self.assertEqual(P["fireworks_gpt_oss_120b"].capability, "basic")
+        self.assertEqual(P["fireworks_minimax_m2p7"].capability, "standard")
+        self.assertEqual(P["fireworks_minimax_m3"].capability, "standard")
+        self.assertEqual(P["fireworks_nemotron_3_ultra"].capability, "strong")
+        self.assertEqual(
+            set(FIREWORKS_COST_AWARE_GARDEN),
+            {"fireworks_deepseek_v4_flash", "fireworks_gpt_oss_120b",
+             "fireworks_minimax_m2p7", "fireworks_minimax_m3", "fireworks_nemotron_3_ultra"},
+        )
+        self.assertNotIn("fireworks_kimi_k2p7_code", FIREWORKS_COST_AWARE_GARDEN)
+        self.assertNotIn("fireworks_glm_5p2", FIREWORKS_COST_AWARE_GARDEN)
+        self.assertNotIn("fireworks_kimi_k3", P)
+        g = garden_profiles(FIREWORKS_COST_AWARE_GARDEN)
+        cat = render_catalog(g)
+        self.assertIn("$0.28/M", cat)
+        self.assertIn("nemotron", cat.lower())
+        self.assertNotIn("anthropic_haiku_45", cat)
+        self.assertIn("DEFAULT first pick", cat)  # Flash note: even RCA
+
+    def test_router_garden_rejects_out_of_garden_pick(self):
+        from diracdata.config import Config
+        from diracdata.routing.router import make_router, RouteSignals
+        cap = _ScriptedModel('{"authoring_profile":"anthropic_haiku_45","max_tokens":4000,'
+                             '"temperature":0.0,"max_steps":16,"allow_shortcut":false}')
+        route = make_router(cap, Config(router_enabled=True,
+                                        router_garden=("fireworks_deepseek_v4_flash",
+                                                       "fireworks_glm_5p2")))
+        plan, _ = route("count clients", RouteSignals(task_type="analytics"))
+        self.assertEqual(plan.authoring_profile, "")  # outside garden -> global fallback
+
     def test_router_on_by_default(self):
         from diracdata.config import Config
         self.assertTrue(Config().router_enabled)

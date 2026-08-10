@@ -75,8 +75,13 @@ def main() -> int:
     ap.add_argument("--sources", default=None,
                     help="YAML manifest declaring a multi-DB estate (else DIRACDATA_SOURCES, else single).")
     ap.add_argument("--model-profile", default="openai_gpt_5_4_mini",
-                    help="Base/bootstrap model. With the router ON (default) the garden auto-routes per "
-                         "query: Haiku=complex, Mini=medium, Nano=simple.")
+                    help="Base/bootstrap model for triage/route/frame/verify. With the router ON "
+                         "(default) authoring is garden-routed per query.")
+    ap.add_argument("--garden", default=None,
+                    help="Comma-separated profile ids the router may pick among "
+                         "(sets DIRACDATA_ROUTER_GARDEN for this process). Default cheap-first "
+                         "Fireworks garden: fireworks_deepseek_v4_flash,fireworks_gpt_oss_120b,"
+                         "fireworks_minimax_m2p7,fireworks_minimax_m3,fireworks_nemotron_3_ultra")
     ap.add_argument("--env-file", default=str(ROOT / ".env"))
     ap.add_argument("--data-root", default=str(ROOT / "data"))
     ap.add_argument("--max-steps", type=int, default=None, help="Override the loop budget (else config).")
@@ -92,8 +97,10 @@ def main() -> int:
     args = ap.parse_args()
 
     _base = settings_from_env(args.env_file)
+    garden = tuple(p.strip() for p in args.garden.split(",") if p.strip()) if args.garden else _base.router_garden
     settings = replace(_base, agent_model_profile=args.model_profile, stream_tokens=True,
-                       router_enabled=(False if args.no_router else _base.router_enabled))
+                       router_enabled=(False if args.no_router else _base.router_enabled),
+                       router_garden=garden)
     model = ChatModelFactory(settings=settings).create_chat_model(profile_id=args.model_profile)
     # Estate: --sources <yaml> OR DIRACDATA_SOURCES env -> a SourceRegistry (default = first source).
     # Single-source (default): one DuckDB engine over --schema, wrapped as a one-source registry.

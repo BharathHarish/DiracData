@@ -190,6 +190,8 @@ class Config:
     router_max_escalations: int = 1
     router_min_steps: int = 8            # floor on the router's per-run step budget: a turn needs room to
                                          # plan AND finish (sanity + verify gates), so never starve below this
+    router_garden: tuple[str, ...] = ()  # optional subset of profile ids the router may pick among
+                                         # (DIRACDATA_ROUTER_GARDEN=id1,id2,...); empty -> full catalog
     anthropic_prompt_cache: bool = True  # cache the stable system+tools prefix on Anthropic calls (the
                                          # mutating working-memory tail stays uncached) -- big cost/latency win
 
@@ -315,6 +317,7 @@ class Config:
             router_enabled=_bool("DIRACDATA_ROUTER_ENABLED", d.router_enabled),
             router_max_escalations=_int("DIRACDATA_ROUTER_MAX_ESCALATIONS", d.router_max_escalations),
             router_min_steps=_int("DIRACDATA_ROUTER_MIN_STEPS", d.router_min_steps),
+            router_garden=_csv_tuple("DIRACDATA_ROUTER_GARDEN", d.router_garden),
             stages=_stages_from_env(),
         )
 
@@ -393,3 +396,11 @@ def _bool(key: str, default: bool) -> bool:
     if value is None or value == "":
         return default
     return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _csv_tuple(key: str, default: tuple[str, ...] = ()) -> tuple[str, ...]:
+    """Comma-separated ENV list -> tuple of non-empty stripped tokens; empty ENV keeps `default`."""
+    value = os.environ.get(key)
+    if value is None or value.strip() == "":
+        return default
+    return tuple(part.strip() for part in value.split(",") if part.strip())

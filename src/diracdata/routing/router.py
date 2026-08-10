@@ -17,7 +17,7 @@ from typing import Any, Callable
 from diracdata.config import Config
 from diracdata.prompts import load_prompt
 from diracdata.streaming import collect
-from diracdata.utils.model_factory import BUILT_IN_MODEL_PROFILES, render_catalog
+from diracdata.utils.model_factory import BUILT_IN_MODEL_PROFILES, garden_profiles, render_catalog
 from diracdata.utils.streaming import Sink, loads_json, null_sink
 
 _ROUTE_PROMPT = load_prompt("route")
@@ -50,9 +50,12 @@ def _standard_plan(config: Config) -> RunPlan:
                    max_steps=config.max_steps, allow_shortcut=False, reasoning="router off / standard")
 
 
-def _valid_authoring(profile_id: str) -> bool:
+def _valid_authoring(profile_id: str, garden: tuple[str, ...] | list[str] = ()) -> bool:
+    """Chosen model must exist, support tools, and (when a garden is set) be in that garden."""
     p = BUILT_IN_MODEL_PROFILES.get(profile_id)
-    return bool(p and p.supports_tools)
+    if not (p and p.supports_tools):
+        return False
+    return (not garden) or profile_id in garden
 
 
 def _clamp(value: Any, lo: int, hi: int, default: int) -> int:
@@ -66,7 +69,7 @@ def _parse_plan(raw: dict, config: Config) -> RunPlan:
     """Turn the router model's JSON into a validated RunPlan; fall back to the global model on any
     invalid/hallucinated model choice."""
     profile = str(raw.get("authoring_profile") or "").strip()
-    if not _valid_authoring(profile):
+    if not _valid_authoring(profile, config.router_garden):
         return _standard_plan(config)
     temp = 0.0 if config.deterministic_sampling else float(raw.get("temperature") or 0.0)
     return RunPlan(
@@ -85,10 +88,12 @@ Route = Callable[..., tuple[RunPlan, int]]
 
 def make_router(model: Any, config: Config, *, sink: Sink = null_sink) -> Route:
     """Return route(task, signals, failed_profile=None) -> (RunPlan, tokens). One model call by the
-    main model, reasoning over the catalog. Router off -> the standard plan, no call."""
+    main model, reasoning over the catalog. Router off -> the standard plan, no call.
+    When `config.router_garden` is set, the catalog is restricted to that subset (UAT gardens)."""
     from langchain_core.messages import HumanMessage, SystemMessage
 
-    system = _ROUTE_PROMPT + "\n\nMODEL CATALOG:\n" + render_catalog()
+    catalog = garden_profiles(config.router_garden)
+    system = _ROUTE_PROMPT + "\n\nMODEL CATALOG:\n" + render_catalog(catalog)
 
     def route(task: str, signals: RouteSignals, failed_profile: str | None = None) -> tuple[RunPlan, int]:
         if not config.router_enabled:

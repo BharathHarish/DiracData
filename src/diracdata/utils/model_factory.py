@@ -90,37 +90,94 @@ BUILT_IN_MODEL_PROFILES: dict[str, ChatModelProfile] = {
         note="cheapest -- use for SIMPLE single-fact lookups / single-metric counts / strongly "
              "precedented queries; escalate if it cannot converge",
     ),
+    # Fireworks garden (OpenAI-compatible). CHEAP-FIRST thesis (Fireworks list $/1M out):
+    #   Start even cold RCA on DeepSeek Flash ($0.28). Escalate inside the active garden only when a
+    #   cheaper model fails to converge. Active UAT garden = Flash + GPT-OSS + MiniMax M2.7/M3 +
+    #   Nemotron Ultra. Kimi/GLM (~$4+) stay registered for later escalation recording, NOT the
+    #   default garden. Never use Kimi K3 (~$15/M out).
+    "fireworks_deepseek_v4_flash": ChatModelProfile(
+        "fireworks_deepseek_v4_flash", ModelProvider.FIREWORKS,
+        "accounts/fireworks/models/deepseek-v4-flash-0731",
+        "DeepSeek V4 Flash (Fireworks)", cost_tier="low", capability="basic",
+        supports_tools=True, supports_reasoning=True,
+        note="~$0.28/M out -- DEFAULT first pick for ALMOST EVERYTHING including cold RCA / metric "
+             "decomposition (proven on retail RCA); give a generous step budget on hard tasks; "
+             "escalate only if it fails to converge",
+    ),
+    "fireworks_gpt_oss_120b": ChatModelProfile(
+        "fireworks_gpt_oss_120b", ModelProvider.FIREWORKS, "accounts/fireworks/models/gpt-oss-120b",
+        "GPT-OSS 120B (Fireworks)", cost_tier="low", capability="basic",
+        supports_tools=True, supports_reasoning=True,
+        note="~$0.60/M out -- cheap alternate for SIMPLE / strongly precedented lookups; "
+             "prefer DeepSeek Flash first when both fit",
+    ),
+    "fireworks_minimax_m2p7": ChatModelProfile(
+        "fireworks_minimax_m2p7", ModelProvider.FIREWORKS,
+        "accounts/fireworks/models/minimax-m2p7",
+        "MiniMax M2.7 (Fireworks)", cost_tier="mid", capability="standard",
+        supports_tools=True, supports_reasoning=True,
+        note="~$1.20/M out -- mid escalate when Flash/OSS cannot converge on multi-join / cohort / "
+             "agentic tool loops; still cheap vs Nemotron",
+    ),
+    "fireworks_minimax_m3": ChatModelProfile(
+        "fireworks_minimax_m3", ModelProvider.FIREWORKS, "accounts/fireworks/models/minimax-m3",
+        "MiniMax M3 (Fireworks)", cost_tier="mid", capability="standard",
+        supports_tools=True, supports_reasoning=True,
+        note="~$1.20/M out -- mid escalate alternate to M2.7 for medium analytics / tool-heavy turns",
+    ),
+    "fireworks_nemotron_3_ultra": ChatModelProfile(
+        "fireworks_nemotron_3_ultra", ModelProvider.FIREWORKS,
+        "accounts/fireworks/models/nemotron-3-ultra-nvfp4",
+        "NVIDIA Nemotron 3 Ultra NVFP4 (Fireworks)", cost_tier="mid", capability="strong",
+        supports_tools=True, supports_reasoning=True,
+        note="~$2.40/M out -- strongest model IN the active cheap-first garden; use only when Flash/"
+             "MiniMax failed to converge on hard RCA, or as the first escalate for the hardest cold work",
+    ),
+    # Registered for later high-cost escalation experiments -- NOT in FIREWORKS_COST_AWARE_GARDEN.
+    "fireworks_kimi_k2p7_code": ChatModelProfile(
+        "fireworks_kimi_k2p7_code", ModelProvider.FIREWORKS,
+        "accounts/fireworks/models/kimi-k2p7-code",
+        "Kimi K2.7 Code (Fireworks)", cost_tier="high", capability="strong",
+        supports_tools=True, supports_reasoning=True,
+        note="~$4.00/M out -- HIGH-COST escalate only after Nemotron/Flash fail; not in default garden",
+    ),
     "fireworks_glm_5p2": ChatModelProfile(
         "fireworks_glm_5p2",
         ModelProvider.FIREWORKS,
         "accounts/fireworks/models/glm-5p2",
         "GLM-5.2 (Fireworks)",
-        cost_tier="low", capability="standard", supports_tools=True, supports_reasoning=True,
-        note="OpenAI-compatible via Fireworks; general analytics all-rounder (open-weight)",
-    ),
-    # Fireworks open-weight bench candidates (all OpenAI-compatible; not yet tiered into the router).
-    "fireworks_gpt_oss_120b": ChatModelProfile(
-        "fireworks_gpt_oss_120b", ModelProvider.FIREWORKS, "accounts/fireworks/models/gpt-oss-120b",
-        "GPT-OSS 120B (Fireworks)", cost_tier="low", capability="standard",
-        supports_tools=True, supports_reasoning=True, note="OpenAI OSS 120B via Fireworks",
-    ),
-    "fireworks_deepseek_v4_flash": ChatModelProfile(
-        "fireworks_deepseek_v4_flash", ModelProvider.FIREWORKS,
-        "accounts/fireworks/models/deepseek-v4-flash-0731",
-        "DeepSeek V4 Flash (Fireworks)", cost_tier="low", capability="standard",
-        supports_tools=True, supports_reasoning=True, note="DeepSeek V4 Flash via Fireworks",
-    ),
-    "fireworks_minimax_m3": ChatModelProfile(
-        "fireworks_minimax_m3", ModelProvider.FIREWORKS, "accounts/fireworks/models/minimax-m3",
-        "MiniMax M3 (Fireworks)", cost_tier="low", capability="standard",
-        supports_tools=True, supports_reasoning=True, note="MiniMax M3 via Fireworks",
+        cost_tier="high", capability="strong", supports_tools=True, supports_reasoning=True,
+        note="~$4.40/M out -- HIGH-COST escalate only after cheaper garden models fail; not in default garden",
     ),
     "fireworks_qwen3p7_plus": ChatModelProfile(
         "fireworks_qwen3p7_plus", ModelProvider.FIREWORKS, "accounts/fireworks/models/qwen3p7-plus",
-        "Qwen3.7 Plus (Fireworks)", cost_tier="low", capability="standard",
-        supports_tools=True, supports_reasoning=True, note="Qwen3.7 Plus via Fireworks",
+        "Qwen3.7 Plus (Fireworks)", cost_tier="mid", capability="standard",
+        supports_tools=True, supports_reasoning=True,
+        note="~$1.60/M out -- mid-tier Fireworks option (not in the default cheap-first UAT garden)",
     ),
 }
+
+# Active cheap-first UAT garden: try Flash (even on RCA) first; escalate inside this set only.
+FIREWORKS_COST_AWARE_GARDEN: tuple[str, ...] = (
+    "fireworks_deepseek_v4_flash",
+    "fireworks_gpt_oss_120b",
+    "fireworks_minimax_m2p7",
+    "fireworks_minimax_m3",
+    "fireworks_nemotron_3_ultra",
+)
+
+
+def garden_profiles(garden: list[str] | tuple[str, ...] | None = None
+                    ) -> dict[str, ChatModelProfile]:
+    """Subset of BUILT_IN_MODEL_PROFILES the router may choose among. Empty/None -> full catalog."""
+    if not garden:
+        return BUILT_IN_MODEL_PROFILES
+    out: dict[str, ChatModelProfile] = {}
+    for pid in garden:
+        p = BUILT_IN_MODEL_PROFILES.get(pid)
+        if p is not None:
+            out[pid] = p
+    return out or BUILT_IN_MODEL_PROFILES
 
 
 def model_catalog(profiles: dict[str, ChatModelProfile] | None = None) -> list[dict[str, Any]]:

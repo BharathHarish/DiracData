@@ -1,0 +1,29 @@
+id,category,difficulty,question,expected,expected_route_tier,checks,conversation_id,notes
+RH-01,simple,easy,How many clients in total?,100000,flash_or_oss,count;finish_accept;route_cheap,,UAT-01; expect Flash/OSS
+RH-02,simple,easy,How many addresses are there?,,flash_or_oss,count;finish_accept;route_cheap,,simple count
+RH-03,simple,easy,How many distinct merchandise categories exist?,,flash_or_oss,count;finish_accept;route_cheap,,domain lookup
+RH-04,simple,easy,total online revenue in 2001,339537789.11,flash_or_oss,metric;define;finish_accept;route_cheap,,UAT-02 gold
+RH-05,simple,easy,How many online purchases happened in 2001?,,flash_or_oss,count;finish_accept;route_cheap,,fact+calendar
+RH-06,medium,medium,How many F online shoppers from TX bought Music in 2001?,,cheap_or_mid,multi_join;finish_accept;route_not_nemotron_first,,gold multi-join
+RH-07,medium,medium,Compare billing and shipping states for online Music purchases in 2001 — top 5 pairs by net_paid.,,cheap_or_mid,multi_join;finish_accept;route_not_nemotron_first,,aggregation
+RH-08,medium,medium,For online buyers in 2002 how many were new vs returning and what was each cohort's online revenue?,"new 6909 / 197430325.83; returning 4343 / 127583020.59",cheap_or_mid,cohort;mece;finish_accept;route_not_nemotron_first,,cohort gold
+RH-09,medium,medium,What was online revenue and online active buyers in 2001 vs 2002?,,cheap_or_mid,two_period;define;finish_accept;route_not_nemotron_first,,period compare
+RH-10,medium,medium,Break down 2001 online revenue by product category (top 5).,,cheap_or_mid,segment;finish_accept;route_not_nemotron_first,,dimension slice
+RH-11,medium,medium,What is AOV for online orders in 2001?,,cheap_or_mid,metric;ratio;finish_accept;route_not_nemotron_first,,ratio metric
+RH-12,medium,medium,Count current F customers from TX whose first sale year is 2001.,,cheap_or_mid,multi_join;finish_accept;route_not_nemotron_first,,gold_001
+RH-13,rca,hard,"Online revenue dropped in 2002 compared to 2001 — what happened and which segments impacted this drop the most?",,flash_first,rca;triage_rca;finish_accept;route_flash_preferred,rh-rca-thread,RCA should START on Flash
+RH-14,rca,hard,Why did online active buyers change from 2001 to 2002 — was it new or returning buyers?,,flash_first,rca;triage_rca;finish_accept;route_flash_preferred,,buyer RCA on Flash
+RH-15,rca,hard,Online net revenue moved between 2001 and 2002 — attribute the change across revenue vs refunds and the biggest product categories.,,flash_first,rca;triage_rca;finish_accept;route_flash_preferred,,net revenue RCA
+RH-16,rca,hard,Which billing states contributed most to the online revenue decline from 2001 to 2002?,,flash_first,rca;triage_rca;finish_accept;route_flash_preferred,,geo RCA
+RH-17,rca,hard,Did AOV or orders-per-buyer drive the online revenue change from 2001 to 2002?,,flash_first,rca;triage_rca;finish_accept;route_flash_preferred,,driver RCA
+RH-18,complex,hard,For 2001 online Music buyers in TX by household income band how many customers were there?,,cheap_or_mid,multi_join;finish_accept;route_not_nemotron_first,rh-cont-1,continuity turn1
+RH-19,continuity,medium,And how many of those customers were female?,,cheap_or_mid,followup;finish_accept,rh-cont-1,follow-up
+RH-20,complex,hard,Show preferred-customer counts by first sale year for customers born in VANUATU with preferred flag N.,,cheap_or_mid,multi_join;finish_accept;route_not_nemotron_first,,gold_005 style
+RH-21,complex,hard,What share of 2002 online revenue came from returning buyers vs new buyers?,,cheap_or_mid,cohort;ratio;finish_accept;route_not_nemotron_first,,cohort share
+RH-22,complex,hard,Top 3 brands by online net_paid in 2001 and their refund amounts in the same year.,,cheap_or_mid,multi_fact;finish_accept;route_not_nemotron_first,,purchases+refunds
+RH-23,dq,medium,Is the online_purchases to calendar_days sale-date join healthy (nulls/orphans) and what is 2001 online revenue after accounting for that?,,cheap_or_mid,data_health_or_check;finish_accept;route_not_nemotron_first,,DQ + metric
+RH-24,memory,medium,Using any learned cohort pattern if available: new vs returning online buyers and revenue for 2003.,,cheap_or_mid,cohort;finish_accept;route_not_nemotron_first,,memory reuse
+RH-25,simple,easy,How many retail locations are there?,,flash_or_oss,count;finish_accept;route_cheap,,easy count
+RH-26,medium,medium,Online revenue per active buyer in 2001 vs 2002.,,cheap_or_mid,ratio;two_period;finish_accept;route_not_nemotron_first,,revenue_per_buyer
+RH-27,rca,hard,"Online revenue dropped in 2002 vs 2001 — which gender and marital-status segments drove most of the drop?",,flash_first,rca;triage_rca;finish_accept;route_flash_preferred,,demo RCA on Flash
+RH-28,continuity,medium,Summarize the main drivers you found for the 2001→2002 online revenue drop in one short paragraph.,,cheap_or_mid,followup;finish_accept,rh-rca-thread,continuity after RCA

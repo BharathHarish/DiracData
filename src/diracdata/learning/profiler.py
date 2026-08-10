@@ -10,16 +10,48 @@ from __future__ import annotations
 from typing import Any
 
 from diracdata.config import Config
+from diracdata.learning.nested import nested_shape
 
 _DEFAULTS = Config()
+
+
+def _column_type(engine: Any, table: str, column: str) -> str | None:
+    """The column's runtime type (DuckDB `typeof`), so a complex column is profiled by DESCENT rather
+    than a meaningless scalar COUNT DISTINCT. None if unavailable (engine has no typeof / empty table)."""
+    try:
+        r = engine.query(f"SELECT typeof({_id(column)}) FROM {_id(table)} "
+                         f"WHERE {_id(column)} IS NOT NULL LIMIT 1", 1).rows
+        return r[0][0] if r and r[0] else None
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _is_complex(type_str: str | None) -> bool:
+    if not type_str:
+        return False
+    u = type_str.upper().strip()
+    return u.endswith("[]") or u.startswith("STRUCT(") or u.startswith("MAP(") or u == "JSON"
 
 
 def column_facts(engine: Any, table: str, column: str, *,
                  complete_max: int = _DEFAULTS.profiler_complete_max,
                  sample: int = _DEFAULTS.profiler_sample) -> dict:
-    """Measured facts for one column. `complete_max` = report ALL distinct values up to this many
-    (a complete domain); beyond it, a small sample + range."""
+    """Measured facts for one column. Complex columns (STRUCT/LIST/MAP/JSON) are profiled by DESCENT
+    (inner shape + access recipes + array-length + json keys); scalars get cardinality + domain.
+    `complete_max` = report ALL distinct values up to this many (a complete domain)."""
     q = _id(column)
+    # Complex column: descend instead of a scalar COUNT DISTINCT (which is meaningless or errors here).
+    type_str = _column_type(engine, table, column)
+    if _is_complex(type_str):
+        try:
+            r = engine.query(f"SELECT COUNT(*), COUNT({q}) FROM {_id(table)}", 1).rows
+            n, nn = (int(r[0][0] or 0), int(r[0][1] or 0)) if r else (0, 0)
+        except Exception:  # noqa: BLE001
+            n, nn = 0, 0
+        shape = nested_shape(engine, table, column, type_str, sample=sample)
+        return {"table": table, "column": column, "row_count": n,
+                "null_pct": round(100 * (n - nn) / n, 2) if n else 0.0,
+                "complex_type": True, **shape}
     # One aggregate pass: total rows, non-null count, distinct count, min, max. Some engines cannot
     # MIN/MAX an unorderable complex type (e.g. Postgres jsonb) -> degrade to the counts + no range.
     try:

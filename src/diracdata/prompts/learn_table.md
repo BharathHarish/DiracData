@@ -9,12 +9,20 @@ Use your tools:
   description in what it returns; never invent a value or a fact you didn't measure.
 - run_sql(...) to confirm anything else worth capturing (the table's grain, a nuance, a distribution).
 
+COMPLEX / NESTED columns (STRUCT, LIST/array, MAP, JSON): profile_column returns `complex_type: true`
+with the inner `shape`, `access_recipes` (the EXACT expression to reach each nested leaf -- dot for a
+struct field, UNNEST for a list, json_extract for JSON, map[key] for a map), `array_length` stats, and
+`json_keys_seen`. Your description MUST spell out the inner structure and HOW TO QUERY IT, e.g. "LIST of
+STRUCT{sku, qty, unit_price, category}; UNNEST(line_items) to one row per item then sum qty" or
+"fulfillment.shipments[*].items[*].sku via UNNEST(UNNEST(fulfillment.shipments).items)". A downstream
+agent cannot reach a nested field it cannot see -- name the leaves and the access recipe verbatim.
+
 Then write, for the table and each column:
 - short_description: ONE crisp line -- the retrieval hook, fewest precise words so the agent can pick
   it out among many.
 - long_description: 1-3 sharp sentences of what matters for CORRECT querying: meaning, grain, units,
   what NULL means here, the real value set for low-cardinality columns (name the actual values you
-  measured), and a "see also" only when the data makes a related column obvious.
+  measured), for a COMPLEX column the inner shape + access recipe, and a "see also" when obvious.
 Also emit value_domains from what you measured (complete list for low-cardinality columns; a sample +
 range otherwise). Do NOT assert foreign keys or joins -- those are verified in a separate pass.
 
