@@ -9,7 +9,7 @@ from dataclasses import dataclass, replace
 from typing import Any, Callable
 
 from diracdata.config import Config, Stage
-from diracdata.utils.model_factory import BUILT_IN_MODEL_PROFILES, ChatModelFactory
+from diracdata.models.factory import BUILT_IN_MODEL_PROFILES, ChatModelFactory
 
 # builder(config, profile_id, max_tokens, temperature, reasoning_effort) -> a bound chat model
 ModelBuilder = Callable[[Config, str, int | None, float | None, str | None], Any]

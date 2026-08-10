@@ -19,7 +19,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from diracdata.utils.model_factory import ChatModelFactory  # noqa: E402
+from diracdata.models import ChatModelFactory  # noqa: E402
 from diracdata.utils.duckdb_engine import DuckDBEngine  # noqa: E402
 from diracdata.config import settings_from_env  # noqa: E402
 from diracdata.context.fabric import fabric_store_from_settings  # noqa: E402
