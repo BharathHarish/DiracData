@@ -48,7 +48,7 @@ checkpoints-postgres = ["psycopg[binary]>=3.1"]
 checkpoints-redis = ["redis>=5.0"]
 
 # --- the context layer as an MCP server (the GTM wedge) ---
-mcp = ["mcp>=1.0"]
+mcp = ["mcp>=2.0"]
 
 # --- the offline learning agent (compiles the governed context) ---
 learning = []
@@ -57,8 +57,8 @@ all = [
     "diracdata[anthropic,openai,aws,google,azure,gcp,postgres,trino,databricks,snowflake,redshift,spark,mcp,learning]",
 ]
 
-# [project.scripts] -- a console entry point (diracdata-ask) lands once the CLI moves into the
-# package (diracdata.cli); today the CLIs live under scripts/ and run via PYTHONPATH.
+[project.scripts]
+diracdata-mcp = "diracdata.mcps.__main__:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
