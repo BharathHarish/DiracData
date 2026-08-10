@@ -22,7 +22,7 @@ from diracdata.utils.model_factory import ChatModelFactory  # noqa: E402
 from diracdata.utils.duckdb_engine import DuckDBEngine  # noqa: E402
 from diracdata.engines import SourceRegistry  # noqa: E402
 from diracdata.config import settings_from_env  # noqa: E402
-from diracdata.utils.object_store import object_store_from_settings  # noqa: E402
+from diracdata.stores import object_store_from_settings  # noqa: E402
 from diracdata.context.fabric import fabric_store_from_settings  # noqa: E402
 from diracdata.memory import ExperienceBook  # noqa: E402
 from diracdata.context.valuecache import ColumnValueCache  # noqa: E402

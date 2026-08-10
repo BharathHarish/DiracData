@@ -74,5 +74,5 @@ class FabricStore:
 
 def fabric_store_from_settings(settings: Any) -> FabricStore:
     """Build a FabricStore over the configured object store (MinIO/S3 or local)."""
-    from diracdata.utils.object_store import object_store_from_settings
+    from diracdata.stores import object_store_from_settings
     return FabricStore(object_store_from_settings(settings))

@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from diracdata.config import settings_from_env  # noqa: E402
-from diracdata.utils.object_store import S3ObjectStore  # noqa: E402
+from diracdata.stores import S3ObjectStore  # noqa: E402
 
 
 def main() -> int:
