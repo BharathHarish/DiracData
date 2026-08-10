@@ -178,6 +178,9 @@ class Agent:
         if learned:
             system_prompt += ("\n\n## LEARNED KNOWLEDGE FOR THIS SCHEMA (reuse these patterns; honor the "
                               "gotchas/bindings; use RCA leads when investigating a metric)\n" + learned)
+        extra = self._extra_context()   # base returns "" (no-op); AgentV6 injects the governed model
+        if extra:
+            system_prompt += "\n\n## " + extra
 
         # The verifier also needs the per-source dialects: in a multi-engine estate each query runs in
         # its source's dialect and combine_results runs on the reconciler -- else it flags valid
@@ -273,6 +276,11 @@ class Agent:
             tokens += self._record(conversation, goal, events, answer)
         return Answer(question=goal, answer=answer, memory=memory,
                       tokens=tokens, steps=out["steps"], verdict=out.get("verdict"))
+
+    def _extra_context(self) -> str:
+        """Hook for a subclass to inject extra system context (AgentV6 renders the governed semantic
+        model). Base returns "" -> zero change to the current agent."""
+        return ""
 
     def _learned_context(self) -> str:
         """The curated schema memory (experiences.md) to inject into this turn -- reused patterns,
