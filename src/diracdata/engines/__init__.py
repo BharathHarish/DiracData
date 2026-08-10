@@ -9,6 +9,9 @@ from diracdata.engines.base import AbstractEngine, QueryEngine, QueryResult
 from diracdata.engines.duckdb import DuckDBEngine, Reconciler
 from diracdata.engines.postgres import PostgresEngine
 from diracdata.engines.registry import EngineSpec, SourceRegistry
+from diracdata.engines.warehouses import (
+    DatabricksEngine, RedshiftEngine, SnowflakeEngine, SparkEngine, TrinoEngine)
 
 __all__ = ["QueryEngine", "AbstractEngine", "QueryResult", "DuckDBEngine", "Reconciler",
-           "PostgresEngine", "EngineSpec", "SourceRegistry"]
+           "PostgresEngine", "EngineSpec", "SourceRegistry",
+           "DatabricksEngine", "TrinoEngine", "SparkEngine", "SnowflakeEngine", "RedshiftEngine"]

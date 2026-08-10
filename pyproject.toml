@@ -31,11 +31,17 @@ openai = ["langchain-openai>=1.0", "openai>=2.0"]          # also serves Firewor
 aws = ["langchain-aws>=1.0"]
 google = ["langchain-google-genai>=4.0"]
 
+# --- object stores (local + s3/minio work in core; these carry the cloud SDKs) ---
+azure = ["azure-storage-blob>=12.19"]
+gcp = ["google-cloud-storage>=2.16"]
+
 # --- warehouse engines (behind the QueryEngine protocol) ---
 postgres = ["psycopg[binary]>=3.1"]
 trino = ["trino>=0.328"]
 databricks = ["databricks-sql-connector>=3.0"]
 snowflake = ["snowflake-connector-python>=3.7"]
+redshift = ["redshift-connector>=2.1"]
+spark = ["pyspark>=3.5"]
 
 # --- durable checkpointers beyond the object store ---
 checkpoints-postgres = ["psycopg[binary]>=3.1"]
@@ -48,7 +54,7 @@ mcp = ["mcp>=1.0"]
 learning = []
 
 all = [
-    "diracdata[anthropic,openai,aws,google,postgres,trino,databricks,snowflake,mcp,learning]",
+    "diracdata[anthropic,openai,aws,google,azure,gcp,postgres,trino,databricks,snowflake,redshift,spark,mcp,learning]",
 ]
 
 # [project.scripts] -- a console entry point (diracdata-ask) lands once the CLI moves into the
