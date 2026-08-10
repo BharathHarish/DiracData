@@ -51,7 +51,8 @@ def _stderr_sink():
 
 def data_analyst(*, schema: str, model: Any = None, conversation: str | None = None,
                  memory: bool = False, garden: list | tuple | None = None, router: bool | None = None,
-                 settings: Any = None, env_file: str | None = None, stream: bool = False) -> DataAnalyst:
+                 settings: Any = None, env_file: str | None = None, stream: bool = False,
+                 engine: Any = None) -> DataAnalyst:
     """Build a ready-to-ask analyst over `schema`. Checkpoints (`conversation`), experiential memory
     (`memory`), and the router `garden` are just kwargs -- all the wiring is hidden."""
     from diracdata.config import settings_from_env
@@ -86,7 +87,7 @@ def data_analyst(*, schema: str, model: Any = None, conversation: str | None = N
            else chat_model(model, settings=settings))
 
     store = store_from_settings(settings)
-    engine = DuckDBEngine.from_settings(settings, schema)         # object-store-native (lake_source from ENV)
+    engine = engine or DuckDBEngine.from_settings(settings, schema)   # object-store-native (lake_source from ENV)
     registry = SourceRegistry.of(engine)
     fabric = context_store_from_settings(settings)               # learned context, object-store only
     workspace = Workspace.from_store(store=fabric, schema=schema)

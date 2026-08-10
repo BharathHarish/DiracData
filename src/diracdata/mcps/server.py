@@ -87,6 +87,24 @@ class _Runtime:
             self._ctx[sch] = Context.load(sch, settings=self.settings)
         return self._ctx[sch]
 
+    def result_store(self, schema: str | None):
+        """A ResultStore over the one engine (used by the RCA attribute primitive). Cached per schema."""
+        from diracdata.engines import SourceRegistry
+        from diracdata.execution import make_executor
+        from diracdata.runtime.results import ResultStore
+        from diracdata.stores import store_from_settings
+        sch = schema or self.default_schema
+        key = f"__rs__{sch}"
+        if key not in self._ctx:
+            s = self.settings
+            self._ctx[key] = ResultStore(engine=self.engine, store=store_from_settings(s), schema=sch,
+                                         sources=SourceRegistry.of(self.engine), preview_rows=s.preview_rows,
+                                         preview_all_max=s.preview_all_max,
+                                         reconciler_memory_limit=s.reconciler_memory_limit,
+                                         reconciler_temp_dir=s.reconciler_temp_dir,
+                                         reconciler_threads=s.reconciler_threads, executor=make_executor(s))
+        return self._ctx[key]
+
 
 def _register(server, rt: _Runtime, Context) -> None:
     from diracdata.utils.sql import validate_sql
@@ -199,3 +217,31 @@ def _register(server, rt: _Runtime, Context) -> None:
         """Check a learn_schema job: running | done (+ coverage) | error."""
         with rt._lock:
             return json.dumps(rt._jobs.get(job_id, {"status": "unknown job_id"}), default=str)
+
+    # ---- RCA: the attribution primitive + the full verified analyst ------------------------------
+    @server.tool()
+    def attribute(metric: str, period_a: Any, period_b: Any, dimensions: list | None = None,
+                  schema: str = "") -> str:
+        """Root-cause a governed metric's change between two periods: the COMPLETE, cited decomposition
+        (driver tree + per-dimension attribution) -- the adtributor. `metric` is a defined metric name;
+        period_a/period_b are the two period values (e.g. years); `dimensions` = the dims to break down
+        by (omit for the primary ones). Every figure is a citable result_id."""
+        ws = rt.ctx(schema).workspace
+        if not getattr(ws, "semantic_layer", None):
+            return "no metric tree (semantic_layer) for this schema -- run learn_schema first."
+        from diracdata.rca.attribution import build_attribution_tool
+        from diracdata.runtime.working_memory import WorkingMemory
+        tool = build_attribution_tool(workspace=ws, engine=rt.engine, result_store=rt.result_store(schema),
+                                      memory=WorkingMemory(goal=f"attribute {metric}"), config=rt.settings)[0]
+        return tool.invoke({"metric": metric, "period_a": period_a, "period_b": period_b,
+                            "dimensions": dimensions})
+
+    @server.tool()
+    def ask(question: str, schema: str = "") -> str:
+        """Answer an analytics question with DiracData's OWN verify-first agent (triage -> route ->
+        attribution for RCA -> sanity/fan-out gate -> cited answer). Use for a guaranteed-correct
+        one-shot answer -- especially root-cause ('why did X change?') questions."""
+        from diracdata.agents import data_analyst
+        da = data_analyst(schema=schema or rt.default_schema, model=rt.model, settings=rt.settings,
+                          engine=rt.engine)
+        return da.run(question).answer
