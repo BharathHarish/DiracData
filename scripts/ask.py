@@ -111,7 +111,7 @@ def main() -> int:
         engine = registry.get_default()
         schema = engine.name
     else:
-        engine = DuckDBEngine(data_root=Path(args.data_root), schema_name=args.schema)
+        engine = DuckDBEngine.from_settings(settings, args.schema)
         registry = SourceRegistry.of(engine)
         schema = args.schema
     fabric = fabric_store_from_settings(settings)

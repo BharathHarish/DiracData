@@ -57,8 +57,11 @@ class _DuckDBRuntime:
 class DuckDBEngine(_DuckDBRuntime, AbstractEngine):
     dialect = "duckdb"
 
-    def __init__(self, *, data_root: Path, schema_name: str = "default_schema",
-                 name: str | None = None, read_only: bool = True) -> None:
+    def __init__(self, *, data_root: Path | None = None, schema_name: str = "default_schema",
+                 name: str | None = None, read_only: bool = True, lake_source: str = "local",
+                 lake_bucket: str = "lake", s3_endpoint_url: str | None = None,
+                 aws_access_key_id: str | None = None, aws_secret_access_key: str | None = None,
+                 aws_region: str = "us-east-1") -> None:
         super().__init__(name=name or schema_name, read_only=read_only)
         try:
             import duckdb
@@ -67,14 +70,45 @@ class DuckDBEngine(_DuckDBRuntime, AbstractEngine):
         self._con = duckdb.connect(":memory:")
         self._lock = RLock()
         self._tables: set[str] = set()
-        parquet_root = data_root / schema_name / "parquet"
-        for path in sorted(parquet_root.rglob("*.parquet")):
-            table = path.stem
-            with self._lock:
-                self._con.execute(
-                    f"CREATE OR REPLACE VIEW {self.quote_ident(table)} AS "
-                    f"SELECT * FROM read_parquet('{_lit(path.as_posix())}')")
-            self._tables.add(table)
+        if lake_source == "s3":   # object-store-native: DuckDB reads the lake bucket over httpfs
+            self._register_lake(schema_name, lake_bucket, s3_endpoint_url, aws_access_key_id,
+                                aws_secret_access_key, aws_region)
+        else:                     # local dev: read the staged parquet under data_root
+            root = (data_root or Path("data")) / schema_name / "parquet"
+            for path in sorted(root.rglob("*.parquet")):
+                self._register_view(path.stem, f"read_parquet('{_lit(path.as_posix())}')")
+
+    @classmethod
+    def from_settings(cls, settings: Any, schema_name: str, *, name: str | None = None) -> "DuckDBEngine":
+        """Build an engine that reads where `settings` says: the object-store lake (lake_source='s3')
+        or local staged parquet ('local'). The one place callers pick the source -- no magic paths."""
+        return cls(data_root=settings.data_root, schema_name=schema_name, name=name,
+                   lake_source=settings.lake_source, lake_bucket=settings.lake_bucket,
+                   s3_endpoint_url=settings.s3_endpoint_url, aws_access_key_id=settings.aws_access_key_id,
+                   aws_secret_access_key=settings.aws_secret_access_key, aws_region=settings.aws_region)
+
+    def _register_view(self, table: str, source_sql: str) -> None:
+        with self._lock:
+            self._con.execute(f"CREATE OR REPLACE VIEW {self.quote_ident(table)} AS "
+                              f"SELECT * FROM {source_sql}")
+        self._tables.add(table)
+
+    def _register_lake(self, schema: str, bucket: str, endpoint: str | None, key: str | None,
+                       secret: str | None, region: str) -> None:
+        ep = endpoint or ""
+        host = ep.split("://", 1)[-1]                       # DuckDB ENDPOINT wants host[:port], no scheme
+        use_ssl = "true" if ep.startswith("https") else "false"
+        with self._lock:
+            self._con.execute("INSTALL httpfs; LOAD httpfs")
+            self._con.execute(
+                f"CREATE OR REPLACE SECRET lake_s3 (TYPE S3, KEY_ID '{_lit(key or '')}', "
+                f"SECRET '{_lit(secret or '')}', ENDPOINT '{_lit(host)}', URL_STYLE 'path', "
+                f"USE_SSL {use_ssl}, REGION '{_lit(region)}')")
+            rows = self._con.execute(
+                f"SELECT file FROM glob('s3://{bucket}/{schema}/**/*.parquet')").fetchall()
+        for (f,) in rows:
+            table = f.rsplit("/", 1)[-1].removesuffix(".parquet")
+            self._register_view(table, f"read_parquet('{_lit(f)}')")
 
     def list_tables(self) -> list[str]:
         return sorted(self._tables)

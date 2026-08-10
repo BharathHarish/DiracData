@@ -84,6 +84,9 @@ class Config:
     aws_access_key_id: str | None = None
     aws_secret_access_key: str | None = None
     local_artifact_root: Path = Path(".diracdata/artifacts")
+    # --- lake: where the ENGINE reads table parquet from (object-store-native vs local dev) ---
+    lake_bucket: str = "lake"          # object-store bucket holding <schema>/**/*.parquet
+    lake_source: str = "local"         # "s3" -> DuckDB reads s3://<lake_bucket>/<schema> via httpfs; "local" -> data_root
     cache_max_entries: int = 512
 
     # --- agent loop budgets ---
@@ -253,6 +256,8 @@ class Config:
             s3_endpoint_url=g("DIRACDATA_S3_ENDPOINT_URL") or d.s3_endpoint_url,
             aws_access_key_id=g("DIRACDATA_AWS_ACCESS_KEY_ID") or d.aws_access_key_id,
             aws_secret_access_key=g("DIRACDATA_AWS_SECRET_ACCESS_KEY") or d.aws_secret_access_key,
+            lake_bucket=_str("DIRACDATA_LAKE_BUCKET", d.lake_bucket),
+            lake_source=_str("DIRACDATA_LAKE_SOURCE", d.lake_source),
             local_artifact_root=_path("DIRACDATA_LOCAL_ARTIFACT_ROOT", d.local_artifact_root),
             cache_max_entries=_int("DIRACDATA_CACHE_MAX_ENTRIES", d.cache_max_entries),
             max_steps=_int("DIRACDATA_MAX_STEPS", d.max_steps),

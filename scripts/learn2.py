@@ -89,7 +89,7 @@ def main() -> int:
     settings = replace(settings_from_env(args.env_file), agent_model_profile=args.model_profile,
                        stream_tokens=True)
     model = ChatModelFactory(settings=settings).create_chat_model(profile_id=args.model_profile)
-    engine = DuckDBEngine(data_root=Path(args.data_root), schema_name=args.schema)
+    engine = DuckDBEngine.from_settings(settings, args.schema)
     fab = fabric_store_from_settings(settings)
     sink = mode_sink(_make_sink(args.quiet), "off" if args.quiet else args.stream_mode)
 

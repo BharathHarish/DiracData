@@ -58,7 +58,7 @@ def main() -> int:
                        router_enabled=(False if args.no_router else _base.router_enabled),
                        examples_enabled=(False if args.cold else _base.examples_enabled))
     model = ChatModelFactory(settings=settings).create_chat_model(profile_id=args.model_profile)
-    engine = DuckDBEngine(data_root=Path(args.data_root), schema_name=args.schema)
+    engine = DuckDBEngine.from_settings(settings, args.schema)
     registry = SourceRegistry.of(engine)
     fabric = fabric_store_from_settings(settings)
     obj_store = object_store_from_settings(settings)
