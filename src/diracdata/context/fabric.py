@@ -1,12 +1,15 @@
-"""FabricStore -- the one place artifacts live: schema-keyed storage over the object store
-(MinIO/S3 in prod, a local object store in tests). Both agents use it; no agent touches the
-filesystem for artifacts.
+"""ContextStore -- the ONE home for a schema's compiled semantic context, over an object store ONLY.
+
+The learned context (metadata_descriptions.json, semantic_model.yaml, value_domains.json,
+semantic_layer.yaml, join_graph.json, coverage_report.json) is compiled write-once-per-learn and
+read-many, shared across users, and file-shaped -- so it lives in the object store and nowhere else.
+This is DELIBERATELY not pluggable the way diracdata.checkpoints is (conversation state is mutable,
+per-user, write-heavy, so it earns a DB backend; compiled context does not). Object store keeps the
+context portable: a schema's context is just a folder of blobs you can copy, version, or ship.
 
 Two namespaces:
-  fabric/<schema>/...  -- compiled context fabric the learning agent produces (immutable per run):
-                          metadata_descriptions.json, value_domains.json, join_graph.json
-  state/<schema>/...   -- runtime state the query agent writes as it answers:
-                          experiences.jsonl, joins.jsonl, column_values.json
+  fabric/<schema>/...  -- the compiled context the learning agent produces (immutable per run).
+  state/<schema>/...   -- small runtime state the query agent writes back as it answers.
 """
 
 from __future__ import annotations
@@ -14,10 +17,12 @@ from __future__ import annotations
 import json
 from typing import Any
 
+from diracdata.stores import Store
 
-class FabricStore:
-    def __init__(self, store: Any) -> None:
-        self._store = store  # any object store with write_json/read_json/read_text/write_text/exists/list_keys
+
+class ContextStore:
+    def __init__(self, store: Store) -> None:
+        self._store = store  # a diracdata.stores.Store (object store) -- NOT a checkpoint DB backend
 
     # ---- compiled fabric (learning agent output) --------------------------------------
     def put(self, schema: str, name: str, obj: Any) -> str:
@@ -72,7 +77,12 @@ class FabricStore:
         return f"state/{schema}/{name}"
 
 
-def fabric_store_from_settings(settings: Any) -> FabricStore:
-    """Build a FabricStore over the configured object store (MinIO/S3 or local)."""
-    from diracdata.stores import object_store_from_settings
-    return FabricStore(object_store_from_settings(settings))
+def context_store_from_settings(settings: Any) -> ContextStore:
+    """Build a ContextStore over the configured object store (MinIO/S3 or local) -- object store only."""
+    from diracdata.stores import store_from_settings
+    return ContextStore(store_from_settings(settings))
+
+
+# Back-compat aliases (the store used to be called "fabric"). Prefer ContextStore in new code.
+FabricStore = ContextStore
+fabric_store_from_settings = context_store_from_settings

@@ -1,0 +1,75 @@
+"""Learner -- the one-call COMPILER facade. `Learner(schema, model).learn()` runs the agentic learning
+harness over the estate and WRITES the compiled context to the object store (the artifacts the query
+agent consumes on demand): metadata_descriptions.json (+ complex access recipes) + value_domains.json,
+with semantic_model.yaml kept as the governance record. Learn once; read many via diracdata.context.
+"""
+
+from __future__ import annotations
+
+from dataclasses import replace
+from typing import Any
+
+from diracdata.config import settings_from_env
+from diracdata.utils.streaming import Sink, null_sink
+
+
+class Learner:
+    def __init__(self, *, schema: str, model: Any, settings: Any = None, subagents: bool = True,
+                 max_steps: int | None = None) -> None:
+        self.schema = schema
+        self.settings = settings if settings is not None else settings_from_env()
+        if isinstance(model, str):                       # a profile id -> set it as the base + build
+            self.settings = replace(self.settings, agent_model_profile=model)
+        self._model_arg = model
+        self.subagents = subagents
+        self.max_steps = max_steps
+
+    def _model(self) -> Any:
+        m = self._model_arg
+        if hasattr(m, "build"):                          # a model_providers Provider
+            return m.build()
+        if isinstance(m, str):
+            from diracdata.models import chat_model
+            return chat_model(m, settings=self.settings)
+        return m                                         # already a chat model
+
+    def learn(self, *, context: str = "", sink: Sink = null_sink) -> dict:
+        from diracdata.context.fabric import context_store_from_settings
+        from diracdata.engines import DuckDBEngine
+        from diracdata.learning.agent2 import LearningCompiler
+
+        engine = DuckDBEngine.from_settings(self.settings, self.schema)
+        store = context_store_from_settings(self.settings)
+        if not context:                                  # default: fold in any blessed metric tree
+            context = self._blessed_context(store)
+
+        compiler = LearningCompiler(engine=engine, model=self._model(), sink=sink,
+                                    config=self.settings, max_steps=self.max_steps,
+                                    subagents=self.subagents)
+        sm, out = compiler.compile(self.schema, context=context)
+
+        # PRIMARY output = the artifacts the base agent reads on demand (describe_columns / find_examples).
+        meta = sm.to_metadata_descriptions()
+        cur_meta = store.get(self.schema, "metadata_descriptions.json") or {}
+        for t, cols in meta["columns"].items():
+            cur_meta.setdefault("columns", {}).setdefault(t, {}).update(cols)
+        cur_meta.setdefault("tables", {}).update(meta["tables"])
+        store.put(self.schema, "metadata_descriptions.json", cur_meta)
+        domains = sm.to_value_domains()
+        if domains:
+            cur_dom = store.get(self.schema, "value_domains.json") or {}
+            for t, cols in domains.items():
+                cur_dom.setdefault(t, {}).update(cols)
+            store.put(self.schema, "value_domains.json", cur_dom)
+        store._store.write_text(store._fabric_key(self.schema, "semantic_model.yaml"), sm.to_yaml(),
+                                content_type="text/yaml")
+        cov = sm.coverage({t: engine.list_columns(t) for t in engine.list_tables()})
+        store.put(self.schema, "coverage_report.json", cov)
+        return {"coverage": cov, "tokens": out.get("tokens"), "steps": out.get("steps")}
+
+    def _blessed_context(self, store: Any) -> str:
+        for name in ("semantic_layer.yaml", "semantic_layer.yml"):
+            if store.has(self.schema, name):
+                return ("BLESSED METRICS / DIMENSIONS (align to these, do not contradict):\n"
+                        + (store.read_text(self.schema, name) or "")[:6000])
+        return ""
