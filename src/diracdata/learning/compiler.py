@@ -102,8 +102,12 @@ class SemanticModel:
             for c, cd in cmap.items():
                 long_ = (cd.get("long") or cd.get("short") or "").strip()
                 recipe = (cd.get("access_recipe") or "").strip()
+                runnable = (cd.get("runnable_example") or "").strip()
                 if recipe:  # push the nested-access syntax into the channel the agent already reads
                     long_ = (long_ + " " if long_ else "") + f"NESTED/COMPLEX — access path(s): {recipe}"
+                if runnable:  # V3-S2: verified runnable SELECT (deepest leaf); LLM can copy verbatim
+                    dialect = cd.get("runnable_dialect", "duckdb")
+                    long_ = long_ + f" Runnable example ({dialect}, verified): {runnable}"
                 columns[t][c] = {"short_description": (cd.get("short") or "").strip(),
                                  "long_description": long_}
         return {"tables": tables, "columns": columns}

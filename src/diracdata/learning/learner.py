@@ -57,6 +57,17 @@ class Learner:
         except Exception as exc:  # noqa: BLE001
             sink("learn", "info", f"join enrichment skipped: {type(exc).__name__}: {exc}")
 
+        # V3-S2: verify each COMPLEX column's recipe by generating a CTE-staged runnable SELECT and
+        # running it; the working snippet lands on the column so the analyst can copy it verbatim.
+        from diracdata.learning.recipe_verify import enrich_recipes
+        try:
+            r = enrich_recipes(model=sm, engine=engine)
+            n_complex = sum(1 for cmap in sm.columns.values() for cd in cmap.values()
+                            if isinstance(cd, dict) and cd.get("access_recipe"))
+            sink("learn", "info", f"verified {r}/{n_complex} complex-column recipes are runnable")
+        except Exception as exc:  # noqa: BLE001
+            sink("learn", "info", f"recipe verification skipped: {type(exc).__name__}: {exc}")
+
         # PRIMARY output = the artifacts the base agent reads on demand (describe_columns / find_examples).
         meta = sm.to_metadata_descriptions()
         cur_meta = store.get(self.schema, "metadata_descriptions.json") or {}
