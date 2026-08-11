@@ -1,0 +1,61 @@
+# retail_complex semantic layer (V3-S5).
+#
+# Governs the marketing-channel domain metrics + a CANONICAL channel dimension so the analyst does
+# not have to choose between the two representations on the table:
+#   - marketing_campaigns.touchpoints  -- array-of-struct per campaign, one row per (campaign, channel)
+#                                         with per-touchpoint impressions/clicks. THIS IS TRUTH.
+#   - marketing_campaigns.channel_*    -- 9 legacy TPC-DS boolean flags (channel_email/tv/mailer/...).
+#                                         inherited from the source schema; NOT the source of truth.
+# The canonical channel dimension binds to touchpoints (the granular one), and CTR / impressions /
+# clicks all decompose through touchpoints so the numbers are consistent across every question.
+#
+# Grain: the base metrics compute over UNNEST(touchpoints), so a per-campaign row expands to N
+# touchpoint rows (one per channel). This is the correct grain for channel-level analysis.
+
+version: 2
+
+business_terms:
+  channel:
+    description: The marketing channel a touchpoint used ('search', 'social', 'display', 'email',
+      'affiliate'). Source of truth = marketing_campaigns.touchpoints.channel (per-touchpoint).
+    definition: The `channel` field inside each element of marketing_campaigns.touchpoints.
+    aliases: [marketing_channel, touchpoint_channel]
+    note: |
+      The boolean channel_* flags on marketing_campaigns (channel_email, channel_tv, ...) are LEGACY
+      TPC-DS columns that predate touchpoints. Do not mix them with touchpoint channel -- they
+      represent presence, not activity, and are not the source of truth for CTR/impressions/clicks.
+
+metrics:
+
+  # ---- volume ------------------------------------------------------------------------------------
+  impressions:
+    description: Total marketing impressions across all touchpoints in the period.
+    sql: "SUM(t.metrics.impressions)"
+    grain_note: "requires FROM marketing_campaigns c, UNNEST(c.touchpoints) t"
+  clicks:
+    description: Total marketing clicks across all touchpoints in the period.
+    sql: "SUM(t.metrics.clicks)"
+    grain_note: "requires FROM marketing_campaigns c, UNNEST(c.touchpoints) t"
+
+  # ---- rate (multiplicative in impressions x rate) -----------------------------------------------
+  ctr:
+    description: Click-through rate = clicks / impressions, computed per touchpoint (the correct
+      grain). ALWAYS use this instead of inventing per-campaign or per-flag CTR variants -- they
+      would use the wrong grain and produce inconsistent numbers.
+    formula: clicks / impressions
+    sql: "SUM(t.metrics.clicks)::DOUBLE / NULLIF(SUM(t.metrics.impressions), 0)"
+    grain_note: "requires FROM marketing_campaigns c, UNNEST(c.touchpoints) t"
+    decomposition: multiplicative
+    depends_on: [clicks, impressions]
+
+dimensions:
+
+  channel:
+    description: Canonical marketing channel. Binds to the touchpoint channel (source of truth),
+      NOT the legacy channel_* boolean flags on marketing_campaigns.
+    expr: t.channel
+    via:
+      - "FROM marketing_campaigns c, UNNEST(c.touchpoints) t"
+    group: marketing
+    primary: true
+    values_from: touchpoints  # search / social / display / email / affiliate

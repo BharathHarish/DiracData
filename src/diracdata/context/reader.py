@@ -61,10 +61,34 @@ class Context:
         return self._model_index().joins(table)
 
     def metric(self, name: str = "") -> str:
-        return self._model_index().metric(name)
+        return self._merge_blessed(self._model_index().metric(name), name, "metrics")
 
     def dimension(self, name: str = "") -> str:
-        return self._model_index().dimension(name)
+        return self._merge_blessed(self._model_index().dimension(name), name, "dimensions")
+
+    def _merge_blessed(self, learned: str, name: str, kind: str) -> str:
+        """V3-S5: fall back to (or merge with) the blessed semantic_layer.yaml so a hand-authored
+        metric/dimension (e.g. `ctr`, canonical `channel`) is discoverable via get_metric even when
+        it isn't reconciled into the learned model. Substrate-only; all three surfaces benefit."""
+        blessed = (getattr(self.workspace, "semantic_layer", None) or {}).get(kind) or {}
+        if not blessed:
+            return learned
+        if not name:                          # listing: append any blessed-only names
+            extras = [k for k in blessed if k not in _learned_names(learned)]
+            return learned + (f"\n(+ blessed only: {', '.join(sorted(extras))})" if extras else "")
+        if name in blessed and learned.startswith(f"no {kind[:-1]} "):
+            d = blessed[name]
+            parts = [f"{k}={v}" for k, v in d.items() if v]
+            return f"{kind[:-1]} {name} (blessed): " + "; ".join(parts)
+        return learned
+
+
+def _learned_names(text: str) -> set[str]:
+    # a tiny helper -- the model_index listing looks like "metrics: a, b, c" or "no metric ..."
+    if ":" not in text:
+        return set()
+    _, tail = text.split(":", 1)
+    return {t.strip() for t in tail.split(",") if t.strip()}
 
     # -- workspace-backed reads (column detail w/ recipe, examples) ---------------------------------
     def column(self, table: str, column: str) -> dict | None:
