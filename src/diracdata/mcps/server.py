@@ -67,9 +67,11 @@ _INSTRUCTIONS = (
     "column's meaning + nested ACCESS RECIPE, get_metric for a governed metric's SQL; (3) join_path for "
     "the VERIFIED join + cardinality BEFORE any join (keys are often named differently on each side -- "
     "aggregate-then-join, never fan-out/chasm double-count); (4) run_sql to execute (read-only); (5) "
-    "data_check to verify a multi-table draft (fan-out + sanity); (6) attribute for the complete cited "
-    "root-cause decomposition of a metric's change. If a schema is not learned yet, call learn_schema "
-    "and poll learn_status."
+    "data_check to verify a multi-table draft (fan-out + sanity); (6) temporal_coverage BEFORE joining "
+    "two time-bearing tables in a question with an implied period ('during the campaign', 'over the "
+    "same window') -- catches the silent nearest-day proxy when their calendars don't overlap; (7) "
+    "attribute for the complete cited root-cause decomposition of a metric's change. If a schema is "
+    "not learned yet, call learn_schema and poll learn_status."
 )
 
 

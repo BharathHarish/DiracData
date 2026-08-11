@@ -107,6 +107,16 @@ def context_tools(rt: Any) -> list:
         return tool.invoke({"metric": metric, "period_a": period_a, "period_b": period_b,
                             "dimensions": dimensions})
 
+    # ---- silent-distortion checks (calendar-side of stewardship) ---------------------------------
+    def temporal_coverage(a: str, b: str) -> str:
+        """Compare the date span of two 'table.column' refs (e.g. 'orders.order_date' vs
+        'stock_levels.snapshot_date'). Warns when they don't overlap, or overlap only partially --
+        the silent trap where a join looks fine but returns a nearest-day proxy or drops rows for
+        the period actually asked about. Call BEFORE joining two time-bearing tables in a query
+        with an implied period ('during the campaign', 'over the same window')."""
+        from diracdata.context.temporal import temporal_coverage as _tc
+        return json.dumps(_tc(rt.engine, a, b), default=str)
+
     # ---- builder: compile context for a schema ----------------------------------------------------
     def learn_schema(schema: str = "") -> str:
         """Compile the governed context (grain, discovered joins, metrics, complex-column recipes) for a
@@ -138,4 +148,5 @@ def context_tools(rt: Any) -> list:
             return json.dumps(rt._jobs.get(job_id, {"status": "unknown job_id"}), default=str)
 
     return [list_tables, describe_table, describe_column, search_context, join_path, get_metric,
-            find_examples, run_sql, data_check, attribute, learn_schema, learn_status]
+            find_examples, run_sql, data_check, attribute, temporal_coverage,
+            learn_schema, learn_status]
