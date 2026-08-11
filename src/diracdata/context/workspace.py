@@ -90,13 +90,15 @@ class Workspace:
     def from_store(cls, *, store: Any, schema: str, **kwargs: Any) -> "Workspace":
         """Build a workspace from the object-store domain context: the learning agent's metadata,
         value domains, join graph AND the customer's business-definitions/metrics layer all come
-        from the store. Source data the customer keeps as files (gold NL-SQL, query history, docs)
-        stay local and pass through **kwargs. `store` is a FabricStore."""
+        from the store. V3-S4: also loads `gold_pairs.json` (a list of {nl_query, sql} seeds) from
+        the same store, so find_examples returns proven patterns even on cold schemas (no local
+        files needed). Additional local files can still pass through **kwargs."""
         return cls.load(
             metadata=store.get(schema, "metadata_descriptions.json") or {},
             value_domains=store.get(schema, "value_domains.json") or {},
             join_graph=store.get(schema, "join_graph.json") or [],
             semantic_layer=_semantic_layer_from_store(store, schema),
+            gold_pairs=store.get(schema, "gold_pairs.json") or [],
             **kwargs,
         )
 
@@ -107,6 +109,7 @@ class Workspace:
         metadata_path: Path | None = None,
         metadata: dict | None = None,
         gold_pairs_path: Path | None = None,
+        gold_pairs: list | None = None,        # V3-S4: pre-loaded seeds from the object store
         query_history_path: Path | None = None,
         docs_paths: list[Path] | None = None,
         value_domains_path: Path | None = None,
@@ -135,6 +138,11 @@ class Workspace:
         if gold_pairs_path and Path(gold_pairs_path).exists():
             for row in csv.DictReader(Path(gold_pairs_path).open(encoding="utf-8")):
                 ws._add_example("gold", row.get("nl_query", ""), row.get("sql", ""), table_columns)
+        if gold_pairs:                        # V3-S4: seeds from the object store (gold_pairs.json)
+            for row in gold_pairs:
+                if isinstance(row, dict):
+                    ws._add_example("gold", row.get("nl_query", "") or row.get("question", ""),
+                                    row.get("sql", ""), table_columns)
         if query_history_path and Path(query_history_path).exists():
             for row in csv.DictReader(Path(query_history_path).open(encoding="utf-8")):
                 ws._add_example("history", "", row.get("statement_text", ""), table_columns)
