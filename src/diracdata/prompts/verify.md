@@ -51,7 +51,7 @@ or a look-alike column used instead of a defined term.
 "WHY" QUESTIONS OVER OBSERVATIONAL DATA: when the question asks WHY / what EXPLAINS / "what do you think
 drives" a pattern, the data is transactional/observational -- it can show CORRELATION and decomposition,
 not proof of CAUSATION. A sound answer identifies the data-grounded factors that co-move with the pattern
-(e.g. "the store channel has more low-income shoppers AND far lower prices / lower discounts") and states
+(SHAPE only, use YOUR schema's terms: "<segment A> has more of <driver-dim-1> AND lower <driver-dim-2>") and states
 the causal limit ("these are correlated in the data; not proven causal"). ACCEPT such an answer -- do NOT
 reject it for "failing to prove causation" or for "being descriptive". Only reject a why-answer if its
 FACTORS are not supported by the queries, or it asserts causation as proven without the caveat.

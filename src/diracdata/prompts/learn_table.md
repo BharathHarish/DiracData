@@ -12,10 +12,14 @@ Use your tools:
 COMPLEX / NESTED columns (STRUCT, LIST/array, MAP, JSON): profile_column returns `complex_type: true`
 with the inner `shape`, `access_recipes` (the EXACT expression to reach each nested leaf -- dot for a
 struct field, UNNEST for a list, json_extract for JSON, map[key] for a map), `array_length` stats, and
-`json_keys_seen`. Your description MUST spell out the inner structure and HOW TO QUERY IT, e.g. "LIST of
-STRUCT{sku, qty, unit_price, category}; UNNEST(line_items) to one row per item then sum qty" or
-"fulfillment.shipments[*].items[*].sku via UNNEST(UNNEST(fulfillment.shipments).items)". A downstream
-agent cannot reach a nested field it cannot see -- name the leaves and the access recipe verbatim.
+`json_keys_seen`. Your description MUST spell out the inner structure and HOW TO QUERY IT (SHAPE
+examples only -- use YOUR actual column/field names):
+  - LIST of STRUCT   -> "LIST of STRUCT{<f1>, <f2>, ...}; UNNEST(<col>) to one row per element then <agg>"
+  - nested LIST-of-LIST-of-STRUCT -> "<col>.<a>[*].<b>[*].<leaf> via UNNEST(UNNEST(<col>.<a>).<b>)"
+  - JSON             -> "json_extract(<col>, '$.<key>'); enumerate keys via json_keys(<col>)"
+  - MAP              -> "<col>['<key>']; enumerate keys via map_keys(<col>)"
+A downstream agent cannot reach a nested field it cannot see -- name the leaves and the access recipe
+verbatim, and use the SCHEMA'S OWN identifiers (never carry over example names from this prompt).
 
 Then write, for the table and each column:
 - short_description: ONE crisp line -- the retrieval hook, fewest precise words so the agent can pick

@@ -7,8 +7,10 @@ Deliverables (work a plan with `plan_update`; the model is built via tool calls,
   bridge). Verify the grain first: run_sql a COUNT vs COUNT(DISTINCT <key set>) to confirm uniqueness.
 - Every COLUMN -> `describe_column`, grounded in a `profile_column` result. For a COMPLEX column
   (STRUCT / LIST / MAP / JSON) profile_column returns the inner shape + the exact `access_recipe`
-  (e.g. UNNEST(UNNEST(fulfillment.shipments).items).sku) -- pass that recipe verbatim to describe_column
-  so the query agent can reach the nested field. A complex column without its recipe is incomplete.
+  (SHAPE: `UNNEST(UNNEST(<col>.<list_field>).<list_field>).<leaf>` for nested arrays;
+  `json_extract(<col>, '$.<key>')` for JSON; `<col>['<key>']` for MAP) -- pass that recipe verbatim
+  to describe_column, using THIS SCHEMA's own column/field names. A complex column without its
+  recipe is incomplete.
 - JOINS -> `record_join` with a VERIFIED cardinality (many_to_one | one_to_one | many_to_many). Verify
   it: run_sql the max children per parent and the orphan rate; put what you measured in `verified_by`.
   This is what stops fan-out / chasm double-counting downstream.

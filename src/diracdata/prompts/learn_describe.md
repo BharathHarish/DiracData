@@ -10,9 +10,12 @@ Your job, for this one table:
 2. **Describe EVERY column** with `describe_column`. For each column give a short business meaning and,
    where useful, its value domain (sampled distinct values or range).
    - A **COMPLEX/NESTED column** (STRUCT, ARRAY `[]`, MAP, JSON — flagged `<<COMPLEX>>`) MUST first be
-     profiled with `profile_column`, and you MUST record the exact `access_recipe` it returns (e.g.
-     `UNNEST(UNNEST(fulfillment.shipments).items).sku`, `json_extract(preferences, '$.channel')`,
-     `feature_flags['beta']`). Do not guess the unnest/extract syntax — copy the profiled recipe.
+     profiled with `profile_column`, and you MUST record the exact `access_recipe` it returns
+     (SHAPE examples only -- substitute your actual column/field names:
+       nested arrays  -> `UNNEST(UNNEST(<col>.<list_field>).<list_field>).<leaf>`
+       JSON           -> `json_extract(<col>, '$.<key>')`
+       MAP            -> `<col>['<key>']`).
+     Do not guess the unnest/extract syntax — copy the profiled recipe verbatim.
 
 Ground every claim in a tool result — profile or query, never assume. When every column of this table is
 described and the grain is verified, stop (no more tool calls). Do not describe other tables, joins, or

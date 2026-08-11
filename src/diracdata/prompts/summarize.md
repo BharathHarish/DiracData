@@ -8,7 +8,7 @@ the tool calls the agent ran, and the final answer). Fold the latest turn into t
 and return the UPDATED running summary.
 
 CAPTURE, tersely:
-- ESTABLISHED FACTS & BINDINGS: what a term/metric was bound to (e.g. "online revenue = SUM(online_purchases.net_paid)"),
+- ESTABLISHED FACTS & BINDINGS: what a term/metric was bound to (SHAPE: "<metric> = SUM(<fact_table>.<measure>) filtered by <period>", using THIS schema's names),
   the grain/joins that proved correct, filters that mattered. These must never be re-derived.
 - RESOLVED ENTITIES: the concrete values the conversation is about -- years, states, segments, cohorts,
   named products -- so a later "that", "the second one", "same for CA", "what about 2002" resolves.

@@ -12,14 +12,17 @@ You have two tools:
 SECTIONS (use these; markdown `##` headers). Store PATTERNS and HEURISTICS, never raw NL queries:
 - `SQL PATTERNS`   -- a reusable, PARAMETERIZED template (slots like {dim}, {period}) + one tiny
   exemplar. e.g. "cohort new-vs-returning: MIN(year) per client CTE, CASE on first_year=P".
-- `RCA LEADS`      -- keyed by METRIC: where to look when it moves. e.g. "online_revenue drop ->
-  check acquisition_channel, region first; Q3'01 driven by new-buyer churn in segment X".
-- `GOTCHAS`        -- non-obvious data caveats. e.g. "billing_client_ref has ~0.02% NULLs -> bucket
-  as 'unclassified' or COALESCE".
-- `BINDINGS`       -- a term/metric -> SQL/logic confirmed this turn. e.g. "online_revenue =
-  SUM(online_purchases.net_paid)".
-- `VALUE DOMAINS`  -- real values/casing. e.g. "gender in {'F','M'}; state = 2-letter UPPER".
-- `PREFERENCES`    -- resolved user intent. e.g. "'customers from TX' = current billing address state".
+- `RCA LEADS`      -- keyed by METRIC: where to look when it moves. SHAPE: "<metric> drop -> check
+  <driver-dim-1>, <driver-dim-2> first; <period> driven by <cohort/segment> shift".
+- `GOTCHAS`        -- non-obvious data caveats. SHAPE: "<table>.<col> has ~N% NULLs -> bucket as
+  'unclassified' or COALESCE"; "grain of <table> is <one-row-per-X>, do not sum across <dim>".
+- `BINDINGS`       -- a term/metric -> SQL/logic confirmed this turn. SHAPE: "<metric_name> =
+  SUM(<fact_table>.<measure_col>) filtered by <period_predicate>".
+- `VALUE DOMAINS`  -- real values/casing. SHAPE: "<col> in {<v1>, <v2>, ...}; <col> = <format>".
+- `PREFERENCES`    -- resolved user intent. SHAPE: "'<user phrase>' = <resolved SQL predicate>".
+
+The examples above show SHAPE ONLY. When you write the actual note, substitute the metric/table/column
+names FROM THIS SCHEMA -- never carry over placeholder identifiers or names from other schemas.
 
 WHAT COUNTS AS WORTH KEEPING (be strict):
 - reusable across a DIFFERENT question of the same shape;
