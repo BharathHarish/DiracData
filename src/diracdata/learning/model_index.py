@@ -157,9 +157,30 @@ class SemanticModelIndex:
             if j.get("left") == table or j.get("right") == table:
                 lk = ",".join(j.get("left_keys") or [])
                 rk = ",".join(j.get("right_keys") or [])
-                out.append(f"{j.get('left')}({lk}) -> {j.get('right')}({rk}) : {j.get('cardinality', '?')}"
-                           + (f"  [{j['verified_by']}]" if j.get("verified_by") else ""))
+                out.append(_render_join(j, lk, rk))
         return out
+
+
+def _render_join(j: dict, lk: str, rk: str) -> str:
+    """Render one join card. Concision contract: 1 line by default; +1 warning line only if a risk
+    (orphans > ~1%, fan-out > 1). Behavioural fields are optional -- absent => legacy render."""
+    head = f"{j.get('left')}({lk}) -> {j.get('right')}({rk}) : {j.get('cardinality', '?')}"
+    parts = []
+    if j.get("match_rate") is not None:
+        parts.append(f"match={j['match_rate']*100:.1f}%")
+    if j.get("fan_out_avg") is not None:
+        parts.append(f"fanout avg={j['fan_out_avg']:.2f} max={j.get('fan_out_max')}")
+    if j.get("disposition"):
+        parts.append(f"use {j['disposition']}")
+    line = head + ("  " + " ".join(parts) if parts else "")
+    if j.get("verified_by") and not parts:
+        line += f"  [{j['verified_by']}]"
+    warn = []
+    if isinstance(j.get("match_rate"), (int, float)) and j["match_rate"] < 0.99:
+        warn.append(f"⚠ {(1-j['match_rate'])*100:.1f}% orphan on INNER (sampled {j.get('sampled','?')})")
+    if isinstance(j.get("fan_out_max"), (int, float)) and j["fan_out_max"] > 1:
+        warn.append(f"⚠ fan-out risk (max {j['fan_out_max']}): aggregate before joining")
+    return line + ("\n    " + " ; ".join(warn) if warn else "")
 
 
 def _short(v: Any, cap: int = 120) -> str:

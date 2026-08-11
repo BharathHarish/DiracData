@@ -48,6 +48,15 @@ class Learner:
                                     subagents=self.subagents)
         sm, out = compiler.compile(self.schema, context=context)
 
+        # V3-S1: enrich every recorded join with BEHAVIOURAL facts (match rate, fan-out, LEFT/INNER
+        # hint). Deterministic MEASUREMENT via the engine; agent judgment untouched.
+        from diracdata.learning.join_facts import enrich_joins
+        try:
+            n = enrich_joins(model=sm, engine=engine)
+            sink("learn", "info", f"enriched {n}/{len(sm.joins)} joins with behavioural facts")
+        except Exception as exc:  # noqa: BLE001
+            sink("learn", "info", f"join enrichment skipped: {type(exc).__name__}: {exc}")
+
         # PRIMARY output = the artifacts the base agent reads on demand (describe_columns / find_examples).
         meta = sm.to_metadata_descriptions()
         cur_meta = store.get(self.schema, "metadata_descriptions.json") or {}
