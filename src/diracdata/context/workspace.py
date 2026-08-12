@@ -103,6 +103,38 @@ class Workspace:
         )
 
     @classmethod
+    def from_catalog_store(cls, *, catalog_store: Any, catalog: str, database: str,
+                          **kwargs: Any) -> "Workspace":
+        """Build a workspace from the catalog-level fabric (catalog+database scope).
+
+        Reads the same artifact set as `from_store` but goes through CatalogStore, which
+        prefers the new fabric/catalogs/<catalog>/databases/<database>/ layout and falls
+        back to legacy fabric/<database>/ automatically for catalog='local' (Decision #3).
+
+        Also loads the freshly-authored database.md index if present so callers that
+        want to inject it into framing prompts can do so via `ws.database_md`.
+        """
+        metadata     = catalog_store.get(catalog, database, "metadata_descriptions.json") or {}
+        value_dom    = catalog_store.get(catalog, database, "value_domains.json") or {}
+        join_graph   = catalog_store.get(catalog, database, "join_graph.json") or []
+        gold_pairs   = catalog_store.get(catalog, database, "gold_pairs.json") or []
+        # Semantic layer: legacy _semantic_layer_from_store expects a schema-shaped
+        # store.read_text(schema, name) interface. CatalogStore exposes get_text(catalog, db, name)
+        # so we adapt inline (small, no need for a wrapper class):
+        sl_text = catalog_store.get_text(catalog, database, "semantic_layer.yaml")
+        semantic_layer = _parse_semantic_layer_yaml(sl_text) if sl_text else {}
+        ws = cls.load(
+            metadata=metadata, value_domains=value_dom, join_graph=join_graph,
+            semantic_layer=semantic_layer, gold_pairs=gold_pairs, **kwargs,
+        )
+        # Attach optional catalog-authored indexes so downstream framing can inject them.
+        ws.catalog  = catalog
+        ws.database = database
+        ws.database_md = catalog_store.get_text(catalog, database, "database.md") or ""
+        ws.catalog_md  = catalog_store.get_catalog_text(catalog, "catalog.md") or ""
+        return ws
+
+    @classmethod
     def load(
         cls,
         *,
@@ -510,6 +542,19 @@ def _short_desc(meta: Any) -> str:
     if isinstance(meta, dict):
         return " ".join(str(meta.get("short_description") or meta.get("long_description") or "").split())
     return ""
+
+
+def _parse_semantic_layer_yaml(text: str) -> dict | None:
+    """Parse a semantic_layer YAML/JSON blob. Mirrors _semantic_layer_from_store's parse step
+    without needing a schema-shaped store. Used by Workspace.from_catalog_store."""
+    if not text:
+        return None
+    stripped = text.lstrip()
+    if stripped.startswith("{") or stripped.startswith("["):
+        import json as _json
+        return _json.loads(text) or None
+    import yaml
+    return yaml.safe_load(text) or None
 
 
 def _semantic_layer_from_store(store: Any, schema: str) -> dict | None:

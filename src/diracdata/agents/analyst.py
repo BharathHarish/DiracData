@@ -49,6 +49,81 @@ def _stderr_sink():
     return sink
 
 
+def data_analyst_catalog(*, catalog: str, database: str, model: Any = None,
+                          conversation: str | None = None, memory: bool = False,
+                          garden: list | tuple | None = None, router: bool | None = None,
+                          settings: Any = None, env_file: str | None = None,
+                          stream: bool = False, engine: Any = None) -> "DataAnalyst":
+    """Catalog-aware analyst builder (pinned single-DB mode).
+
+    Loads the workspace from CatalogStore (new fabric/catalogs/<catalog>/databases/<database>/
+    layout, falling back to legacy fabric/<database>/ for catalog='local'). Identical wiring
+    to `data_analyst(schema=...)` except the source of the workspace.
+
+    Catalog-scope (agent picks DB) + multi-DB modes will be added as C4b/C4c layered on
+    top of this — for now, this is pinned mode only, which is >90% of real usage.
+    """
+    from diracdata.config import settings_from_env
+    from diracdata.model_providers import _Provider
+    from diracdata.models import chat_model
+    from diracdata.stores import store_from_settings
+    from diracdata.engines import DuckDBEngine, SourceRegistry
+    from diracdata.context.catalog_store import CatalogStore
+    from diracdata.context.workspace import Workspace
+    from diracdata.context.valuecache import ColumnValueCache
+    from diracdata.runtime.results import ResultStore
+    from diracdata.checkpoints import Conversation
+    from diracdata.memory import ExperienceBook
+    from diracdata.execution import make_executor
+    from diracdata.streaming import mode_sink
+    from diracdata.agent import Agent
+
+    settings = settings if settings is not None else settings_from_env(env_file)
+    if isinstance(model, _Provider):
+        settings = model.apply(settings)
+    elif isinstance(model, str):
+        settings = replace(settings, agent_model_profile=model)
+    if memory:
+        settings = replace(settings, agentic_memory_enabled=True)
+    if garden is not None:
+        settings = replace(settings, router_garden=tuple(garden))
+    if router is not None:
+        settings = replace(settings, router_enabled=router)
+
+    llm = (model.build(settings) if isinstance(model, _Provider)
+           else model if (model is not None and not isinstance(model, str))
+           else chat_model(model, settings=settings))
+
+    store = store_from_settings(settings)
+    # Engine + result-store paths keep the "schema" concept — under the hood, catalog='local'
+    # + database=X reads/writes to the same object-store paths as schema=X, which is exactly
+    # what the shim in CatalogStore preserves. For non-'local' catalogs (e.g., spider2_local)
+    # the engine will need a catalog-aware adapter — added as needed in C6/C8.
+    schema_for_engine = database
+    engine = engine or DuckDBEngine.from_settings(settings, schema_for_engine)
+    registry = SourceRegistry.of(engine)
+    catalog_store = CatalogStore(store)
+    workspace = Workspace.from_catalog_store(catalog_store=catalog_store,
+                                              catalog=catalog, database=database)
+    result_store = ResultStore(engine=engine, store=store, schema=schema_for_engine, sources=registry,
+                               preview_rows=settings.preview_rows, preview_all_max=settings.preview_all_max,
+                               reconciler_memory_limit=settings.reconciler_memory_limit,
+                               reconciler_temp_dir=settings.reconciler_temp_dir,
+                               reconciler_threads=settings.reconciler_threads,
+                               executor=make_executor(settings))
+    book = ExperienceBook(schema_for_engine, store) if memory else None
+    sink = mode_sink(_stderr_sink() if stream else (lambda *a: None), "updates" if stream else "off")
+
+    from diracdata.context.valuecache import ColumnValueCache as _CVC
+    from diracdata.context import context_store_from_settings
+    fabric_for_valuecache = context_store_from_settings(settings)   # value cache uses ContextStore shape
+    agent = Agent(model=llm, workspace=workspace, engine=engine, result_store=result_store, sink=sink,
+                  config=settings, value_cache=_CVC(fabric_for_valuecache, schema_for_engine),
+                  sources=registry, experience_book=book)
+    conv = Conversation(conversation or f"anon-{uuid.uuid4().hex[:8]}", store=store, config=settings)
+    return DataAnalyst(agent, conv)
+
+
 def data_analyst(*, schema: str, model: Any = None, conversation: str | None = None,
                  memory: bool = False, garden: list | tuple | None = None, router: bool | None = None,
                  settings: Any = None, env_file: str | None = None, stream: bool = False,
