@@ -420,6 +420,42 @@ Both files are **regenerated** whenever any per-DB fabric changes — cheap,
 keeps them in sync. Catalog-scope query agents always load these first;
 they're small enough to always be in prompt context.
 
+## 10a · Decisions locked (sign-off)
+
+| # | question | decision |
+|---|---|---|
+| 1 | Keep Schema as a level? | ✅ **YES** — matches Postgres / Databricks / Snowflake. Elided version (`main` default) for DuckDB / SQLite. |
+| 2 | Cross-DB joins: stubs in C1, or built out later? | ✅ **Built out NOW as part of the learning agent** — cross-DB join discovery moves into C3, not deferred. See §9b. |
+| 3 | Legacy fabric shim duration | ✅ **Keep indefinitely** for now — no hard deprecation. Revisit at next major version bump. |
+| 4 | Cursor-driven learning: fold into C5 MCP? | ✅ **YES** — dirac-catalog-mcp is the single unified surface for both observation and learning-time authoring. Cursor drives it, we pay $0 in tokens. |
+| 5 | catalog.md size caps | ✅ **Soft caps only** — no truncation logic yet. Revisit if a real catalog hits the ceiling. |
+
+## 9b · Cross-DB join discovery in the learning agent (updated §9)
+
+Because cross-DB joins move into learning (per Decision #2), C3 grows to
+cover them as a first-class step, not a deferred stub:
+
+**Third pass (after per-DB learning + catalog rollup):**
+```
+for each pair (db_a, db_b) in catalog:
+    for each column c_a in db_a where c_a is a likely key
+                                   (name ends in _id / _ref / _key / matches PK pattern):
+      for each column c_b in db_b with matching name convention:
+        - sample values from c_a and c_b (via engine, no LLM cost)
+        - if overlap > threshold and cardinality shape fits (many-1, 1-1):
+             emit candidate to cross_db_joins_candidates.yaml
+    → LLM reviews candidates, filters false positives (agent judgement),
+      writes cross_db_joins.yaml with confirmed relationships + rationale
+```
+
+Written to `fabric/catalogs/<catalog>/cross_db_joins.yaml`. Read by both
+query-agent framing (when planning cross-DB SQL) and the catalog.md
+generator (which surfaces "cross-DB relationships" as a top-level index item).
+
+The discovery mechanism here is a straight port of V3-S1 (behavioural join
+cards for within-DB joins), extended across pairs of databases. Same
+sampling + agentic-verification pattern.
+
 ## 10 · Open questions before I start C1
 
 1. **Terminology**: OK with `Catalog → Database → Schema → Table → Column`, or
