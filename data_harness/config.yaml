@@ -1,0 +1,213 @@
+# data_harness/config.yaml
+# The single source of runtime knobs for the fintech lakehouse harness.
+# Defaults committed here are LEAN-MODE — safe on M3 Pro, ~2 GB steady-state.
+# Anything downstream that reads a constant reads it from here (no magic numbers).
+# Decisions locked in PLAN.md §0.
+
+version: 1
+
+# ---------- storage ----------
+storage:
+  s3_endpoint: "http://localhost:9000"
+  aws_access_key_id: "minioadmin"
+  aws_secret_access_key: "minioadmin"
+  bucket: "lake"
+  root_prefix: "fintech"         # §Decision #6: labs REPLACES fintech_complex as the
+                                 # new fintech schema — data lives at lake/fintech/…
+  parquet_compression: "zstd"
+  parquet_row_group_rows: 100_000
+  target_file_mb: 64             # roll a new parquet file when this is exceeded
+
+# ---------- runtime mode ----------
+mode: lean                       # lean | normal | heavy — scales event_rates below
+time:
+  clock: wall_clock              # §Decision #2: wall_clock default (real 1min = 1min data)
+                                 # simulated fast-forward available for backfills
+  simulated_speed: 60            # only used when clock=simulated
+  origin: "2026-08-01T00:00:00Z" # simulated-time epoch when using clock=simulated
+seeds:
+  master: 20260811               # every generator derives its seed from this
+
+# ---------- retention (rolling window per layer) ----------
+retention:
+  raw_days:                     30    # oldest raw day dropped nightly
+  silver_days:                  60
+  gold_days:                    90
+  query_history_full_days:      30    # §Decision #5: 30d full-detail
+  query_history_agg_days:       90    # + 90d aggregated summary (nightly rollup)
+
+# ---------- entity caps (cardinality — the Zipf/lognormal drivers) ----------
+entity_caps:
+  merchants:     500             # Zipf α=1.1 → top 20 ≈ 60% of volume
+  users:         50_000
+  campaigns:     200
+  skus:          5_000
+  rails:         7               # UPI, DC, CC, NB, WALLET, IMPS, NEFT
+  mccs:          30              # subset of merchant category codes
+
+# ---------- India geo (§Decision #3) ----------
+geo:
+  country: "IN"
+  states:                        # ISO 3166-2:IN codes; Zipf weighting applied to users/merchants
+    - {code: "MH", name: "Maharashtra",      weight: 15}
+    - {code: "KA", name: "Karnataka",        weight: 12}
+    - {code: "TN", name: "Tamil Nadu",       weight: 11}
+    - {code: "DL", name: "Delhi",            weight: 10}
+    - {code: "GJ", name: "Gujarat",          weight:  9}
+    - {code: "UP", name: "Uttar Pradesh",    weight:  8}
+    - {code: "WB", name: "West Bengal",      weight:  7}
+    - {code: "TG", name: "Telangana",        weight:  6}
+    - {code: "AP", name: "Andhra Pradesh",   weight:  5}
+    - {code: "KL", name: "Kerala",           weight:  5}
+    - {code: "RJ", name: "Rajasthan",        weight:  4}
+    - {code: "PB", name: "Punjab",           weight:  3}
+    - {code: "HR", name: "Haryana",          weight:  3}
+    - {code: "MP", name: "Madhya Pradesh",   weight:  2}
+    # remaining states share the ~long tail
+  languages:                     # weighted per state below (BCP-47 tags)
+    - {code: "en", weight: 30}   # English (national)
+    - {code: "hi", weight: 25}
+    - {code: "ta", weight:  8}
+    - {code: "te", weight:  7}
+    - {code: "mr", weight:  7}
+    - {code: "bn", weight:  6}
+    - {code: "kn", weight:  6}
+    - {code: "gu", weight:  5}
+    - {code: "ml", weight:  3}
+    - {code: "pa", weight:  3}
+
+# ---------- payment rails (India-realistic mix) (§Decision #3) ----------
+rails:
+  weights:
+    UPI:      60
+    DC:       12
+    CC:       10
+    NB:        8       # NetBanking
+    WALLET:    5
+    IMPS:      3
+    NEFT:      2
+  currency_mix:
+    INR:      95
+    USD:       3
+    SGD:       1
+    AED:       1
+
+# ---------- event rates ----------
+# Rates are PER TICK (a tick = one iteration of the generator loop).
+# In one_pass mode: one tick.  In continuous mode: one tick per --interval.
+# In backfill mode: one tick per simulated hour.
+# Multiplier by mode below.
+event_rates:
+  # domain           per-tick rows @ lean mode
+  users:                     50    # sign-ups per tick
+  user_devices:              70    # devices registered
+  user_kyc_events:           30
+  user_sessions:            200
+  merchants:                  2    # slow — cap dominates
+  merchant_kyc:               2
+  merchant_pricing_plans:     1
+  checkout_sessions:        100
+  checkout_items:           250
+  checkout_events:          300
+  checkout_abandonments:     40
+  orders:                    50
+  order_items:              120
+  order_status_history:      80
+  fulfillment_events:        80
+  order_notes:                5
+  payment_attempts:         200
+  payment_events:           400    # multiple events per attempt
+  payment_methods:           30
+  refunds:                    8
+  chargebacks:                1
+  settlement_batches:        20    # hourly-ish
+  disputes:                   1
+  loan_applications:         15
+  loans:                      8    # ~50% approval
+  loan_disbursements:         8
+  repayment_schedule:        80    # burst on new-loan tick (schedule per loan)
+  repayments_actual:         40
+  delinquencies:             20
+  credit_bureau_pulls:       15
+  ad_campaigns:               1
+  ad_creatives:               2
+  ad_impressions:           500    # highest-volume domain
+  ad_clicks:                 10    # ~2% CTR
+  attribution:                5
+  ad_spend_daily:             2
+  risk_events:               40
+  rules_fired:               60
+  fraud_labels:               3
+  sanctions_screens:         10
+  velocity_windows:          20
+
+# scale event_rates by mode
+mode_multipliers:
+  lean:   1.0
+  normal: 3.0
+  heavy:  10.0
+
+# ---------- late arrivals ----------
+late_arrivals:
+  enabled: true
+  fraction: 0.10                 # 10% of events land with _event_ts earlier than _ingest_ts
+  lag_minutes_min: 5
+  lag_minutes_max: 30
+
+# ---------- schema drift (v2 — off by default in phase 0-1) ----------
+schema_drift:
+  enabled: false
+  cadence_days: 7                # when enabled, add a column every N days on random tables
+
+# ---------- workload runner ----------
+workload:
+  users_pool: 50                 # rotating synthetic analyst/ops/BI users
+  queries_per_tick: 20           # 20/tick × 1440 tick/day = 28.8K queries/day (realistic small fintech)
+                                 # tune up in normal/heavy modes via multiplier below
+  queries_per_tick_multipliers:
+    lean:   1.0
+    normal: 2.5                  # ~72K/day
+    heavy:  5.0                  # ~144K/day
+  archetype_weights:
+    bi:       0.50               # dashboards, gold-heavy
+    analyst:  0.30               # exploration, silver+gold, novel
+    ops:      0.15               # real-time, small windows
+    rca:      0.05               # expensive, cross-domain, raw
+  user_role_weights:
+    bi_dashboard:    0.40
+    analyst:         0.30
+    ops:             0.15
+    data_scientist:  0.10
+    exec:            0.05
+  template_popularity_zipf_alpha: 1.2   # a few templates dominate per user
+  discovery_signal_min_daily:    30      # guarantee: each §8B discovery-target
+                                         # template runs at least this many times/day
+                                         # so the modeller has enough signal to spot it
+
+# ---------- guardrails ----------
+guardrails:
+  max_lab_disk_gb:       8       # pause generators if lake/fintech/* exceeds this
+  max_query_seconds:     30      # kill any query longer than this
+  max_query_scan_gb:      2      # kill any query scanning more than this
+  max_ram_gb_transforms:  4      # transforms chunk by day if approaching this
+  fail_dag_on_orphan_pct: 25     # DAG fails if cross-domain FK orphan rate > 25%
+                                 # (referential shape is discovered from data, not declared)
+
+# ---------- logging ----------
+logging:
+  level: INFO
+  format: json                   # structured, one line per action, easy to grep
+  dest: outputs/harness.log      # also mirrored to stderr
+
+# ---------- catalog integration ----------
+# The AI Data Modeller (Phase 7+) reads these paths as its "world".
+catalog:
+  lineage_key:            "fintech/lineage.json"
+  query_history_root:     "fintech/query_history/"          # 30-day full detail
+  query_history_agg_root: "fintech/query_history_agg/"       # 90-day aggregated
+  raw_root:               "fintech/raw/"
+  silver_root:            "fintech/silver/"
+  gold_root:              "fintech/gold/"
+  reference_root:         "fintech/reference/"
+  # Modeller proposals go here (never leaks into training substrate):
+  modeller_proposals_root: "fintech/modeller_proposals/"
