@@ -82,14 +82,6 @@ class Context:
             return f"{kind[:-1]} {name} (blessed): " + "; ".join(parts)
         return learned
 
-
-def _learned_names(text: str) -> set[str]:
-    # a tiny helper -- the model_index listing looks like "metrics: a, b, c" or "no metric ..."
-    if ":" not in text:
-        return set()
-    _, tail = text.split(":", 1)
-    return {t.strip() for t in tail.split(",") if t.strip()}
-
     # -- workspace-backed reads (column detail w/ recipe, examples) ---------------------------------
     def column(self, table: str, column: str) -> dict | None:
         """A column's meaning + value domain, incl. the NESTED/COMPLEX access recipe if any."""
@@ -97,3 +89,11 @@ def _learned_names(text: str) -> set[str]:
 
     def find_examples(self, query: str, limit: int = 5) -> list:
         return self.workspace.find_examples(query, limit=limit)
+
+
+def _learned_names(text: str) -> set[str]:
+    # a tiny helper -- the model_index listing looks like "metrics: a, b, c" or "no metric ..."
+    if ":" not in text:
+        return set()
+    _, tail = text.split(":", 1)
+    return {t.strip() for t in tail.split(",") if t.strip()}
