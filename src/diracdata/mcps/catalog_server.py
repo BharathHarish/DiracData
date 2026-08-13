@@ -23,12 +23,18 @@ Tool families:
 
   Per-DB observation:
     list_tables[db]                — every table in the DB
-    describe_table[db]             — columns + types + row count + sample
+    describe_table[db]             — columns + types + row count + sample (soft-fail)
     describe_column[db, table]     — column detail + nested-recipe if any
     sample_rows[db, table, n]      — quick data peek
     run_sql[db]                    — read-only DuckDB query (SQLite-attached if needed)
     find_examples[db]              — gold NL-SQL matching
     get_metric[db]                 — blessed metric lookup
+
+  Harness (search / profile / verify — prefer these over browsing all markdown):
+    search_fabric[query, db?]      — grep learned fabric text across DBs
+    search_schema[pattern, db]     — find tables/columns by name pattern
+    profile[target, db]            — table or table.column measured facts
+    sql_diff[sql_a, sql_b, db]     — A/B two SELECTs (rowcount + numeric deltas)
 
   Learning-time authoring (called by Cursor's LLM to compile fabric):
     propose_table_description[db]
@@ -38,6 +44,13 @@ Tool families:
     save_semantic_model[db]        — flush proposals → semantic_model.yaml
     refresh_database_md[db]        — rewrite database.md via LLM
     refresh_catalog_md             — rewrite catalog.md via LLM
+
+  Gates / dialect / compounding (MCP phases 1-5):
+    completeness_check, fabric_health, metric_bind_check, get_dialect,
+    clarify, save_experience, detect_boundary_convention, upsert_ontology
+
+  Resources: index:// metric:// table:// example:// dialect:// ontology:// experiences://
+  Prompts: learn-database, executive-scorecard
 """
 from __future__ import annotations
 
@@ -283,20 +296,35 @@ def catalog_tools(rt: _CatalogRuntime) -> list:
 
     def describe_table(table: str, db: str = "") -> str:
         """Full detail for one table: columns + types + row count + sample rows.
-        For fabric-heavy catalogs, prefer the semantic model via search_context / describe_column."""
+        Soft-fail: each step is independent; partial JSON + warnings on bad rows/types."""
         d = rt.resolve_db(db)
         eng = rt._engine_for(d)
+        out: Dict[str, Any] = {"database": d, "table": table, "warnings": []}
         try:
             schema = eng.query(f'DESCRIBE "{table}"')
-            n = eng.query(f'SELECT COUNT(*) FROM "{table}"').rows[0][0]
-            sample = eng.query(f'SELECT * FROM "{table}" LIMIT 5')
-            return json.dumps({
-                "database": d, "table": table, "row_count": int(n),
-                "columns": [dict(zip(schema.columns, r)) for r in schema.rows],
-                "sample_rows": [dict(zip(sample.columns, [str(v) for v in r])) for r in sample.rows],
-            }, default=str)
+            out["columns"] = [dict(zip(schema.columns, r)) for r in schema.rows]
         except Exception as ex:
-            return f"error describing {d}.{table}: {ex}"
+            out["warnings"].append(f"describe: {ex}")
+            # Fabric fallback for column names when live DESCRIBE fails
+            md = rt.cs.get(rt.catalog, d, "metadata_descriptions.json", default={}) or {}
+            cols = ((md.get("tables") or {}).get(table) or {}).get("columns") or {}
+            if cols:
+                out["columns"] = [{"column_name": c, "source": "fabric"} for c in cols]
+                out["warnings"].append("columns from fabric metadata_descriptions.json")
+        try:
+            out["row_count"] = int(eng.query(f'SELECT COUNT(*) FROM "{table}"').rows[0][0])
+        except Exception as ex:
+            out["warnings"].append(f"count: {ex}")
+        try:
+            sample = eng.query(f'SELECT * FROM "{table}" LIMIT 5')
+            out["sample_rows"] = [
+                dict(zip(sample.columns, [str(v) for v in r])) for r in sample.rows
+            ]
+        except Exception as ex:
+            out["warnings"].append(f"sample: {ex}")
+        if not out.get("columns") and not out.get("row_count") and not out.get("sample_rows"):
+            return f"error describing {d}.{table}: {'; '.join(out['warnings']) or 'unknown'}"
+        return json.dumps(out, default=str)
 
     def describe_column(table: str, column: str, db: str = "") -> str:
         """One column's business meaning, incl. any nested-type access recipe from the fabric."""
@@ -354,7 +382,8 @@ def catalog_tools(rt: _CatalogRuntime) -> list:
         return json.dumps({"database": d, "matches": hits[:5]}, default=str)
 
     def get_metric(name: str = "", db: str = "") -> str:
-        """Blessed metric SQL from the DB's semantic_layer.yaml. Empty name lists all metric names."""
+        """Blessed metric SQL from the DB's semantic_layer.yaml. Empty name lists all metric names.
+        Metric payloads may include companions[], binding_status, boundary_convention."""
         d = rt.resolve_db(db)
         sl_text = rt.cs.get_text(rt.catalog, d, "semantic_layer.yaml") or ""
         if not sl_text:
@@ -362,34 +391,111 @@ def catalog_tools(rt: _CatalogRuntime) -> list:
         import yaml
         sl = yaml.safe_load(sl_text) or {}
         metrics = sl.get("metrics") or []
+        if isinstance(metrics, dict):
+            metrics = [{"name": k, **(v if isinstance(v, dict) else {})} for k, v in metrics.items()]
         if not name:
-            return json.dumps({"database": d, "metric_names": [m.get("name") for m in metrics]})
+            return json.dumps({"database": d, "metric_names": [
+                (m.get("name") if isinstance(m, dict) else m) for m in metrics
+            ]})
         for m in metrics:
-            if m.get("name") == name:
-                return json.dumps({"database": d, "metric": m}, default=str)
+            if isinstance(m, dict) and m.get("name") == name:
+                return json.dumps({"database": d, "metric": m,
+                                   "companions": m.get("companions") or []}, default=str)
         return f"(no metric {name!r} in {d})"
+
+    # -------- harness (search / profile / verify) --------
+
+    def search_fabric(query: str, db: str = "", limit: int = 25) -> str:
+        """Grep learned fabric (catalog.md, database.md, metadata, joins, metrics, gold) for
+        query tokens. Pass db= to scope one database; omit to scan the whole catalog.
+        Prefer this over reading full catalog.md / database.md when routing a question."""
+        from diracdata.mcps.harness import search_fabric as _search
+        d = (db or "").strip() or None
+        if d:
+            d = rt.resolve_db(d)
+        try:
+            return json.dumps(_search(rt.cs, rt.catalog, query, db=d, limit=int(limit) or 25),
+                              default=str)
+        except Exception as ex:
+            return f"search_fabric error: {ex}"
+
+    def search_schema(pattern: str, db: str = "", limit: int = 50) -> str:
+        """Find tables/columns whose names match pattern (substring or *glob*). Uses live
+        DESCRIBE with fabric metadata fallback. Requires a database (session or db=)."""
+        from diracdata.mcps.harness import search_schema as _search
+        d = rt.resolve_db(db)
+        eng = rt._engine_for(d)
+        meta = rt.cs.get(rt.catalog, d, "metadata_descriptions.json", default={}) or {}
+        try:
+            out = _search(eng, pattern, limit=int(limit) or 50, fabric_meta=meta)
+            out["database"] = d
+            return json.dumps(out, default=str)
+        except Exception as ex:
+            return f"search_schema error on {d}: {ex}"
+
+    def profile(target: str, db: str = "") -> str:
+        """Measured facts for `table` or `table.column` (row_count, distinct, null_pct, min/max,
+        domain sample). Use before writing filters/aggregates when enums or ranges are unclear."""
+        from diracdata.mcps.harness import profile_target
+        d = rt.resolve_db(db)
+        eng = rt._engine_for(d)
+        try:
+            out = profile_target(eng, target)
+            out["database"] = d
+            return json.dumps(out, default=str)
+        except Exception as ex:
+            return f"profile error on {d}.{target}: {ex}"
+
+    def sql_diff(sql_a: str, sql_b: str, db: str = "") -> str:
+        """Run two read-only SELECTs and compare row counts + numeric column sums.
+        Use when a measure is ambiguous (e.g. spend with vs without discount)."""
+        from diracdata.mcps.harness import sql_diff as _diff
+        d = rt.resolve_db(db)
+        eng = rt._engine_for(d)
+        try:
+            out = _diff(eng, sql_a, sql_b, max_rows=rt.settings.query_max_rows)
+            out["database"] = d
+            return json.dumps(out, default=str)
+        except Exception as ex:
+            return f"sql_diff error on {d}: {ex}"
 
     # -------- authoring (for Cursor-driven learning) --------
 
-    def propose_table_description(table: str, description: str, db: str = "") -> str:
-        """Author or update a table's business description. Accumulates in memory until you call
-        save_semantic_model(db). Use during Cursor-driven learning to build the fabric."""
+    def propose_table_description(table: str, description: str, db: str = "",
+                                   grain: str = "", scd_type: str = "",
+                                   time_column: str = "", cutoff_notes: str = "") -> str:
+        """Author or update a table's business description (+ optional grain/scd/time fields).
+        Accumulates until save_semantic_model(db)."""
+        from diracdata.mcps.fabric_fields import enrich_table_fields
         d = rt.resolve_db(db)
         with rt._lock:
             p = rt._proposals.setdefault(d, {"tables": {}, "columns": {}, "joins": [], "metrics": []})
             t = p["tables"].setdefault(table, {})
-            t["description"] = description
+            t.update(enrich_table_fields(
+                {"description": description},
+                grain=grain or None, scd_type=scd_type or None,
+                time_column=time_column or None, cutoff_notes=cutoff_notes or None,
+            ))
         return json.dumps({"ok": True, "database": d, "table": table})
 
     def propose_column_description(table: str, column: str, description: str,
-                                    access_recipe: str = "", db: str = "") -> str:
-        """Author or update a column's description. access_recipe is optional and used for nested
-        types (STRUCT/LIST/MAP/JSON — verbatim SQL to access the value). Accumulates until save."""
+                                    access_recipe: str = "", db: str = "",
+                                    null_meaning: str = "", sentinel_values: str = "",
+                                    boundary_convention: str = "") -> str:
+        """Author or update a column's description. access_recipe for nested types.
+        Optional: null_meaning, sentinel_values (comma-separated), boundary_convention."""
+        from diracdata.mcps.fabric_fields import enrich_column_fields
         d = rt.resolve_db(db)
+        sentinels = [s.strip() for s in sentinel_values.split(",") if s.strip()] if sentinel_values else None
         with rt._lock:
             p = rt._proposals.setdefault(d, {"tables": {}, "columns": {}, "joins": [], "metrics": []})
             c = p["columns"].setdefault(f"{table}.{column}", {})
-            c["description"] = description
+            c.update(enrich_column_fields(
+                {"description": description},
+                null_meaning=null_meaning or None,
+                sentinel_values=sentinels,
+                boundary_convention=boundary_convention or None,
+            ))
             if access_recipe:
                 c["access_recipe"] = access_recipe
         return json.dumps({"ok": True, "database": d, "table": table, "column": column})
@@ -406,13 +512,21 @@ def catalog_tools(rt: _CatalogRuntime) -> list:
                                 "cardinality": cardinality, "disposition": disposition})
         return json.dumps({"ok": True, "database": d, "n_joins_pending": len(p["joins"])})
 
-    def propose_metric(name: str, sql: str, description: str = "", grain: str = "", db: str = "") -> str:
-        """Author a blessed metric — SQL + description + grain. Accumulates until save."""
+    def propose_metric(name: str, sql: str, description: str = "", grain: str = "", db: str = "",
+                       companions: str = "", boundary_convention: str = "") -> str:
+        """Author a blessed metric — SQL + description + grain.
+        Optional companions (comma-separated metric names) and boundary_convention."""
+        from diracdata.mcps.fabric_fields import enrich_metric_fields
         d = rt.resolve_db(db)
+        comps = [c.strip() for c in companions.split(",") if c.strip()] if companions else None
+        metric = enrich_metric_fields(
+            {"name": name, "sql": sql, "description": description, "grain": grain},
+            companions=comps, boundary_convention=boundary_convention or None,
+            binding_status="proposed",
+        )
         with rt._lock:
             p = rt._proposals.setdefault(d, {"tables": {}, "columns": {}, "joins": [], "metrics": []})
-            p["metrics"].append({"name": name, "sql": sql,
-                                  "description": description, "grain": grain})
+            p["metrics"].append(metric)
         return json.dumps({"ok": True, "database": d, "metric": name})
 
     def save_semantic_model(db: str = "") -> str:
@@ -472,14 +586,167 @@ def catalog_tools(rt: _CatalogRuntime) -> list:
         md = build_catalog_md(rt.cs, catalog=rt.catalog, llm=llm)
         return json.dumps({"ok": True, "catalog": rt.catalog, "chars": len(md), "preview": md[:400]})
 
+    # -------- gates / dialect / compounding (phases 1-5) --------
+
+    def completeness_check(db: str = "", bind_metrics: bool = True) -> str:
+        """Fabric completion gate for one database. Do NOT claim LEARN done unless ok=true.
+        Returns tables_missing_grain, columns_missing_desc, metrics_unbound, joins_without_facts,
+        indexes_stub, missing_database_md."""
+        from diracdata.mcps.completeness import completeness_check as _cc
+        d = rt.resolve_db(db)
+
+        def _text(db_: str, name: str):
+            return rt.cs.get_text(rt.catalog, db_, name)
+
+        def _json(db_: str, name: str):
+            return rt.cs.get(rt.catalog, db_, name, default=None)
+
+        eng = None
+        tables_fn = None
+        if bind_metrics:
+            try:
+                eng = rt._engine_for(d)
+                tables_fn = lambda db_: eng.list_tables()  # noqa: E731
+            except Exception:  # noqa: BLE001
+                eng = None
+        report = _cc(
+            db=d, get_text=_text, get_json=_json,
+            list_tables=tables_fn, bind_metrics=bool(bind_metrics and eng),
+            engine=eng,
+        )
+        return json.dumps(report, default=str)
+
+    def fabric_health(bind_metrics: bool = False) -> str:
+        """Catalog-level health: stub catalog.md, empty DBs, per-DB completeness rollup."""
+        from diracdata.mcps.completeness import fabric_health as _fh
+
+        def _text(db_: str, name: str):
+            return rt.cs.get_text(rt.catalog, db_, name)
+
+        def _json(db_: str, name: str):
+            return rt.cs.get(rt.catalog, db_, name, default=None)
+
+        def _eng(db_: str):
+            if not bind_metrics:
+                return None
+            try:
+                return rt._engine_for(db_)
+            except Exception:  # noqa: BLE001
+                return None
+
+        report = _fh(
+            catalog=rt.catalog,
+            list_dbs=lambda: rt.cs.list_databases(rt.catalog),
+            get_catalog_text=lambda name: rt.cs.get_catalog_text(rt.catalog, name),
+            get_text=_text, get_json=_json,
+            engine_for=_eng if bind_metrics else None,
+        )
+        return json.dumps(report, default=str)
+
+    def metric_bind_check(name: str = "", sql: str = "", db: str = "") -> str:
+        """Validate metric SQL binds against the live engine (LIMIT 0 probe).
+        Pass name= to load SQL from semantic_layer, or sql= directly."""
+        from diracdata.mcps.bind_check import metric_bind_check as _mb
+        d = rt.resolve_db(db)
+        probe_sql = (sql or "").strip()
+        if not probe_sql and name:
+            import yaml
+            sl = yaml.safe_load(rt.cs.get_text(rt.catalog, d, "semantic_layer.yaml") or "") or {}
+            metrics = sl.get("metrics") or []
+            if isinstance(metrics, dict):
+                m = metrics.get(name) or {}
+                probe_sql = (m.get("sql") if isinstance(m, dict) else "") or ""
+            else:
+                for m in metrics:
+                    if isinstance(m, dict) and m.get("name") == name:
+                        probe_sql = m.get("sql") or ""
+                        break
+        if not probe_sql:
+            return json.dumps({"ok": False, "parse_error": "no sql", "name": name, "database": d})
+        eng = rt._engine_for(d)
+        out = _mb(eng, probe_sql)
+        out["name"] = name
+        out["database"] = d
+        return json.dumps(out, default=str)
+
+    def get_dialect(db: str = "") -> str:
+        """Dialect card + cheat-sheet for this database's engine. Call before first run_sql."""
+        from diracdata.mcps.dialect import dialect_card
+        d = (db or "").strip() or rt._current_db or ""
+        kind = "duckdb+sqlite" if rt._is_sqlite_catalog() else "duckdb"
+        card = dialect_card(engine_kind=kind)
+        card["catalog"] = rt.catalog
+        card["database"] = d
+        return json.dumps(card, default=str)
+
+    def clarify(question: str, options: str = "", context: str = "") -> str:
+        """Ambiguity handler when metric/period/database is unclear. Returns a structured
+        elicitation payload for the host to present to the user — do not guess silently.
+        options: comma-separated choices when known."""
+        opts = [o.strip() for o in options.split(",") if o.strip()] if options else []
+        return json.dumps({
+            "needs_elicitation": True,
+            "question": question,
+            "options": opts,
+            "context": context or "",
+            "hint": "Present these choices to the user, then continue with their answer.",
+        })
+
+    def save_experience(insight: str, evidence: str = "", section: str = "GOTCHAS",
+                        db: str = "") -> str:
+        """Persist a durable analyst gotcha/binding into experiences.md for this database."""
+        from diracdata.mcps.experiences import save_experience as _se
+        d = rt.resolve_db(db)
+        cur = rt.cs.get_text(rt.catalog, d, "experiences.md") or ""
+        new = _se(cur, insight=insight, evidence=evidence, section=section)
+        rt.cs.put_text(rt.catalog, d, "experiences.md", new, content_type="text/markdown")
+        return json.dumps({"ok": True, "database": d, "section": section, "chars": len(new)})
+
+    def detect_boundary_convention(column: str, sample_values: str = "",
+                                   profile_hint: str = "") -> str:
+        """Learn-time heuristic for threshold/bucket edge inclusivity.
+        sample_values: comma-separated examples."""
+        from diracdata.mcps.boundary import detect_boundary_convention as _db
+        samples = [s.strip() for s in sample_values.split(",") if s.strip()] if sample_values else []
+        return json.dumps(_db(column, samples, profile_hint=profile_hint or None), default=str)
+
+    def upsert_ontology(db: str = "", ontology_yaml: str = "", channel_maps_yaml: str = "") -> str:
+        """Write ontology.yaml and/or channel_maps.yaml for a database (YAML text bodies)."""
+        d = rt.resolve_db(db)
+        written = []
+        if ontology_yaml.strip():
+            rt.cs.put_text(rt.catalog, d, "ontology.yaml", ontology_yaml, content_type="text/yaml")
+            written.append("ontology.yaml")
+        if channel_maps_yaml.strip():
+            rt.cs.put_text(rt.catalog, d, "channel_maps.yaml", channel_maps_yaml,
+                           content_type="text/yaml")
+            written.append("channel_maps.yaml")
+        if not written:
+            from diracdata.mcps.ontology import empty_channel_maps, empty_ontology
+            import yaml
+            if not rt.cs.get_text(rt.catalog, d, "ontology.yaml"):
+                rt.cs.put_text(rt.catalog, d, "ontology.yaml",
+                               yaml.safe_dump(empty_ontology()), content_type="text/yaml")
+                written.append("ontology.yaml")
+            if not rt.cs.get_text(rt.catalog, d, "channel_maps.yaml"):
+                rt.cs.put_text(rt.catalog, d, "channel_maps.yaml",
+                               yaml.safe_dump(empty_channel_maps()), content_type="text/yaml")
+                written.append("channel_maps.yaml")
+        return json.dumps({"ok": True, "database": d, "written": written})
+
     return [
         # navigation
         list_databases, use_database, get_catalog_index, get_database_index, describe_database,
         # observation
         list_tables, describe_table, describe_column, sample_rows, run_sql, find_examples, get_metric,
+        # harness
+        search_fabric, search_schema, profile, sql_diff,
         # authoring
         propose_table_description, propose_column_description, propose_join, propose_metric,
         save_semantic_model, refresh_database_md, refresh_catalog_md,
+        # gates / dialect / compounding
+        completeness_check, fabric_health, metric_bind_check, get_dialect,
+        clarify, save_experience, detect_boundary_convention, upsert_ontology,
     ]
 
 
@@ -503,21 +770,13 @@ def _make_fireworks_llm(model_id: str = "accounts/fireworks/models/deepseek-v4-f
 
 # ---- entrypoint ----------------------------------------------------------- #
 
-_INSTRUCTIONS = (
-    "DiracData CATALOG MCP: this server exposes a whole data catalog (many databases). "
-    "Recommended flow for querying: (1) get_catalog_index for the top-level map; (2) "
-    "use_database(db) to pick one; (3) get_database_index + list_tables + describe_table; "
-    "(4) run_sql to execute. For LEARNING (compiling fabric for a database): (5) list_tables "
-    "then describe_table on each; (6) propose_table_description / propose_column_description / "
-    "propose_join / propose_metric to author the fabric; (7) save_semantic_model when a DB is "
-    "done; (8) refresh_database_md, then refresh_catalog_md at the end."
-)
-
-
 def catalog_mcp(*, catalog: str, env_file: str | None = None, model: Any = None,
                 name: str = "dirac-catalog") -> Any:
-    """Build the catalog-aware MCP server."""
+    """Build the catalog-aware MCP server (tools + resources + prompts)."""
     from diracdata.config import settings_from_env
+    from diracdata.mcps.instructions import catalog_instructions
+    from diracdata.mcps.prompts_mcp import PROMPTS
+    from diracdata.mcps.register import catalog_resource_body
     settings = settings_from_env(env_file)
     try:
         from mcp.server.mcpserver import MCPServer
@@ -525,7 +784,56 @@ def catalog_mcp(*, catalog: str, env_file: str | None = None, model: Any = None,
         raise RuntimeError("catalog_mcp requires the MCP SDK") from exc
 
     rt = _CatalogRuntime(catalog=catalog, settings=settings, model=model)
-    server = MCPServer(name=name, instructions=_INSTRUCTIONS)
+    server = MCPServer(name=name, instructions=catalog_instructions())
     for fn in catalog_tools(rt):
         server.tool()(fn)
+
+    # Resources (noun-shaped). Templates use {param} segments.
+    @server.resource("index://{catalog_id}")
+    def _res_index_catalog(catalog_id: str) -> str:
+        return catalog_resource_body(rt, f"index://{catalog_id}")
+
+    @server.resource("index://{catalog_id}/{db}")
+    def _res_index_db(catalog_id: str, db: str) -> str:
+        return catalog_resource_body(rt, f"index://{catalog_id}/{db}")
+
+    @server.resource("dialect://{catalog_id}/{db}")
+    def _res_dialect(catalog_id: str, db: str) -> str:
+        return catalog_resource_body(rt, f"dialect://{catalog_id}/{db}")
+
+    @server.resource("metric://{catalog_id}/{db}/{name}")
+    def _res_metric(catalog_id: str, db: str, name: str) -> str:
+        return catalog_resource_body(rt, f"metric://{catalog_id}/{db}/{name}")
+
+    @server.resource("table://{catalog_id}/{db}/{table}")
+    def _res_table(catalog_id: str, db: str, table: str) -> str:
+        return catalog_resource_body(rt, f"table://{catalog_id}/{db}/{table}")
+
+    @server.resource("example://{catalog_id}/{db}/{eid}")
+    def _res_example(catalog_id: str, db: str, eid: str) -> str:
+        return catalog_resource_body(rt, f"example://{catalog_id}/{db}/{eid}")
+
+    @server.resource("ontology://{catalog_id}/{db}")
+    def _res_ontology(catalog_id: str, db: str) -> str:
+        return catalog_resource_body(rt, f"ontology://{catalog_id}/{db}")
+
+    @server.resource("experiences://{catalog_id}/{db}")
+    def _res_experiences(catalog_id: str, db: str) -> str:
+        return catalog_resource_body(rt, f"experiences://{catalog_id}/{db}")
+
+    @server.prompt(name="learn-database", title=PROMPTS["learn-database"]["title"],
+                   description=PROMPTS["learn-database"]["description"])
+    def _prompt_learn(database: str = "") -> str:
+        return PROMPTS["learn-database"]["fn"](database)
+
+    @server.prompt(name="executive-scorecard", title=PROMPTS["executive-scorecard"]["title"],
+                   description=PROMPTS["executive-scorecard"]["description"])
+    def _prompt_scorecard(year_hint: str = "most recent complete year") -> str:
+        return PROMPTS["executive-scorecard"]["fn"](year_hint)
+
     return server
+
+
+# Back-compat alias if anything imported the old constant
+from diracdata.mcps.instructions import catalog_instructions as _ci
+_INSTRUCTIONS = _ci()

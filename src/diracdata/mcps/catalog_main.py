@@ -24,8 +24,12 @@ def main() -> int:
     args = ap.parse_args()
 
     from diracdata.mcps.catalog_server import catalog_mcp
+    print(
+        f"[dirac-catalog-mcp] serving catalog={args.catalog} "
+        f"(harness: search_fabric/search_schema/profile/sql_diff) — stdio",
+        file=sys.stderr,
+    )
     server = catalog_mcp(catalog=args.catalog, env_file=args.env_file, model=args.model)
-    print(f"[dirac-catalog-mcp] serving catalog={args.catalog} — stdio", file=sys.stderr)
     server.run("stdio")
     return 0
 

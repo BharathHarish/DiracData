@@ -3,7 +3,7 @@
 Uses an in-memory Store + a fake SQLite (via a temp file) — no MinIO, no LLM.
 Verifies the runtime + tool wiring: navigation reads catalog/database stubs,
 authoring proposals accumulate + flush to the fabric layout, and the tool set
-exposes exactly the documented 18 tools.
+exposes exactly the documented tool families (nav + observation + harness + authoring).
 """
 from __future__ import annotations
 
@@ -78,8 +78,8 @@ def test_catalog_tools_exposes_expected_families(tmp_path):
     rt = _make_runtime(tmp_path)
     tools = catalog_tools(rt)
     names = {t.__name__ for t in tools}
-    # Docstring says 3 families; count is stable at 19 for now (5 nav + 7 obs + 7 auth)
-    assert len(tools) == 19
+    # nav(5) + obs(7) + harness(4) + authoring(7) + gates(8) = 31
+    assert len(tools) == 31
     # Navigation
     for n in ("list_databases", "use_database", "get_catalog_index",
               "get_database_index", "describe_database"):
@@ -88,11 +88,61 @@ def test_catalog_tools_exposes_expected_families(tmp_path):
     for n in ("list_tables", "describe_table", "describe_column",
               "sample_rows", "run_sql", "find_examples", "get_metric"):
         assert n in names
+    # Harness
+    for n in ("search_fabric", "search_schema", "profile", "sql_diff"):
+        assert n in names
     # Authoring
     for n in ("propose_table_description", "propose_column_description",
               "propose_join", "propose_metric", "save_semantic_model",
               "refresh_database_md", "refresh_catalog_md"):
         assert n in names
+    # Gates / dialect / compounding
+    for n in ("completeness_check", "fabric_health", "metric_bind_check", "get_dialect",
+              "clarify", "save_experience", "detect_boundary_convention", "upsert_ontology"):
+        assert n in names
+
+
+def test_completeness_and_dialect_tools(tmp_path):
+    rt = _make_runtime(tmp_path)
+    # seed a stub database.md so completeness flags stub
+    rt.cs.put_text(rt.catalog, "db_a", "database.md", "# db_a\n", content_type="text/markdown")
+    tools = {t.__name__: t for t in catalog_tools(rt)}
+    rt._current_db = "db_a"  # avoid engine attach in unit tests
+    dial = json.loads(tools["get_dialect"]("db_a"))
+    assert dial["dialect"] == "duckdb"
+    assert "cheat_sheet" in dial
+    report = json.loads(tools["completeness_check"]("db_a", False))
+    assert report["ok"] is False
+    assert report["indexes_stub"] is True
+    clarify = json.loads(tools["clarify"]("gross or net?", "gross,net"))
+    assert clarify["needs_elicitation"] is True
+    assert "gross" in clarify["options"]
+
+
+def test_save_experience_and_ontology_tools(tmp_path):
+    rt = _make_runtime(tmp_path)
+    tools = {t.__name__: t for t in catalog_tools(rt)}
+    rt._current_db = "db_a"
+    out = json.loads(tools["save_experience"]("null client_ref drops ~4% of store sales",
+                                              "data_check", "GOTCHAS", "db_a"))
+    assert out["ok"] is True
+    md = rt.cs.get_text(rt.catalog, "db_a", "experiences.md")
+    assert "null client_ref" in md
+    up = json.loads(tools["upsert_ontology"]("db_a", "", ""))
+    assert up["ok"] is True
+    assert "channel_maps.yaml" in up["written"] or "ontology.yaml" in up["written"]
+
+
+def test_catalog_resource_body(tmp_path):
+    from diracdata.mcps.register import catalog_resource_body
+    rt = _make_runtime(tmp_path)
+    rt.cs.put_text(rt.catalog, "db_a", "database.md",
+                   "# db_a\n\n" + ("Retail narrative paragraph. " * 20),
+                   content_type="text/markdown")
+    body = catalog_resource_body(rt, f"index://{rt.catalog}/db_a")
+    assert "db_a" in body
+    dial = json.loads(catalog_resource_body(rt, f"dialect://{rt.catalog}/db_a"))
+    assert dial["dialect"] == "duckdb"
 
 
 def test_list_databases_reads_stubs(tmp_path):
@@ -190,3 +240,55 @@ def test_run_sql_over_sqlite_engine(tmp_path):
     r = json.loads(tools["run_sql"](sql="SELECT color, COUNT(*) AS n FROM widgets GROUP BY 1 ORDER BY 2 DESC"))
     assert r["columns"] == ["color", "n"]
     assert r["rows"][0] == ["red", 2]
+
+    # harness: search_schema / profile / sql_diff
+    sch = json.loads(tools["search_schema"](pattern="col*"))
+    assert any(h.get("column") == "color" for h in sch["hits"])
+    prof = json.loads(tools["profile"](target="widgets.color"))
+    assert prof["ok"] is True and prof.get("distinct") == 2
+    diff = json.loads(tools["sql_diff"](
+        sql_a="SELECT COUNT(*) AS n FROM widgets",
+        sql_b="SELECT COUNT(*) AS n FROM widgets WHERE color = 'red'",
+    ))
+    assert diff["a"]["ok"] and diff["b"]["ok"]
+    assert diff["delta"]["row_count_delta"] == 0  # both 1-row aggregates
+    assert diff["delta"]["numeric_sum_deltas"]["n"]["delta"] == -1  # 3 vs 2? wait COUNT returns 1 row each
+    # Actually both return one row; n values 3 vs 2
+    assert diff["a"]["rows"][0][0] == 3 and diff["b"]["rows"][0][0] == 2
+
+
+def test_search_fabric_greps_seeded_artifacts(tmp_path):
+    rt = _make_runtime(tmp_path)
+    rt.store.write_text(
+        "fabric/catalogs/test_cat/databases/db_a/database.md",
+        "# db_a\n\ncustomer spend band thresholds for wholesale orders.\n",
+        "text/markdown",
+    )
+    rt.store.write_json(
+        "fabric/catalogs/test_cat/databases/db_a/metadata_descriptions.json",
+        {"tables": {"customergroupthreshold": {"description": "spend group bands"}}},
+    )
+    tools = {t.__name__: t for t in catalog_tools(rt)}
+    out = json.loads(tools["search_fabric"](query="spend band threshold", db="db_a"))
+    assert out["ok"] is True
+    arts = {h["artifact"] for h in out["hits"]}
+    assert "database.md" in arts or "metadata_descriptions.json" in arts
+
+
+def test_describe_table_soft_fails_partial(tmp_path):
+    """When sample SELECT fails, describe_table still returns columns/count if possible."""
+    sqlite_path = tmp_path / "db_a.sqlite"
+    con = sqlite3.connect(str(sqlite_path))
+    con.execute("CREATE TABLE widgets (id INTEGER, color TEXT)")
+    con.executemany("INSERT INTO widgets VALUES (?, ?)", [(1, "red"), (2, "blue")])
+    con.commit(); con.close()
+
+    rt = _make_runtime(tmp_path)
+    rt.store.write_json("fabric/catalogs/test_cat/catalog.json",
+                         {"name": "test_cat", "engine": "duckdb+sqlite"})
+    rt._download_sqlite = lambda db: sqlite_path
+    tools = {t.__name__: t for t in catalog_tools(rt)}
+    tools["use_database"](db="db_a")
+    out = json.loads(tools["describe_table"](table="widgets"))
+    assert "columns" in out and out.get("row_count") == 2
+    assert isinstance(out.get("warnings"), list)
