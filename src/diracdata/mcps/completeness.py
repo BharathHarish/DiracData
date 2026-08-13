@@ -87,17 +87,19 @@ def completeness_check(
     meta = get_json(db, "metadata_descriptions.json") or {}
     if not isinstance(meta, dict):
         meta = {}
-    joins = get_json(db, "join_facts.json")
-    if joins is None:
-        joins = []
-    if not isinstance(joins, list):
-        joins = []
+    joins_jf = get_json(db, "join_facts.json")
+    if joins_jf is None:
+        joins_jf = []
+    if not isinstance(joins_jf, list):
+        joins_jf = []
 
     db_md = get_text(db, "database.md")
     sl_text = get_text(db, "semantic_layer.yaml") or get_text(db, "semantic_layer.yml") or ""
     sm_text = get_text(db, "semantic_model.yaml") or ""
-    if not joins and sm_text:
-        joins = _joins_from_semantic_model(sm_text)
+    joins_sm = _joins_from_semantic_model(sm_text) if sm_text else []
+    # Prefer measured records when the same edge appears in both sources
+    # (join_path already merges this way; completeness must too).
+    joins = _merge_joins(joins_sm + joins_jf)
     if not sl_text and sm_text:
         sl_text = sm_text
 
@@ -136,16 +138,21 @@ def completeness_check(
                     columns_missing_desc.append(f"{table}.{col}")
 
     joins_without_facts: list[str] = []
+    joins_unmeasured: list[str] = []
     for j in joins:
         if not isinstance(j, dict):
             continue
-        card = j.get("cardinality") or j.get("card")
+        card = j.get("cardinality") or j.get("card") or j.get("type")
         label = (
-            f"{j.get('left_table')}.{j.get('left_col')}->"
-            f"{j.get('right_table')}.{j.get('right_col')}"
+            f"{j.get('left_table') or j.get('left')}."
+            f"{j.get('left_col') or ','.join(j.get('left_keys') or [])}->"
+            f"{j.get('right_table') or j.get('right')}."
+            f"{j.get('right_col') or ','.join(j.get('right_keys') or [])}"
         )
         if not card:
             joins_without_facts.append(label)
+        if not _join_is_measured(j):
+            joins_unmeasured.append(label)
 
     metrics_unbound: list[str] = []
     metrics_formula_only: list[str] = []
@@ -183,6 +190,7 @@ def completeness_check(
         or columns_missing_desc
         or metrics_unbound
         or joins_without_facts
+        or joins_unmeasured
         or indexes_stub
         or missing_database_md
         or empty_tables
@@ -199,6 +207,7 @@ def completeness_check(
         "metrics_unbound": metrics_unbound,
         "metrics_formula_only": metrics_formula_only,
         "joins_without_facts": joins_without_facts,
+        "joins_unmeasured": joins_unmeasured,
         "indexes_stub": indexes_stub,
         "empty_tables": empty_tables,
         "missing_database_md": missing_database_md,
@@ -293,8 +302,65 @@ def _metrics_from_yaml(text: str) -> list[dict]:
     return []
 
 
+def _join_key_fields(j: dict) -> tuple[str, str, str, str]:
+    left = str(j.get("left_table") or j.get("from_table") or j.get("left") or "")
+    right = str(j.get("right_table") or j.get("to_table") or j.get("right") or "")
+    lk = j.get("left_col") or j.get("from_col") or j.get("left_key")
+    rk = j.get("right_col") or j.get("to_col") or j.get("right_key")
+    if not lk and isinstance(j.get("left_keys"), list) and j["left_keys"]:
+        lk = j["left_keys"][0]
+    if not rk and isinstance(j.get("right_keys"), list) and j["right_keys"]:
+        rk = j["right_keys"][0]
+    return left, str(lk or ""), right, str(rk or "")
+
+
+def _join_is_measured(j: dict) -> bool:
+    return any(
+        j.get(k) not in (None, "", [])
+        for k in (
+            "match_rate", "fan_out_avg", "fan_out", "orphan_pct",
+            "children_per_parent_avg", "verified_by",
+        )
+    )
+
+
+def _merge_joins(raw: list[dict]) -> list[dict]:
+    """Dedupe undirected edges; keep the copy with measurement fields."""
+    out: list[dict] = []
+    index: dict[tuple, int] = {}
+    for j in raw:
+        if not isinstance(j, dict):
+            continue
+        left, lk, right, rk = _join_key_fields(j)
+        if not (left and right and lk and rk):
+            continue
+        key = (left, lk, right, rk)
+        rkey = (right, rk, left, lk)
+        if key in index or rkey in index:
+            i = index.get(key, index.get(rkey))
+            prev = out[i]
+            if _join_is_measured(j) and not _join_is_measured(prev):
+                out[i] = j
+                index.pop(rkey, None)
+                index[key] = i
+            elif _join_is_measured(j) and _join_is_measured(prev):
+                # Prefer richer measurement payload
+                if sum(1 for k in ("match_rate", "verified_by", "fan_out_avg", "fan_out")
+                       if j.get(k) not in (None, "")) > \
+                   sum(1 for k in ("match_rate", "verified_by", "fan_out_avg", "fan_out")
+                       if prev.get(k) not in (None, "")):
+                    out[i] = j
+            continue
+        index[key] = len(out)
+        out.append(j)
+    return out
+
+
 def _joins_from_semantic_model(text: str) -> list[dict]:
-    """Normalize semantic_model.yaml relationships → join_facts-like dicts."""
+    """Normalize semantic_model.yaml relationships → join_facts-like dicts.
+
+    Preserves measured fields (match_rate, verified_by, fan_out*, orphan_pct).
+    """
     if not (text or "").strip():
         return []
     try:
@@ -303,18 +369,25 @@ def _joins_from_semantic_model(text: str) -> list[dict]:
     except Exception:  # noqa: BLE001
         return []
     out: list[dict] = []
-    for j in sm.get("joins") or []:
-        if isinstance(j, dict):
-            out.append(j)
-    for j in sm.get("relationships") or []:
+    for j in (sm.get("joins") or []) + (sm.get("relationships") or []):
         if not isinstance(j, dict):
             continue
-        out.append({
-            "left_table": j.get("left_table") or j.get("from_table") or j.get("left"),
-            "left_col": j.get("left_col") or j.get("from_col") or j.get("left_key"),
-            "right_table": j.get("right_table") or j.get("to_table") or j.get("right"),
-            "right_col": j.get("right_col") or j.get("to_col") or j.get("right_key"),
+        left, lk, right, rk = _join_key_fields(j)
+        if not (left and right and lk and rk):
+            continue
+        edge = {
+            "left_table": left,
+            "left_col": lk,
+            "right_table": right,
+            "right_col": rk,
             "cardinality": j.get("cardinality") or j.get("card") or j.get("type"),
             "disposition": j.get("disposition") or j.get("join_type"),
-        })
+        }
+        for k in (
+            "match_rate", "fan_out_avg", "fan_out", "fan_out_max", "orphan_pct",
+            "children_per_parent_avg", "verified_by", "confidence",
+        ):
+            if j.get(k) not in (None, "", []):
+                edge[k] = j[k]
+        out.append(edge)
     return out

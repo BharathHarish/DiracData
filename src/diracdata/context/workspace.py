@@ -180,10 +180,11 @@ class Workspace:
                 ws._add_example("history", "", row.get("statement_text", ""), table_columns)
 
         if semantic_layer is not None:                       # from the object-store domain context
-            ws.semantic_layer = semantic_layer
+            ws.semantic_layer = _normalize_semantic_layer(semantic_layer) or {}
         elif semantic_layer_path and Path(semantic_layer_path).exists():
             import yaml
-            ws.semantic_layer = yaml.safe_load(Path(semantic_layer_path).read_text(encoding="utf-8")) or {}
+            ws.semantic_layer = _normalize_semantic_layer(
+                yaml.safe_load(Path(semantic_layer_path).read_text(encoding="utf-8")) or {}) or {}
 
         for doc_path in docs_paths or []:
             p = Path(doc_path)
@@ -544,6 +545,29 @@ def _short_desc(meta: Any) -> str:
     return ""
 
 
+def _normalize_semantic_layer(sl: dict | None) -> dict | None:
+    """Accept both authoring shapes for metrics/dimensions/business_terms:
+
+      dict:  {name: {sql, description, ...}, ...}          # original V3-S5
+      list:  [{name, sql, description, ...}, ...]          # catalog / UAT authoring
+
+    Downstream (Context._merge_blessed, Workspace.metric / definitions_index) indexes by name,
+    so list form is rewritten to a dict. Entries missing ``name`` are skipped.
+    """
+    if not isinstance(sl, dict):
+        return sl
+    out = dict(sl)
+    for section in ("metrics", "dimensions", "business_terms"):
+        body = out.get(section)
+        if isinstance(body, list):
+            keyed: dict[str, Any] = {}
+            for item in body:
+                if isinstance(item, dict) and item.get("name"):
+                    keyed[str(item["name"])] = {k: v for k, v in item.items() if k != "name"}
+            out[section] = keyed
+    return out
+
+
 def _parse_semantic_layer_yaml(text: str) -> dict | None:
     """Parse a semantic_layer YAML/JSON blob. Mirrors _semantic_layer_from_store's parse step
     without needing a schema-shaped store. Used by Workspace.from_catalog_store."""
@@ -552,9 +576,9 @@ def _parse_semantic_layer_yaml(text: str) -> dict | None:
     stripped = text.lstrip()
     if stripped.startswith("{") or stripped.startswith("["):
         import json as _json
-        return _json.loads(text) or None
+        return _normalize_semantic_layer(_json.loads(text) or None)
     import yaml
-    return yaml.safe_load(text) or None
+    return _normalize_semantic_layer(yaml.safe_load(text) or None)
 
 
 def _semantic_layer_from_store(store: Any, schema: str) -> dict | None:
@@ -564,8 +588,9 @@ def _semantic_layer_from_store(store: Any, schema: str) -> dict | None:
     for name in ("semantic_layer.yaml", "semantic_layer.yml"):
         if store.has(schema, name):
             import yaml
-            return yaml.safe_load(store.read_text(schema, name)) or None
-    return store.get(schema, "semantic_layer.json") or None
+            return _normalize_semantic_layer(yaml.safe_load(store.read_text(schema, name)) or None)
+    raw = store.get(schema, "semantic_layer.json") or None
+    return _normalize_semantic_layer(raw) if isinstance(raw, dict) else raw
 
 
 def _sample_values(dom: Any, limit: int = _DEFAULTS.example_values_shown) -> str:

@@ -21,7 +21,15 @@ Steps:
 """
 
 
-def prompt_executive_scorecard(year_hint: str = "most recent complete year") -> str:
+def prompt_executive_scorecard(year_hint: str = "most recent complete year",
+                               surface: str = "schema") -> str:
+    if surface == "catalog":
+        period_tool = (
+            "confirm overlapping date ranges with profile or run_sql (MIN/MAX dates) "
+            "before joining two time-bearing tables"
+        )
+    else:
+        period_tool = "use temporal_coverage before period joins"
     return f"""\
 Executive health scorecard playbook (QUERY mode) for the current DiracData schema/catalog.
 
@@ -33,7 +41,7 @@ Cover three angles — for each: top-level number, then drivers, then concerns:
 3. Assortment — in-stock rate, stockout concentration (e.g. size), attribute completeness
 
 Always: get_dialect first; bind metrics via metric_bind_check; prefer @metric:// and @table:// resources; \
-use temporal_coverage before period joins; go beyond the ask with companions + gotchas.
+{period_tool}; go beyond the ask with companions + gotchas.
 """
 
 

@@ -57,41 +57,95 @@ def _copy_legacy_to_new(store, database: str, catalog: str) -> int:
     return n
 
 
-def _make_fireworks_llm(model_id: str = "accounts/fireworks/models/deepseek-v4-flash-0731") -> Callable[[str], str]:
-    """Small Fireworks-backed LLM callable used for database.md / catalog.md authoring."""
-    import os
-    from openai import OpenAI
-    api_key = os.environ.get("FIREWORKS_API_KEY") or os.environ.get("DIRACDATA_FIREWORKS_API_KEY")
-    if not api_key:
-        raise SystemExit("[learn-catalog] no FIREWORKS_API_KEY (or DIRACDATA_FIREWORKS_API_KEY) in env")
-    client = OpenAI(base_url="https://api.fireworks.ai/inference/v1", api_key=api_key)
+def _make_index_llm(profile_id: str, settings: Any) -> Callable[[str], str]:
+    """A plain str->str LLM callable (used for database.md / catalog.md authoring), built through
+    the model factory so it honours whichever provider the profile names (Together, Fireworks, ...)."""
+    from diracdata.models.factory import ChatModelFactory
+    model = ChatModelFactory(settings=settings).create_chat_model(profile_id=profile_id)
     def _call(prompt: str) -> str:
-        resp = client.chat.completions.create(
-            model=model_id,
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.1,
-        )
-        return resp.choices[0].message.content or ""
+        resp = model.invoke(prompt)
+        return getattr(resp, "content", None) or str(resp)
     return _call
 
 
-def _run_learn_for_one_db(*, database: str, model_profile: str, env_file: str) -> None:
-    """Delegate to the existing LearningAgent (writes to legacy fabric/<database>/)."""
-    from diracdata.utils.model_factory import ChatModelFactory
+def _is_sqlite_catalog(cs: Any, catalog: str) -> bool:
+    """A catalog whose databases are ATTACHed SQLite files (Spider 2.0 etc.). We read the catalog
+    metadata's engine hint; fall back to the naming convention used by the registry."""
+    cat_meta = (cs.get_catalog(catalog, "catalog.json", default={})
+                or cs.get_catalog(catalog, "catalog.yaml", default={}) or {})
+    if "sqlite" in str(cat_meta.get("engine", "")).lower():
+        return True
+    return catalog.startswith("spider2") or "sqlite" in catalog
+
+
+def _download_sqlite_for_db(cs: Any, settings: Any, catalog: str, database: str) -> "Path":
+    """Fetch the DB's SQLite blob from the LAKE bucket into a local cache (idempotent) and return
+    the local path. The key comes from the database.json stub written by register_spider2_catalog."""
+    import boto3
+    from botocore.config import Config as BC
+
+    db_meta = (cs.get(catalog, database, "database.json", default={})
+               or cs.get(catalog, database, "database.yaml", default={}) or {})
+    sqlite_key = db_meta.get("sqlite_key") or f"spider2/sqlite/{database}.sqlite"
+
+    cache = Path(os.getenv("DIRACDATA_CATALOG_SQLITE_CACHE",
+                           str(Path.home() / ".diracdata" / "catalog_sqlite_cache" / catalog)))
+    cache.mkdir(parents=True, exist_ok=True)
+    local = cache / f"{database}.sqlite"
+    if local.exists() and local.stat().st_size > 0:
+        return local
+
+    s3 = boto3.client(
+        "s3", endpoint_url=settings.s3_endpoint_url,
+        aws_access_key_id=settings.aws_access_key_id, aws_secret_access_key=settings.aws_secret_access_key,
+        config=BC(s3={"addressing_style": "path"}, retries={"max_attempts": 3}),
+    )
+    s3.download_file(settings.lake_bucket, sqlite_key, str(local))
+    return local
+
+
+def _make_stream_sink(mode: str):
+    """A sink that respects the same StreamMode contract data_analyst uses: off/messages/updates/all.
+    'updates' (recommended for learning) shows phase info + every tool call/result — that is exactly
+    the durable long-running trace: what tables/columns/joins the learner is currently reasoning over,
+    without token-level spam."""
+    from diracdata.streaming import mode_sink
+    def base(stage, kind, text):
+        if kind == "tool_call":
+            print(f"  >> [{stage}] {text}", file=sys.stderr, flush=True)
+        elif kind == "tool_result":
+            snippet = text if len(text) < 200 else text[:200] + "…"
+            print(f"  << [{stage}] {snippet}", file=sys.stderr, flush=True)
+        elif kind == "info":
+            print(f"[{stage}] {text}", file=sys.stderr, flush=True)
+        elif kind == "token":
+            # token streams are noisy; print without newlines when mode='all'
+            print(text, end="", file=sys.stderr, flush=True)
+        else:
+            print(f"[{stage}] {kind}: {text}", file=sys.stderr, flush=True)
+    return mode_sink(base, mode)
+
+
+def _run_learn_for_one_db(*, catalog: str, database: str, model_profile: str, env_file: str,
+                          sqlite_mode: bool, cs: Any, stream_mode: str) -> None:
+    """Run the agentic Learner over one database (writes to legacy fabric/<database>/, which the
+    caller then migrates to the catalog layout). For SQLite catalogs an ATTACHed-SQLite engine is
+    injected so the same harness learns a Spider 2.0 database exactly like a parquet schema."""
     from diracdata.config import settings_from_env
-    from diracdata.learning import LearningAgent, write_artifacts
+    from diracdata.learning import Learner
 
     settings = settings_from_env(env_file)
-    factory = ChatModelFactory()
-    model = factory.build(model_profile)
-    agent = LearningAgent(schema=database, model=model, settings=settings, subagents=True)
 
-    def sink(stage, kind, text):
-        if kind == "info":
-            print(f"[{stage}] {text}", file=sys.stderr, flush=True)
+    engine = None
+    if sqlite_mode:
+        from diracdata.engines import DuckDBEngine
+        sqlite_path = _download_sqlite_for_db(cs, settings, catalog, database)
+        engine = DuckDBEngine.from_sqlite(sqlite_path, schema_name=database)
 
-    result = agent.learn(sink=sink)
-    write_artifacts(agent, result)
+    sink = _make_stream_sink(stream_mode)
+    learner = Learner(schema=database, model=model_profile, settings=settings,
+                      subagents=True, engine=engine)
+    learner.learn(sink=sink)
 
 
 def main() -> int:
@@ -99,14 +153,21 @@ def main() -> int:
     ap.add_argument("--catalog",  required=True, help="catalog name (e.g. 'local', 'spider2_local')")
     ap.add_argument("--database", default=None,
                     help="one database name or comma-separated subset; omit to learn every DB in catalog")
-    ap.add_argument("--model-profile", default="fireworks_deepseek_v4_flash")
-    ap.add_argument("--index-model",   default="accounts/fireworks/models/deepseek-v4-flash-0731",
-                    help="Fireworks model id used for database.md / catalog.md authoring")
+    ap.add_argument("--model-profile", default="together_deepseek_v3",
+                    help="model profile the agentic Learner uses (e.g. together_deepseek_v3, "
+                         "fireworks_deepseek_v4_flash)")
+    ap.add_argument("--index-model",   default="together_deepseek_v3",
+                    help="model profile used to author database.md / catalog.md")
     ap.add_argument("--env-file", default=str(_ROOT / ".env"))
     ap.add_argument("--skip-learn",  action="store_true",
                     help="skip the LearningAgent run; only author database.md / catalog.md over what's already learned")
     ap.add_argument("--only-index",  action="store_true",
                     help="alias for --skip-learn (only refresh indexes)")
+    ap.add_argument("--stream-mode", default="updates",
+                    choices=["off", "messages", "updates", "all"],
+                    help="live-trace verbosity: off = silent; updates (default) = phase info + tool "
+                         "calls + tool results (no token spam); messages = token stream + tool i/o; "
+                         "all = everything including reasoning + usage")
     args = ap.parse_args()
     _load_env(args.env_file)
 
@@ -131,17 +192,26 @@ def main() -> int:
                   file=sys.stderr)
             return 1
 
+    sqlite_mode = _is_sqlite_catalog(cs, args.catalog)
     print(f"[learn-catalog] catalog={args.catalog}  databases={dbs}  "
+          f"model={args.model_profile}  sqlite_mode={sqlite_mode}  "
           f"skip_learn={args.skip_learn or args.only_index}", file=sys.stderr)
 
     # Phase 1: per-DB learning
     if not (args.skip_learn or args.only_index):
         for db in dbs:
             t0 = time.time()
-            print(f"\n=== [learn-catalog] {args.catalog}/{db}: LearningAgent starting ===",
+            print(f"\n=== [learn-catalog] {args.catalog}/{db}: Learner starting ===",
                   file=sys.stderr, flush=True)
-            _run_learn_for_one_db(database=db, model_profile=args.model_profile,
-                                   env_file=args.env_file)
+            try:
+                _run_learn_for_one_db(catalog=args.catalog, database=db,
+                                       model_profile=args.model_profile, env_file=args.env_file,
+                                       sqlite_mode=sqlite_mode, cs=cs,
+                                       stream_mode=args.stream_mode)
+            except Exception as ex:
+                print(f"=== [learn-catalog] {args.catalog}/{db}: FAILED after {time.time()-t0:.0f}s: "
+                      f"{type(ex).__name__}: {ex} ===", file=sys.stderr, flush=True)
+                continue
             print(f"=== [learn-catalog] {args.catalog}/{db}: done in {time.time()-t0:.0f}s ===",
                   file=sys.stderr, flush=True)
             n = _copy_legacy_to_new(store, database=db, catalog=args.catalog)
@@ -150,7 +220,7 @@ def main() -> int:
 
     # Phase 2: author database.md for each DB
     print(f"\n[learn-catalog] authoring database.md for {len(dbs)} databases...", file=sys.stderr)
-    llm = _make_fireworks_llm(args.index_model)
+    llm = _make_index_llm(args.index_model, settings)
     for db in dbs:
         try:
             md = build_database_md(cs, catalog=args.catalog, database=db, llm=llm)

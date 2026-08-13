@@ -48,14 +48,28 @@ def eng():
 
 
 def test_instructions_packs_have_required_sections():
+    from diracdata.mcps.instructions import SCHEMA_ONLY_QUERY_TOOLS
+
     q, l = query_pack(), learn_pack()
     assert "DIALECT" in q
     assert "GO BEYOND" in q
     assert "completeness_check" in l
     assert "COMPLETION CHECKLIST" in l
     cat = catalog_instructions()
+    sch = schema_instructions()
     assert "QUERY" in cat and "LEARN" in cat
-    assert "get_dialect" in schema_instructions()
+    assert "get_dialect" in sch
+    # Schema MCP keeps the five join/RCA tools; catalog MCP must not advertise them.
+    for name in SCHEMA_ONLY_QUERY_TOOLS:
+        assert name in sch, name
+        assert name in q, name
+        assert name not in cat, name
+    assert "search_fabric" in cat
+    assert "sql_diff" in cat
+    assert "data_check" in cat
+    assert "join_path" in cat
+    assert "children-per-parent" in cat or "GRAIN" in cat
+    assert "search_context" not in cat
 
 
 def test_dialect_cards():
@@ -91,7 +105,8 @@ def test_completeness_stub_and_green():
             },
             "join_facts.json": [
                 {"left_table": "sales", "left_col": "id", "right_table": "x",
-                 "right_col": "id", "cardinality": "N-1"}
+                 "right_col": "id", "cardinality": "N-1",
+                 "match_rate": 1.0, "fan_out_avg": 1.0, "verified_by": "unit test"}
             ],
             "database.md": "# sales db\n\n" + ("Business narrative. " * 40),
             "semantic_layer.yaml": "metrics:\n- name: rev\n  sql: SELECT 1\n",
@@ -158,3 +173,8 @@ def test_parse_uri_and_prompts():
     assert p["parts"] == ["cat", "db", "net_revenue"]
     assert "completeness_check" in prompt_learn_database("retail")
     assert "Money" in prompt_executive_scorecard()
+    schema_sc = prompt_executive_scorecard(surface="schema")
+    catalog_sc = prompt_executive_scorecard(surface="catalog")
+    assert "temporal_coverage" in schema_sc
+    assert "temporal_coverage" not in catalog_sc
+    assert "run_sql" in catalog_sc or "profile" in catalog_sc

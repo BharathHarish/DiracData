@@ -30,11 +30,13 @@ Tool families:
     find_examples[db]              — gold NL-SQL matching
     get_metric[db]                 — blessed metric lookup
 
-  Harness (search / profile / verify — prefer these over browsing all markdown):
+    Harness (search / profile / verify — prefer these over browsing all markdown):
     search_fabric[query, db?]      — grep learned fabric text across DBs
     search_schema[pattern, db]     — find tables/columns by name pattern
     profile[target, db]            — table or table.column measured facts
     sql_diff[sql_a, sql_b, db]     — A/B two SELECTs (rowcount + numeric deltas)
+    data_check[sql, db?]           — join orphan/fan-out/grain amplification + result sanity
+    join_path[table?, db?]         — measured join cards (cardinality, children/parent)
 
   Learning-time authoring (called by Cursor's LLM to compile fabric):
     propose_table_description[db]
@@ -207,6 +209,16 @@ class _SqliteBackedDuckDB:
         except Exception:
             return []
 
+    def list_columns(self, table_name: str) -> List[str]:
+        return [c["column_name"] for c in self.describe_columns(table_name)]
+
+    def describe_columns(self, table_name: str) -> List[Dict[str, str]]:
+        try:
+            rows = self._con.execute(f'DESCRIBE "{table_name}"').fetchall()
+            return [{"column_name": str(r[0]), "column_type": str(r[1])} for r in rows]
+        except Exception:
+            return []
+
     def query(self, sql: str, max_rows: Optional[int] = None):
         limit = max_rows or self.max_rows
         result = self._con.execute(sql)
@@ -297,11 +309,14 @@ def catalog_tools(rt: _CatalogRuntime) -> list:
     def describe_table(table: str, db: str = "") -> str:
         """Full detail for one table: columns + types + row count + sample rows.
         Soft-fail: each step is independent; partial JSON + warnings on bad rows/types."""
+        from diracdata.mcps.harness import bounded_query, describe_relation
         d = rt.resolve_db(db)
         eng = rt._engine_for(d)
+        n = int(rt.settings.query_max_rows)
+        ident = '"' + str(table).replace('"', '""') + '"'
         out: Dict[str, Any] = {"database": d, "table": table, "warnings": []}
         try:
-            schema = eng.query(f'DESCRIBE "{table}"')
+            schema = describe_relation(eng, table, max_rows=n)
             out["columns"] = [dict(zip(schema.columns, r)) for r in schema.rows]
         except Exception as ex:
             out["warnings"].append(f"describe: {ex}")
@@ -312,11 +327,11 @@ def catalog_tools(rt: _CatalogRuntime) -> list:
                 out["columns"] = [{"column_name": c, "source": "fabric"} for c in cols]
                 out["warnings"].append("columns from fabric metadata_descriptions.json")
         try:
-            out["row_count"] = int(eng.query(f'SELECT COUNT(*) FROM "{table}"').rows[0][0])
+            out["row_count"] = int(bounded_query(eng, f"SELECT COUNT(*) FROM {ident}", 1).rows[0][0])
         except Exception as ex:
             out["warnings"].append(f"count: {ex}")
         try:
-            sample = eng.query(f'SELECT * FROM "{table}" LIMIT 5')
+            sample = bounded_query(eng, f"SELECT * FROM {ident} LIMIT 5", 5)
             out["sample_rows"] = [
                 dict(zip(sample.columns, [str(v) for v in r])) for r in sample.rows
             ]
@@ -327,31 +342,31 @@ def catalog_tools(rt: _CatalogRuntime) -> list:
         return json.dumps(out, default=str)
 
     def describe_column(table: str, column: str, db: str = "") -> str:
-        """One column's business meaning, incl. any nested-type access recipe from the fabric."""
+        """One column's business meaning + nested ACCESS RECIPE + verified runnable_example.
+
+        Merges fabric metadata_descriptions with live engine stats. Complex columns
+        without authored recipes get deterministic recipes from the type tree
+        (UNNEST leaves + CTE-staged runnable example)."""
+        from diracdata.mcps.harness import describe_column_enriched
         d = rt.resolve_db(db)
-        # Prefer fabric metadata_descriptions.json if present
-        md = rt.cs.get(rt.catalog, d, "metadata_descriptions.json", default={}) or {}
-        col_meta = ((md.get("tables") or {}).get(table) or {}).get("columns", {}).get(column)
-        if col_meta:
-            return json.dumps({"database": d, "table": table, "column": column, **col_meta}, default=str)
-        # Fallback: live column stats
-        eng = rt._engine_for(d)
         try:
-            r = eng.query(f'SELECT COUNT(DISTINCT "{column}"), COUNT(*), '
-                           f'MIN("{column}"), MAX("{column}") FROM "{table}"').rows[0]
-            return json.dumps({"database": d, "table": table, "column": column,
-                                "distinct_count": r[0], "row_count": r[1],
-                                "min": str(r[2]), "max": str(r[3]),
-                                "source": "engine-live (no fabric metadata yet)"}, default=str)
+            eng = rt._engine_for(d)
+            out = describe_column_enriched(
+                rt.cs, rt.catalog, d, eng, table, column,
+                max_rows=int(rt.settings.query_max_rows),
+            )
+            return json.dumps(out, default=str)
         except Exception as ex:
             return f"error describing {d}.{table}.{column}: {ex}"
 
     def sample_rows(table: str, db: str = "", n: int = 5) -> str:
         """Quick peek at n rows of a table."""
+        from diracdata.mcps.harness import _ident, bounded_query
         d = rt.resolve_db(db)
         eng = rt._engine_for(d)
+        cap = max(1, min(int(n), int(rt.settings.query_max_rows)))
         try:
-            r = eng.query(f'SELECT * FROM "{table}" LIMIT {int(n)}')
+            r = bounded_query(eng, f"SELECT * FROM {_ident(table)} LIMIT {cap}", cap)
             return json.dumps({"database": d, "table": table,
                                 "rows": [dict(zip(r.columns, [str(v) for v in row])) for row in r.rows]},
                                 default=str)
@@ -370,6 +385,54 @@ def catalog_tools(rt: _CatalogRuntime) -> list:
                                 "rows": [list(r) for r in res.rows]}, default=str)
         except Exception as ex:
             return f"SQL error on {d}: {type(ex).__name__}: {ex}"
+
+    def data_check(sql: str, db: str = "") -> str:
+        """Verify a DRAFT multi-table query before trusting its number.
+        DATA QUALITY on inputs (null rates, join orphan %, fan-out, children-per-parent grain
+        amplification) + SANITY on the output. Call on every multi-table draft."""
+        from diracdata.utils.sql import validate_sql
+        from diracdata.utils.stewardship import probe_footprint, sanity_check
+        d = rt.resolve_db(db)
+        eng = rt._engine_for(d)
+        clean = (sql or "").strip().rstrip(";")
+        try:
+            tables = set(eng.list_tables() or [])
+        except Exception:  # noqa: BLE001
+            tables = set()
+        dq = probe_footprint(eng, clean)
+        result = None
+        if validate_sql(clean, available_tables=tables).get("status") == "ok":
+            try:
+                r = eng.query(clean, rt.settings.query_max_rows)
+                result = {"columns": r.columns, "rows": [list(x) for x in r.rows],
+                          "row_count": len(r.rows)}
+            except Exception:  # noqa: BLE001
+                result = None
+        sanity = sanity_check(clean, result) if result is not None else {}
+        flags = list((dq or {}).get("flags") or []) + list((sanity or {}).get("flags") or [])
+        return json.dumps({
+            "database": d,
+            "ok": not flags,
+            "flags": flags,
+            "data_quality": dq,
+            "sanity": sanity,
+        }, default=str)
+
+    def join_path(table: str = "", db: str = "") -> str:
+        """Measured join cards for a table (or all joins if table empty): cardinality,
+        match rate, children-per-parent amplification. ALWAYS call before joining."""
+        from diracdata.mcps.harness import join_path_cards
+        d = rt.resolve_db(db)
+        eng = None
+        try:
+            eng = rt._engine_for(d)
+        except Exception:  # noqa: BLE001
+            eng = None
+        try:
+            return json.dumps(join_path_cards(rt.cs, rt.catalog, d, table=table or "",
+                                              engine=eng), default=str)
+        except Exception as ex:
+            return f"join_path error on {d}: {ex}"
 
     def find_examples(query: str, db: str = "") -> str:
         """Find proven gold NL→SQL pairs matching a natural-language query in the given DB's fabric."""
@@ -427,7 +490,8 @@ def catalog_tools(rt: _CatalogRuntime) -> list:
         eng = rt._engine_for(d)
         meta = rt.cs.get(rt.catalog, d, "metadata_descriptions.json", default={}) or {}
         try:
-            out = _search(eng, pattern, limit=int(limit) or 50, fabric_meta=meta)
+            out = _search(eng, pattern, limit=int(limit) or 50, fabric_meta=meta,
+                          max_rows=int(rt.settings.query_max_rows))
             out["database"] = d
             return json.dumps(out, default=str)
         except Exception as ex:
@@ -440,7 +504,7 @@ def catalog_tools(rt: _CatalogRuntime) -> list:
         d = rt.resolve_db(db)
         eng = rt._engine_for(d)
         try:
-            out = profile_target(eng, target)
+            out = profile_target(eng, target, max_rows=int(rt.settings.query_max_rows))
             out["database"] = d
             return json.dumps(out, default=str)
         except Exception as ex:
@@ -500,17 +564,57 @@ def catalog_tools(rt: _CatalogRuntime) -> list:
                 c["access_recipe"] = access_recipe
         return json.dumps({"ok": True, "database": d, "table": table, "column": column})
 
+    def verify_join(left_table: str, left_col: str, right_table: str, right_col: str,
+                    db: str = "") -> str:
+        """LEARN: measure a candidate join (orphan %, fan-out, children/parent, verdict).
+        Call before propose_join — reject edges that match nothing or explode."""
+        from diracdata.mcps.harness import measure_join
+        d = rt.resolve_db(db)
+        eng = rt._engine_for(d)
+        return json.dumps({"database": d, **measure_join(
+            eng, left_table, left_col, right_table, right_col
+        )}, default=str)
+
     def propose_join(left_table: str, left_col: str, right_table: str, right_col: str,
                      cardinality: str = "", disposition: str = "", db: str = "") -> str:
-        """Author a join fact within a database. cardinality ∈ {'1-1','1-N','N-M','N-1'}.
-        disposition ∈ {'INNER','LEFT','RIGHT','FULL'} — hint for planners. Accumulates until save."""
+        """Author a join fact within a database. ALWAYS measures the edge live first.
+        Rejects when matched_rows=0. Attaches measured cardinality/disposition/orphan/fan-out.
+        cardinality/disposition args are optional overrides after measurement."""
+        from diracdata.mcps.harness import measure_join
         d = rt.resolve_db(db)
+        eng = rt._engine_for(d)
+        measured = measure_join(eng, left_table, left_col, right_table, right_col)
+        if measured.get("verdict") == "reject":
+            return json.dumps({
+                "ok": False, "database": d, "rejected": True,
+                "reason": measured.get("reason") or "join matched 0 rows",
+                "measurement": measured,
+            }, default=str)
+        card = cardinality or measured.get("cardinality_measured") or ""
+        disp = disposition or measured.get("disposition") or ""
+        edge = {
+            "left_table": left_table, "left_col": left_col,
+            "right_table": right_table, "right_col": right_col,
+            "cardinality": card, "disposition": disp,
+            "match_rate": measured.get("match_rate"),
+            "fan_out_avg": measured.get("fan_out"),
+            "children_per_parent_avg": measured.get("children_per_parent_avg"),
+            "verified_by": measured.get("verified_by"),
+            "orphan_pct": measured.get("orphan_pct"),
+        }
+        warnings = []
+        cpp = measured.get("children_per_parent_avg") or 0
+        if cpp > 1.5:
+            warnings.append(
+                f"~{cpp}x children/parent — aggregate-then-join before averaging parent measures"
+            )
         with rt._lock:
             p = rt._proposals.setdefault(d, {"tables": {}, "columns": {}, "joins": [], "metrics": []})
-            p["joins"].append({"left_table": left_table, "left_col": left_col,
-                                "right_table": right_table, "right_col": right_col,
-                                "cardinality": cardinality, "disposition": disposition})
-        return json.dumps({"ok": True, "database": d, "n_joins_pending": len(p["joins"])})
+            p["joins"].append(edge)
+        return json.dumps({
+            "ok": True, "database": d, "n_joins_pending": len(p["joins"]),
+            "measurement": measured, "warnings": warnings, "edge": edge,
+        }, default=str)
 
     def propose_metric(name: str, sql: str, description: str = "", grain: str = "", db: str = "",
                        companions: str = "", boundary_convention: str = "") -> str:
@@ -740,10 +844,10 @@ def catalog_tools(rt: _CatalogRuntime) -> list:
         # observation
         list_tables, describe_table, describe_column, sample_rows, run_sql, find_examples, get_metric,
         # harness
-        search_fabric, search_schema, profile, sql_diff,
+        search_fabric, search_schema, profile, sql_diff, data_check, join_path,
         # authoring
         propose_table_description, propose_column_description, propose_join, propose_metric,
-        save_semantic_model, refresh_database_md, refresh_catalog_md,
+        verify_join, save_semantic_model, refresh_database_md, refresh_catalog_md,
         # gates / dialect / compounding
         completeness_check, fabric_health, metric_bind_check, get_dialect,
         clarify, save_experience, detect_boundary_convention, upsert_ontology,
@@ -829,7 +933,8 @@ def catalog_mcp(*, catalog: str, env_file: str | None = None, model: Any = None,
     @server.prompt(name="executive-scorecard", title=PROMPTS["executive-scorecard"]["title"],
                    description=PROMPTS["executive-scorecard"]["description"])
     def _prompt_scorecard(year_hint: str = "most recent complete year") -> str:
-        return PROMPTS["executive-scorecard"]["fn"](year_hint)
+        from diracdata.mcps.prompts_mcp import prompt_executive_scorecard
+        return prompt_executive_scorecard(year_hint, surface="catalog")
 
     return server
 

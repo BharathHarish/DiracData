@@ -56,10 +56,42 @@ def probe_footprint(engine: Any, sql: str, *, max_cols: int = _DEFAULTS.footprin
         budget -= len(cols)
         _probe_table(engine, table, cols, types, report)
 
+    outer_base = _outer_base_tables(sql, set(table_columns))
     for jp in analysis.join_pairs[:max_joins]:
-        _probe_join(engine, jp.left_column, jp.right_column, report)
+        _probe_join(engine, jp.left_column, jp.right_column, report,
+                    outer_base_tables=outer_base)
 
     return report
+
+
+def _outer_base_tables(sql: str, known: set[str]) -> set[str]:
+    """Base tables that appear in the outermost FROM/JOIN (not only inside CTEs).
+
+    Used so children-per-parent amplification is flagged only when the many-side is
+    still joined in the final query — aggregate-then-join (fact folded into a CTE)
+    should not trip the flag.
+    """
+    try:
+        import sqlglot
+        from sqlglot import expressions as exp
+        e = sqlglot.parse_one(sql, read="duckdb")
+    except Exception:  # noqa: BLE001
+        return set()
+    known_l = {t.lower(): t for t in known}
+    found: set[str] = set()
+    fr = e.args.get("from_")
+    if fr is not None:
+        for t in fr.find_all(exp.Table):
+            actual = known_l.get(str(t.name or "").lower())
+            if actual:
+                found.add(actual)
+    for j in e.args.get("joins") or []:
+        node = j.this
+        if isinstance(node, exp.Table):
+            actual = known_l.get(str(node.name or "").lower())
+            if actual:
+                found.add(actual)
+    return found
 
 
 def _probe_table(engine: Any, table: str, cols: list[str], types: dict, report: dict) -> None:
@@ -101,11 +133,14 @@ def _probe_table(engine: Any, table: str, cols: list[str], types: dict, report: 
         report["columns"].append(entry)
 
 
-def _probe_join(engine: Any, left: str, right: str, report: dict) -> None:
+def _probe_join(engine: Any, left: str, right: str, report: dict,
+                outer_base_tables: set[str] | None = None) -> None:
     """Orient the join by which side is the KEY (dimension) and which is the FACT, then check
     referential integrity from the fact's side. A dimension having many unused rows is normal;
-    what matters is (a) do FACT rows fail to match the dimension (real RI gap), and (b) is the
-    dimension key non-unique so the join INFLATES the fact grain (real fan-out)."""
+    what matters is (a) do FACT rows fail to match the dimension (real RI gap), (b) is the
+    dimension key non-unique so the join INFLATES the fact grain (real fan-out), and (c) does
+    joining the fact onto the dimension amplify dimension grain (children_per_parent) — the
+    trap when averaging a dim-level measure after joining many fact rows per parent."""
     try:
         lt, lc = left.split(".", 1)
         rt, rc = right.split(".", 1)
@@ -131,14 +166,39 @@ def _probe_join(engine: Any, left: str, right: str, report: dict) -> None:
     matched = fn - orphan
     orphan_pct = round(100 * orphan / fn, 2) if fn else None
     fan_out = round(joined / matched, 2) if matched else None
-    report["joins"].append({"pair": f"{left} = {right}", "fact": ft, "dimension": dt,
-                            "orphan_pct": orphan_pct, "fan_out": fan_out})
+    # Avg fact rows per distinct parent key among keys that appear in the fact (dim→fact amp).
+    children_per_parent = None
+    try:
+        cpp = _scalar(
+            engine,
+            f'SELECT AVG(c) FROM (SELECT COUNT(*) AS c FROM {_ident(ft)} '
+            f'WHERE {_ident(fc)} IS NOT NULL GROUP BY {_ident(fc)})',
+        )
+        if cpp is not None:
+            children_per_parent = round(float(cpp), 2)
+    except Exception:  # noqa: BLE001
+        pass
+    report["joins"].append({
+        "pair": f"{left} = {right}", "fact": ft, "dimension": dt,
+        "orphan_pct": orphan_pct, "fan_out": fan_out,
+        "children_per_parent_avg": children_per_parent,
+    })
     if orphan_pct and orphan_pct > 0.5:
         report["flags"].append(f"{ft} -> {dt}: {orphan_pct}% of {ft} rows have no matching {dt} "
                                f"(referential-integrity gap)")
     if fan_out and fan_out > _DEFAULTS.steward_fanout_max:
         report["flags"].append(f"{ft} joined to {dt}: fan-out {fan_out}x -- {dt}.{dc} is not unique, "
                                f"inflating the grain")
+    # Amplification flag only when the many-side is still in the outermost FROM/JOIN.
+    # Aggregate-then-join (fact folded into a CTE) keeps children_per_parent in the join
+    # card for visibility but does not trip the flag.
+    outer = outer_base_tables or set()
+    if (children_per_parent and children_per_parent > _DEFAULTS.steward_fanout_max
+            and ft in outer):
+        report["flags"].append(
+            f"{dt} <- {ft}: ~{children_per_parent}x children per parent — joining {ft} onto "
+            f"{dt} amplifies {dt} grain; aggregate-then-join before averaging {dt}-level measures"
+        )
 
 
 def sanity_check(sql: str, result: dict | None) -> dict:
@@ -193,7 +253,8 @@ def trust_line(dq: dict, sanity: dict | None = None) -> str:
             bits.append("rows " + ", ".join(f"{t}={n:,}" for t, n in list(rc.items())[:show]))
         joins = dq.get("joins") or []
         clean = [j for j in joins if (j.get("orphan_pct") or 0) <= _DEFAULTS.steward_orphan_pct_max
-                 and (j.get("fan_out") or 0) <= _DEFAULTS.steward_fanout_max]
+                 and (j.get("fan_out") or 0) <= _DEFAULTS.steward_fanout_max
+                 and (j.get("children_per_parent_avg") or 0) <= _DEFAULTS.steward_fanout_max]
         if joins and len(clean) == len(joins):
             bits.append(f"{len(joins)} join(s) clean")
         flags = dq.get("flags") or []

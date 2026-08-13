@@ -21,11 +21,12 @@ class ModelProvider(StrEnum):
     BEDROCK_CONVERSE = "bedrock_converse"
     OPENAI = "openai"
     FIREWORKS = "fireworks"           # OpenAI-COMPATIBLE -- driven through the OpenAI transport + base_url
+    TOGETHER = "together"             # OpenAI-COMPATIBLE -- same transport + a different base_url + key
 
 
 # Providers that speak the OpenAI wire protocol -> built with model_provider="openai" + a base_url.
-# Add any other OpenAI-compatible service here (Together, Groq, ...) and it drops in with just a key.
-_OPENAI_COMPATIBLE = {ModelProvider.FIREWORKS}
+# Add any other OpenAI-compatible service here (Groq, ...) and it drops in with just a key.
+_OPENAI_COMPATIBLE = {ModelProvider.FIREWORKS, ModelProvider.TOGETHER}
 
 
 @dataclass(frozen=True)
@@ -155,6 +156,15 @@ BUILT_IN_MODEL_PROFILES: dict[str, ChatModelProfile] = {
         supports_tools=True, supports_reasoning=True,
         note="~$1.60/M out -- mid-tier Fireworks option (not in the default cheap-first UAT garden)",
     ),
+    # Together AI garden (OpenAI-compatible). Model id is the Together model slug; edit the slug here
+    # if Together bumps a version.
+    "together_deepseek_v3": ChatModelProfile(
+        "together_deepseek_v3", ModelProvider.TOGETHER, "deepseek-ai/DeepSeek-V3",
+        "DeepSeek-V3 (Together)", cost_tier="low", capability="strong",
+        supports_tools=True, supports_reasoning=True,
+        note="cheap, strong, reliable tool-use -- good default for big tool-heavy sweeps like "
+             "catalog learning over many databases",
+    ),
 }
 
 # Active cheap-first UAT garden: try Flash (even on RCA) first; escalate inside this set only.
@@ -241,6 +251,11 @@ def build_model_init(
         api_key = settings.fireworks_api_key
         kwargs["base_url"] = (profile.base_url if profile and profile.base_url
                               else settings.fireworks_base_url)
+    elif provider == ModelProvider.TOGETHER:
+        # OpenAI-compatible: the OpenAI transport (below) + the Together key + endpoint.
+        api_key = settings.together_api_key
+        kwargs["base_url"] = (profile.base_url if profile and profile.base_url
+                              else settings.together_base_url)
     elif provider == ModelProvider.BEDROCK_CONVERSE:
         api_key = settings.bedrock_api_key
         if region_name:
@@ -289,7 +304,8 @@ def init_chat_model(**kwargs: Any) -> object:
 
 
 def _validate(*, provider: ModelProvider, api_key: str | None, region_name: str | None) -> None:
-    if provider in {ModelProvider.ANTHROPIC, ModelProvider.OPENAI, ModelProvider.FIREWORKS} and not api_key:
+    if provider in {ModelProvider.ANTHROPIC, ModelProvider.OPENAI,
+                    ModelProvider.FIREWORKS, ModelProvider.TOGETHER} and not api_key:
         raise ValueError(f"{provider.value} API key is required")
     if provider == ModelProvider.BEDROCK_CONVERSE and not region_name:
         raise ValueError("Bedrock region is required")

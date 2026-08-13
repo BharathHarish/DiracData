@@ -76,6 +76,9 @@ class Config:
     # way: a key + a base_url, driven through the OpenAI transport by the model factory).
     fireworks_api_key: str | None = None
     fireworks_base_url: str = "https://api.fireworks.ai/inference/v1"
+    # Together AI -- another OpenAI-compatible provider (same key + base_url pattern).
+    together_api_key: str | None = None
+    together_base_url: str = "https://api.together.xyz/v1"
 
     # --- object store (utils/object_store) ---
     object_store: str = "local"
@@ -251,6 +254,8 @@ class Config:
             aws_region=g("DIRACDATA_AWS_REGION") or g("AWS_REGION") or d.aws_region,
             fireworks_api_key=g("DIRACDATA_FIREWORKS_API_KEY") or g("FIREWORKS_API_KEY") or d.fireworks_api_key,
             fireworks_base_url=_str("DIRACDATA_FIREWORKS_BASE_URL", d.fireworks_base_url),
+            together_api_key=g("DIRACDATA_TOGETHER_API_KEY") or g("TOGETHER_API_KEY") or d.together_api_key,
+            together_base_url=_str("DIRACDATA_TOGETHER_BASE_URL", d.together_base_url),
             object_store=_str("DIRACDATA_OBJECT_STORE", d.object_store),
             artifact_bucket=_str("DIRACDATA_ARTIFACT_BUCKET", d.artifact_bucket),
             s3_endpoint_url=g("DIRACDATA_S3_ENDPOINT_URL") or d.s3_endpoint_url,

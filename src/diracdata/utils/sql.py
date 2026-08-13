@@ -80,6 +80,13 @@ def _analyze_with_sqlglot(
             continue
         left_ref = _column_ref(column=left, aliases=aliases, table_columns=table_columns)
         right_ref = _column_ref(column=right, aliases=aliases, table_columns=table_columns)
+        # CTE / derived-table aliases often don't resolve; recover join pairs when both
+        # sides share a column name that maps onto two known base tables in the query.
+        left_ref, right_ref = _resolve_join_refs(
+            left_ref, right_ref,
+            left_col=str(left.name or ""), right_col=str(right.name or ""),
+            tables=tables, table_columns=table_columns,
+        )
         if not left_ref or not right_ref:
             continue
         if left_ref.split(".", 1)[0] == right_ref.split(".", 1)[0]:
@@ -92,6 +99,61 @@ def _analyze_with_sqlglot(
         join_pairs=tuple(JoinPair(left, right) for left, right in sorted(join_pairs)),
         parser="sqlglot",
     )
+
+
+def _resolve_join_refs(
+    left_ref: str | None,
+    right_ref: str | None,
+    *,
+    left_col: str,
+    right_col: str,
+    tables: set[str],
+    table_columns: dict[str, list[str]],
+) -> tuple[str | None, str | None]:
+    """Fill missing join-side refs for CTE aliases that project a base-table key.
+
+    Example: ``payments p JOIN rules r ON p.order_ref = r.order_ref`` where ``rules`` is a
+    CTE over ``orders`` — ``r.order_ref`` does not resolve via table aliases, but the column
+    name matches ``orders.order_ref`` among known tables in the query.
+    """
+    if left_ref and right_ref:
+        return left_ref, right_ref
+    if left_col.lower() != right_col.lower():
+        return left_ref, right_ref
+    col = left_col
+    if left_ref and not right_ref:
+        right_ref = _peer_table_col(col, exclude=left_ref.split(".", 1)[0],
+                                    tables=tables, table_columns=table_columns)
+    elif right_ref and not left_ref:
+        left_ref = _peer_table_col(col, exclude=right_ref.split(".", 1)[0],
+                                   tables=tables, table_columns=table_columns)
+    elif not left_ref and not right_ref:
+        peers = _tables_with_col(col, tables=tables, table_columns=table_columns)
+        if len(peers) == 2:
+            left_ref, right_ref = f"{peers[0]}.{col}", f"{peers[1]}.{col}"
+    return left_ref, right_ref
+
+
+def _tables_with_col(col: str, *, tables: set[str],
+                     table_columns: dict[str, list[str]]) -> list[str]:
+    low = col.lower()
+    out = []
+    for t in sorted(tables):
+        lookup = {c.lower(): c for c in table_columns.get(t, [])}
+        if low in lookup:
+            out.append(t)
+    return out
+
+
+def _peer_table_col(col: str, *, exclude: str, tables: set[str],
+                    table_columns: dict[str, list[str]]) -> str | None:
+    peers = [t for t in _tables_with_col(col, tables=tables, table_columns=table_columns)
+             if t != exclude]
+    if len(peers) != 1:
+        return None
+    lookup = {c.lower(): c for c in table_columns.get(peers[0], [])}
+    actual = lookup.get(col.lower())
+    return f"{peers[0]}.{actual}" if actual else None
 
 
 def _sqlglot_aliases(*, expression: Any, table_columns: dict[str, list[str]]) -> dict[str, str]:
