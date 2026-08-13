@@ -2,6 +2,7 @@
 
     from diracdata.mcps import context_mcp
     context_mcp(schema="sales", data="~/warehouse.duckdb").run("stdio")
+    # remote clients (ChatGPT / Claude.ai / Gemini): server.run("streamable-http", host="127.0.0.1", port=8765)
 
 `context_mcp` serves a schema's governed context (provider tools) + guarded SQL + the learning-agent
 builder. Context defaults to LOCAL disk (~/.diracdata); pass store="s3" for shared/team context.
