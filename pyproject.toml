@@ -58,7 +58,8 @@ all = [
 ]
 
 [project.scripts]
-diracdata-mcp = "diracdata.mcps.__main__:main"
+diracdata-mcp     = "diracdata.mcps.__main__:main"
+dirac-catalog-mcp = "diracdata.mcps.catalog_main:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

@@ -61,7 +61,7 @@ class DuckDBEngine(_DuckDBRuntime, AbstractEngine):
                  name: str | None = None, read_only: bool = True, lake_source: str = "local",
                  lake_bucket: str = "lake", s3_endpoint_url: str | None = None,
                  aws_access_key_id: str | None = None, aws_secret_access_key: str | None = None,
-                 aws_region: str = "us-east-1") -> None:
+                 aws_region: str = "us-east-1", sqlite_path: str | Path | None = None) -> None:
         super().__init__(name=name or schema_name, read_only=read_only)
         try:
             import duckdb
@@ -70,7 +70,9 @@ class DuckDBEngine(_DuckDBRuntime, AbstractEngine):
         self._con = duckdb.connect(":memory:")
         self._lock = RLock()
         self._tables: set[str] = set()
-        if lake_source == "s3":   # object-store-native: DuckDB reads the lake bucket over httpfs
+        if lake_source == "sqlite":   # a single ATTACHed SQLite file = one database's tables (Spider 2.0 etc.)
+            self._register_sqlite(sqlite_path)
+        elif lake_source == "s3":  # object-store-native: DuckDB reads the lake bucket over httpfs
             self._register_lake(schema_name, lake_bucket, s3_endpoint_url, aws_access_key_id,
                                 aws_secret_access_key, aws_region)
         else:                     # local dev: read the staged parquet under data_root
@@ -109,6 +111,31 @@ class DuckDBEngine(_DuckDBRuntime, AbstractEngine):
         for (f,) in rows:
             table = f.rsplit("/", 1)[-1].removesuffix(".parquet")
             self._register_view(table, f"read_parquet('{_lit(f)}')")
+
+    def _register_sqlite(self, sqlite_path: str | Path | None) -> None:
+        """ATTACH one SQLite file read-only and expose each of its user tables as a DuckDB view.
+        This is what lets the learning + query agents treat a Spider 2.0 SQLite database exactly
+        like a parquet-backed schema -- same list_tables / list_columns / query surface."""
+        if not sqlite_path:
+            raise ValueError("lake_source='sqlite' requires sqlite_path")
+        p = Path(sqlite_path)
+        if not p.exists():
+            raise FileNotFoundError(f"SQLite file not found: {p}")
+        with self._lock:
+            self._con.execute("INSTALL sqlite; LOAD sqlite")
+            self._con.execute(f"ATTACH '{_lit(p.as_posix())}' AS sqlite_db (TYPE SQLITE, READ_ONLY)")
+            rows = self._con.execute("SHOW TABLES FROM sqlite_db").fetchall()
+        for (table,) in rows:
+            # Skip SQLite's internal bookkeeping tables -- not part of the user schema.
+            if str(table).startswith("sqlite_"):
+                continue
+            self._register_view(str(table), f'sqlite_db."{str(table)}"')
+
+    @classmethod
+    def from_sqlite(cls, sqlite_path: str | Path, *, schema_name: str = "sqlite",
+                    name: str | None = None) -> "DuckDBEngine":
+        """Build an engine over one ATTACHed SQLite file (each table exposed as a view)."""
+        return cls(schema_name=schema_name, name=name, lake_source="sqlite", sqlite_path=sqlite_path)
 
     def list_tables(self) -> list[str]:
         return sorted(self._tables)

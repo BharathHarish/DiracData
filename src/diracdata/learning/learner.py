@@ -15,7 +15,7 @@ from diracdata.utils.streaming import Sink, null_sink
 
 class Learner:
     def __init__(self, *, schema: str, model: Any, settings: Any = None, subagents: bool = True,
-                 max_steps: int | None = None) -> None:
+                 max_steps: int | None = None, engine: Any = None) -> None:
         self.schema = schema
         self.settings = settings if settings is not None else settings_from_env()
         if isinstance(model, str):                       # a profile id -> set it as the base + build
@@ -23,6 +23,9 @@ class Learner:
         self._model_arg = model
         self.subagents = subagents
         self.max_steps = max_steps
+        # An injected engine lets non-parquet sources (e.g. an ATTACHed SQLite database for a Spider
+        # 2.0 catalog) be learned with the same harness. When None, we build the parquet lake engine.
+        self._engine = engine
 
     def _model(self) -> Any:
         m = self._model_arg
@@ -38,7 +41,8 @@ class Learner:
         from diracdata.engines import DuckDBEngine
         from diracdata.learning.agent2 import LearningCompiler
 
-        engine = DuckDBEngine.from_settings(self.settings, self.schema)
+        engine = self._engine if self._engine is not None else \
+            DuckDBEngine.from_settings(self.settings, self.schema)
         store = context_store_from_settings(self.settings)
         if not context:                                  # default: fold in any blessed metric tree
             context = self._blessed_context(store)

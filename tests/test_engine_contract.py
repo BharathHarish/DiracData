@@ -106,5 +106,37 @@ class PostgresEngineContractTest(EngineContract, unittest.TestCase):
         _pg_contract_table(cls._dsn, drop=True)
 
 
+class DuckDBSqliteModeTest(unittest.TestCase):
+    """DuckDBEngine.from_sqlite ATTACHes one SQLite file and exposes each user table as a view --
+    the path that lets the learning + query agents treat a Spider 2.0 SQLite DB like any schema."""
+
+    def test_from_sqlite_lists_tables_and_queries(self):
+        import sqlite3
+        from diracdata.engines import DuckDBEngine
+        with tempfile.TemporaryDirectory() as d:
+            p = Path(d) / "shop.sqlite"
+            con = sqlite3.connect(str(p))
+            con.execute("CREATE TABLE orders (id INTEGER, amount REAL)")
+            con.executemany("INSERT INTO orders VALUES (?,?)", [(1, 10.0), (2, 20.0), (3, 30.0)])
+            con.execute("CREATE TABLE customers (id INTEGER, name TEXT)")
+            con.execute("INSERT INTO customers VALUES (1,'a')")
+            con.commit(); con.close()
+
+            eng = DuckDBEngine.from_sqlite(p, schema_name="shop")
+            # SQLite auto-creates a sqlite_sequence table for the AUTOINCREMENT bookkeeping only when
+            # AUTOINCREMENT is used; here we just assert both user tables are present and internals
+            # (sqlite_*) never leak -- the from_sqlite filter drops any sqlite_ prefixed name.
+            self.assertEqual(eng.list_tables(), ["customers", "orders"])
+            self.assertFalse(any(t.startswith("sqlite_") for t in eng.list_tables()))
+            self.assertEqual(eng.list_columns("orders"), ["id", "amount"])
+            r = eng.query("SELECT SUM(amount) AS s FROM orders", 10)
+            self.assertEqual(r.rows[0][0], 60.0)
+
+    def test_from_sqlite_missing_file_raises(self):
+        from diracdata.engines import DuckDBEngine
+        with self.assertRaises(FileNotFoundError):
+            DuckDBEngine.from_sqlite("/no/such/file.sqlite", schema_name="x")
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -282,6 +282,20 @@ class ModelGardenTests(unittest.TestCase):
         self.assertEqual(kw["api_key"], "fw_test")                         # its own key (not settings.openai)
         self.assertEqual(kw["model"], "accounts/fireworks/models/glm-5p2")
 
+    def test_together_is_openai_compatible_via_the_factory(self):
+        # Together AI drops in the same way as Fireworks: OpenAI transport + its own base_url + key.
+        from dataclasses import replace
+        from diracdata.config import Config
+        from diracdata.utils.model_factory import build_model_init, ModelProvider, BUILT_IN_MODEL_PROFILES
+        self.assertEqual(BUILT_IN_MODEL_PROFILES["together_deepseek_v3"].provider, ModelProvider.TOGETHER)
+        s = replace(Config(), together_api_key="tg_test", together_base_url="https://tg.example/v1")
+        prov, key, region, kw = build_model_init(settings=s, profile_id="together_deepseek_v3")
+        self.assertEqual(prov, ModelProvider.TOGETHER)
+        self.assertEqual(kw["model_provider"], "openai")                   # OpenAI transport under the hood
+        self.assertEqual(kw["base_url"], "https://tg.example/v1")          # its own endpoint
+        self.assertEqual(kw["api_key"], "tg_test")                         # its own key (not settings.openai)
+        self.assertEqual(kw["model"], "deepseek-ai/DeepSeek-V3")
+
     def test_fireworks_cost_aware_garden_tiers(self):
         from diracdata.utils.model_factory import (
             BUILT_IN_MODEL_PROFILES as P, FIREWORKS_COST_AWARE_GARDEN, garden_profiles, render_catalog,

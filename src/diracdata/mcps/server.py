@@ -57,22 +57,42 @@ def context_mcp(*, schema: str | None = None, data: str | None = None, store: st
     from diracdata.mcps.tools import context_tools
     for fn in context_tools(rt):          # the curated client-facing bundle (primitives only)
         server.tool()(fn)
+
+    # Resources + prompts (phases 3 + 5)
+    from diracdata.mcps.prompts_mcp import PROMPTS
+    from diracdata.mcps.register import schema_resource_body
+
+    @server.resource("dialect://{schema}")
+    def _res_dialect(schema: str) -> str:
+        return schema_resource_body(rt, f"dialect://{schema}")
+
+    @server.resource("index://{schema}")
+    def _res_index(schema: str) -> str:
+        return schema_resource_body(rt, f"index://{schema}")
+
+    @server.resource("metric://{schema}/{name}")
+    def _res_metric(schema: str, name: str) -> str:
+        return schema_resource_body(rt, f"metric://{schema}/{name}")
+
+    @server.resource("table://{schema}/{table}")
+    def _res_table(schema: str, table: str) -> str:
+        return schema_resource_body(rt, f"table://{schema}/{table}")
+
+    @server.prompt(name="learn-database", title=PROMPTS["learn-database"]["title"],
+                   description=PROMPTS["learn-database"]["description"])
+    def _prompt_learn(database: str = "") -> str:
+        return PROMPTS["learn-database"]["fn"](database or default_schema)
+
+    @server.prompt(name="executive-scorecard", title=PROMPTS["executive-scorecard"]["title"],
+                   description=PROMPTS["executive-scorecard"]["description"])
+    def _prompt_scorecard(year_hint: str = "most recent complete year") -> str:
+        return PROMPTS["executive-scorecard"]["fn"](year_hint)
+
     return server
 
 
-_INSTRUCTIONS = (
-    "DiracData gives you GOVERNED CONTEXT over the user's data warehouse so you write correct SQL. YOU "
-    "are the analyst; these tools ground and verify you. Recommended flow: (1) find_examples FIRST -- "
-    "reuse a proven query pattern; (2) search_context to locate a concept, describe_column for a "
-    "column's meaning + nested ACCESS RECIPE, get_metric for a governed metric's SQL; (3) join_path for "
-    "the VERIFIED join + cardinality BEFORE any join (keys are often named differently on each side -- "
-    "aggregate-then-join, never fan-out/chasm double-count); (4) run_sql to execute (read-only); (5) "
-    "data_check to verify a multi-table draft (fan-out + sanity); (6) temporal_coverage BEFORE joining "
-    "two time-bearing tables in a question with an implied period ('during the campaign', 'over the "
-    "same window') -- catches the silent nearest-day proxy when their calendars don't overlap; (7) "
-    "attribute for the complete cited root-cause decomposition of a metric's change. If a schema is "
-    "not learned yet, call learn_schema and poll learn_status."
-)
+from diracdata.mcps.instructions import schema_instructions as _si
+_INSTRUCTIONS = _si()
 
 
 class _Runtime:
