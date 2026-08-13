@@ -219,14 +219,16 @@ def build_catalog_md(
     Reads catalog.yaml for top-level metadata + each database.md for the per-DB
     summary block. Returns the written markdown.
     """
-    cat_meta = store.get_catalog(catalog, "catalog.yaml", default={}) or {}
+    cat_meta = (store.get_catalog(catalog, "catalog.json", default={})
+                 or store.get_catalog(catalog, "catalog.yaml", default={}) or {})
     engine = cat_meta.get("engine", "duckdb")
     description = cat_meta.get("description", "")
     db_names = store.list_databases(catalog)
 
     databases = []
     for db in db_names:
-        db_meta = store.get(catalog, db, "database.yaml", default={}) or {}
+        db_meta = (store.get(catalog, db, "database.json", default={})
+                    or store.get(catalog, db, "database.yaml", default={}) or {})
         databases.append({
             "name":         db,
             "table_count":  db_meta.get("table_count", "?"),

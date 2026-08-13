@@ -200,7 +200,7 @@ class CatalogStore:
         Prefers new layout; falls back to legacy shim for catalog='local' when
         the new-layout catalog.yaml is absent.
         """
-        cat_meta = self.get_catalog(catalog, "catalog.yaml") or self.get_catalog(catalog, "catalog.json")
+        cat_meta = self.get_catalog(catalog, "catalog.json") or self.get_catalog(catalog, "catalog.yaml")
         cat_md = self.get_catalog_text(catalog, "catalog.md")
 
         if cat_meta is None and catalog != LEGACY_CATALOG:
@@ -222,8 +222,9 @@ class CatalogStore:
 
     def _load_database(self, catalog: str, db: str) -> Database:
         """Load one Database's metadata + table names (not full table shape)."""
-        # Try new-layout database.yaml → get table names cheap
-        db_meta = self.get(catalog, db, "database.yaml") or self.get(catalog, db, "database.json") or {}
+        # Try new-layout database.json → get table names cheap (JSON is the canonical form
+        # because CatalogStore.get() reads via read_json; .yaml kept for back-compat only)
+        db_meta = self.get(catalog, db, "database.json") or self.get(catalog, db, "database.yaml") or {}
         db_md = self.get_text(catalog, db, "database.md")
         table_names = db_meta.get("table_names") or []
         if not table_names:
